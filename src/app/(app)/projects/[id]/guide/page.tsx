@@ -1,7 +1,7 @@
 'use client';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CheckCircle, Clock, List, Network, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, List, Network, AlertTriangle, Loader2 } from 'lucide-react';
 import CpmDiagram from '@/components/projects/cpm-diagram';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -37,13 +37,35 @@ export default function GuidePage() {
 
   const { data: project, isLoading, error } = useDoc<Project>(projectRef);
   
+  const goBackButton = (
+    <div className="flex items-center gap-4 mb-6">
+        <Button variant="outline" size="icon" onClick={() => router.back()}>
+        <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div>
+        <h1 className="text-3xl font-bold tracking-tight font-headline">
+            {project?.name || 'Cargando Proyecto...'}: Guía de Cocina
+        </h1>
+        </div>
+    </div>
+  );
+  
   if (isLoading || !user) {
-    return <div>Cargando guía...</div>;
+    return (
+        <div className="container mx-auto p-4">
+             {goBackButton}
+            <div className="flex items-center justify-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-4 text-lg text-muted-foreground">Cargando guía...</p>
+            </div>
+        </div>
+    );
   }
   
   if (error) {
     return (
         <div className="container mx-auto p-4">
+             {goBackButton}
              <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Error al Cargar</AlertTitle>
@@ -61,6 +83,7 @@ export default function GuidePage() {
   if (!project) {
     return (
         <div className="container mx-auto p-4">
+             {goBackButton}
              <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Proyecto no encontrado</AlertTitle>
@@ -75,30 +98,18 @@ export default function GuidePage() {
     )
   }
 
-  const goBackButton = (
-    <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" size="icon" onClick={() => router.back()}>
-        <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-        <h1 className="text-3xl font-bold tracking-tight font-headline">
-            {project.name}: Guía de Cocina
-        </h1>
-        </div>
-    </div>
-  );
-
+  // Si el resultado de CPM no está listo, muestra un estado de carga mientras los datos llegan por Firestore.
   if (!project.cpmResult || !project.cpmResult.tasks || project.cpmResult.tasks.some(t => t.es === undefined)) {
     return (
         <div className="container mx-auto p-4">
             {goBackButton}
-             <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Guía no disponible</AlertTitle>
-              <AlertDescription>
-                La guía de ruta óptima aún no ha sido generada o está incompleta. Por favor, vuelve a la página del proyecto y haz clic en "Calcular Ruta Óptima".
-              </AlertDescription>
-            </Alert>
+             <div className="flex flex-col items-center justify-center text-center border-2 border-dashed rounded-lg p-12">
+                <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                <h3 className="text-xl font-semibold">Generando guía...</h3>
+                <p className="mt-2 text-muted-foreground">
+                    El cálculo está en progreso. La guía aparecerá aquí automáticamente en unos segundos.
+                </p>
+            </div>
         </div>
     )
   }
