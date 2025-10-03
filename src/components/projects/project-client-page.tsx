@@ -25,6 +25,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const [editingTask, setEditingTask] = useState<Task | null | 'new'>(null);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null | 'new'>(null);
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isCalculatingPath, setIsCalculatingPath] = useState(false);
   const { toast } = useToast();
   const { firestore } = useFirebase();
   const router = useRouter();
@@ -186,13 +187,25 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
 
   const handleCalculatePath = () => {
     if (!tasks) return;
-    const cpmResult = calculateCPM(tasks);
-    updateDocumentNonBlocking(projectRef, { cpmResult });
-    
-    toast({
-      title: "¡Ruta Óptima Calculada!",
-      description: "Tu guía de cocina está lista. El botón para verla aparecerá en breve.",
-    });
+    setIsCalculatingPath(true);
+    try {
+        const cpmResult = calculateCPM(tasks);
+        updateDocumentNonBlocking(projectRef, { cpmResult });
+        
+        toast({
+          title: "¡Ruta Óptima Calculada!",
+          description: "Tu guía de cocina está lista. El botón para verla aparecerá en breve.",
+        });
+    } catch(error) {
+        console.error(error);
+        toast({
+            title: "Error al Calcular",
+            description: "No se pudo calcular la ruta crítica. Revisa la consola para más detalles.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsCalculatingPath(false);
+    }
   };
 
   if (isLoadingProject || isLoadingRecipes || isLoadingTasks || isLoadingResources) {
@@ -288,8 +301,18 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
             <Link href={`/projects/${projectId}/guide`}>Ver Guía <ArrowRight className="ml-2 h-4 w-4" /></Link>
           </Button>
         )}
-        <Button size="lg" onClick={handleCalculatePath} disabled={allTasks.length === 0}>
-          Calcular Ruta Óptima <ArrowRight className="ml-2 h-4 w-4" />
+        <Button size="lg" onClick={handleCalculatePath} disabled={allTasks.length === 0 || isCalculatingPath}>
+          {isCalculatingPath ? (
+            <>
+              Calculando...
+              <ArrowRight className="ml-2 h-4 w-4 animate-spin" />
+            </>
+          ) : (
+            <>
+              Calcular Ruta Óptima
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          )}
         </Button>
       </div>
 
