@@ -1,3 +1,28 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero",
+      "description": "A vibrant, well-lit kitchen with fresh ingredients on a countertop.",
+      "imageUrl": "https://images.unsplash.com/photo-1556911220-bff31c812dba?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxraXRjaGVuJTIwaW5ncmVkaWVudHN8ZW58MHx8fHwxNzU5NDI5NzI4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "kitchen ingredients"
+    },
+    {
+      "id": "project-1",
+      "description": "A festive Christmas dinner table setting.",
+      "imageUrl": "https://images.unsplash.com/photo-1577308856961-8e9ec50d0c67?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxmZXN0aXZlJTIwZGlubmVyfGVufDB8fHx8MTc1OTQ4OTY5NHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "festive dinner"
+    },
+    {
+      "id": "project-2",
+      "description": "A summer barbecue with grilled food.",
+      "imageUrl": "https://images.unsplash.com/photo-1658833621083-01fd8a4acf19?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxiYXJiZWN1ZSUyMGZvb2R8ZW58MHx8fHwxNzU5NDg5Njk0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "barbecue food"
+    },
+    {
+      "id": "project-3",
+      "description": "An assortment of meal prep containers.",
+      "imageUrl": "https://images.unsplash.com/photo-1667499745120-f9bcef8f584e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtZWFsJTIwcHJlcHxlbnwwfHx8fDE3NTk0NDE5NTB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "meal prep"
+    }
+  ]
 }
