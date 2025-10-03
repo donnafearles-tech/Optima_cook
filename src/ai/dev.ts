@@ -3,3 +3,4 @@ config();
 
 import '@/ai/flows/suggest-task-dependencies.ts';
 import '@/ai/flows/parse-recipe.ts';
+import '@/ai/flows/extract-text-from-file.ts';

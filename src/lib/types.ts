@@ -74,3 +74,21 @@ export const SuggestTaskDependenciesOutputSchema = z.record(
 export type SuggestTaskDependenciesOutput = z.infer<
   typeof SuggestTaskDependenciesOutputSchema
 >;
+
+export const ExtractTextFromFileInputSchema = z.object({
+  fileDataUri: z
+    .string()
+    .describe(
+      "The file content as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+    ),
+});
+export type ExtractTextFromFileInput = z.infer<
+  typeof ExtractTextFromFileInputSchema
+>;
+
+export const ExtractTextFromFileOutputSchema = z.object({
+  text: z.string().describe('The extracted text from the file.'),
+});
+export type ExtractTextFromFileOutput = z.infer<
+  typeof ExtractTextFromFileOutputSchema
+>;
