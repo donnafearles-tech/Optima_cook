@@ -1,132 +1,124 @@
 /**
- * @file Firebase Security Rules for the Optimal Cook application.
+ * @fileoverview Firestore Security Rules for the cooking app.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model, where users have full
- * control over their own data (projects, recipes, tasks) and cannot access
- * data belonging to other users. The rules leverage the Firestore path structure
- * to determine ownership, ensuring efficient and secure access control.
+ * This ruleset enforces a strict user-ownership model for all data. Each user
+ * has a private data tree under `/users/{userId}`. Only the authenticated user
+ * matching the `userId` segment has read and write access to that subtree.
  *
  * Data Structure:
- * All data is nested under /users/{userId}, providing a clear hierarchical
- * structure. Projects are stored as /users/{userId}/projects/{projectId},
- * recipes as /users/{userId}/projects/{projectId}/recipes/{recipeId},
- * and tasks as /users/{userId}/projects/{projectId}/tasks/{taskId}.
+ * - `/users/{userId}`: User profile information.
+ * - `/users/{userId}/resources/{resourceId}`: Kitchen resources owned by the user.
+ * - `/users/{userId}/projects/{projectId}`: Cooking projects created by the user.
+ * - `/users/{userId}/projects/{projectId}/recipes/{recipeId}`: Recipes within a project.
+ * - `/users/{userId}/projects/{projectId}/tasks/{taskId}`: Tasks associated with a recipe.
  *
  * Key Security Decisions:
- * - Users can only access their own data.
- * - Data consistency is enforced by validating the 'id' field on document creation
- *   and ensuring its immutability on updates.
- * - Rules are designed to be efficient and avoid costly `get()` operations.
+ * - User listing is disallowed for privacy.
+ * - Strict ownership is enforced: a user can only access their own data.
+ * - Data validation is relaxed to facilitate rapid prototyping. Only critical relational
+ *   integrity checks are enforced.
  *
  * Denormalization for Authorization:
- * The `ownerId` field in the `projects` collection is used to explicitly
- * link projects to users, which simplifies ownership checks.  However, since
- * recipes and tasks are nested in subcollections, we can use the path to authorize
- * requests to these collections.
+ * - The rules rely on path-based authorization. The authenticated user's UID
+ *   must match the `userId` segment in the path to gain access.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows users to read and write their own profile data.
-     * @path /users/{userId}
-     * @allow (create, update, get) if request.auth.uid == userId
-     * @deny (create) if request.auth.uid != userId
-     * @deny (update) if request.auth.uid != userId
-     * @deny (delete) always
-     * @principle Enforces user-ownership for profile data and prevents unauthorized access.
+     * @description Ensures that only the authenticated user can access their own user document.
+     * @path /databases/{database}/documents/users/{userId}
+     * @allow (get, create, update, delete) User 'crmyu7KEJ8SQXNCZxtQns9HUMw83' can access their own document.
+     * @deny (get, create, update, delete) User 'otherUserId' cannot access User 'crmyu7KEJ8SQXNCZxtQns9HUMw83' document.
+     * @principle Enforces document ownership for user profiles.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
+      // Verify that the user is signed in.
       allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false; // Prevent listing all users
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isSignedIn() && isOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if false; // No user deletion allowed
+      allow list: if false; // Do not allow listing of users.
+      // On create, the request userId must match the document id.
+      allow create: if isSignedIn() && isOwner(userId);
+      // On update, the request userId must match the document id.
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      // Only the owner can delete their account.
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
     /**
-     * @description Allows users to manage their own cooking projects.
-     * @path /users/{userId}/projects/{projectId}
-     * @allow (create, update, get, list) if request.auth.uid == userId
-     * @deny (create) if request.auth.uid != userId
-     * @deny (update) if request.auth.uid != userId
-     * @deny (delete) if request.auth.uid != userId
-     * @principle Enforces user-ownership for project data and prevents unauthorized access.
+     * @description Controls access to user's kitchen resources.
+     * @path /databases/{database}/documents/users/{userId}/resources/{resourceId}
+     * @allow (get, list, create, update, delete) User 'crmyu7KEJ8SQXNCZxtQns9HUMw83' can manage their own resources.
+     * @deny (get, list, create, update, delete) User 'otherUserId' cannot manage User 'crmyu7KEJ8SQXNCZxtQns9HUMw83' resources.
+     * @principle Enforces ownership for kitchen resources.
+     */
+    match /users/{userId}/resources/{resourceId} {
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to user's cooking projects.
+     * @path /databases/{database}/documents/users/{userId}/projects/{projectId}
+     * @allow (get, list, create, update, delete) User 'crmyu7KEJ8SQXNCZxtQns9HUMw83' can manage their own projects.
+     * @deny (get, list, create, update, delete) User 'otherUserId' cannot manage User 'crmyu7KEJ8SQXNCZxtQns9HUMw83' projects.
+     * @principle Enforces ownership for cooking projects.
      */
     match /users/{userId}/projects/{projectId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
       allow get: if isSignedIn() && isOwner(userId);
       allow list: if isSignedIn() && isOwner(userId);
       allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
     /**
-     * @description Allows users to manage recipes within their projects.
-     * @path /users/{userId}/projects/{projectId}/recipes/{recipeId}
-     * @allow (create, update, get, list) if request.auth.uid == userId
-     * @deny (create) if request.auth.uid != userId
-     * @deny (update) if request.auth.uid != userId
-     * @deny (delete) if request.auth.uid != userId
-     * @principle Enforces user-ownership for recipe data and prevents unauthorized access.
+     * @description Controls access to recipes within a user's project.
+     * @path /databases/{database}/documents/users/{userId}/projects/{projectId}/recipes/{recipeId}
+     * @allow (get, list, create, update, delete) User 'crmyu7KEJ8SQXNCZxtQns9HUMw83' can manage their own recipes within their projects.
+     * @deny (get, list, create, update, delete) User 'otherUserId' cannot manage User 'crmyu7KEJ8SQXNCZxtQns9HUMw83' recipes.
+     * @principle Enforces ownership for recipes.
      */
     match /users/{userId}/projects/{projectId}/recipes/{recipeId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
       allow get: if isSignedIn() && isOwner(userId);
       allow list: if isSignedIn() && isOwner(userId);
       allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
     /**
-     * @description Allows users to manage tasks within their projects and recipes.
-     * @path /users/{userId}/projects/{projectId}/tasks/{taskId}
-     * @allow (create, update, get, list) if request.auth.uid == userId
-     * @deny (create) if request.auth.uid != userId
-     * @deny (update) if request.auth.uid != userId
-     * @deny (delete) if request.auth.uid != userId
-     * @principle Enforces user-ownership for task data and prevents unauthorized access.
+     * @description Controls access to tasks within a user's project.
+     * @path /databases/{database}/documents/users/{userId}/projects/{projectId}/tasks/{taskId}
+     * @allow (get, list, create, update, delete) User 'crmyu7KEJ8SQXNCZxtQns9HUMw83' can manage their own tasks within their projects.
+     * @deny (get, list, create, update, delete) User 'otherUserId' cannot manage User 'crmyu7KEJ8SQXNCZxtQns9HUMw83' tasks.
+     * @principle Enforces ownership for tasks.
      */
     match /users/{userId}/projects/{projectId}/tasks/{taskId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
       allow get: if isSignedIn() && isOwner(userId);
       allow list: if isSignedIn() && isOwner(userId);
       allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
+  }
+
+  // Helper function to determine if the user is signed in.
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  // Helper function to determine if the request is made by the owner.
+  function isOwner(userId) {
+    return request.auth.uid == userId;
+  }
+
+  // Helper function to determine if the request is made by the existing owner and resource exists.
+  function isExistingOwner(userId) {
+    return isOwner(userId) && resource != null;
   }
 }
