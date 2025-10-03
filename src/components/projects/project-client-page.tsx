@@ -20,7 +20,7 @@ export default function ProjectClientPage({ project: initialProject }: { project
 
   const handleTaskSave = (taskToSave: Task) => {
     let updatedTasks: Task[];
-    if (taskToSave.id) {
+    if (taskToSave.id && project.tasks.some(t => t.id === taskToSave.id)) {
       updatedTasks = project.tasks.map(t => (t.id === taskToSave.id ? taskToSave : t));
     } else {
       updatedTasks = [...project.tasks, { ...taskToSave, id: `task_${Date.now()}` }];

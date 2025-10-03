@@ -7,10 +7,12 @@ import { FileUp } from 'lucide-react';
 import ProjectClientPage from '@/components/projects/project-client-page';
 import type { Project } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import ImportRecipeDialog from '@/components/projects/import-recipe-dialog';
 
 export default function ProjectPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isImporting, setIsImporting] = useState(false);
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -46,20 +48,27 @@ export default function ProjectPage() {
   }
 
   return (
-    <div>
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight font-headline">{project.name}</h1>
-          <p className="text-muted-foreground">{project.description}</p>
+    <>
+      <div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">{project.name}</h1>
+            <p className="text-muted-foreground">{project.description}</p>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={() => setIsImporting(true)}>
+              <FileUp className="mr-2 h-4 w-4" /> Import Recipe
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="outline">
-            <FileUp className="mr-2 h-4 w-4" /> Import Recipe
-          </Button>
-        </div>
-      </div>
 
-      <ProjectClientPage project={project} />
-    </div>
+        <ProjectClientPage project={project} />
+      </div>
+      <ImportRecipeDialog
+        open={isImporting}
+        onOpenChange={setIsImporting}
+        project={project}
+      />
+    </>
   );
 }

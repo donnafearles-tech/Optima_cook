@@ -44,7 +44,7 @@ export default function EditTaskSheet({
   const [predecessorIds, setPredecessorIds] = useState<string[]>([]);
 
   useEffect(() => {
-    if (task) {
+    if (open && task) {
       setName(task.name);
       setDuration(task.duration);
       setPredecessorIds(task.predecessorIds);
@@ -106,7 +106,11 @@ export default function EditTaskSheet({
             </div>
             <div>
               <Label htmlFor="predecessors">Dependencies</Label>
-              <Select onValueChange={(value) => setPredecessorIds(prev => [...prev, value])}>
+              <Select onValueChange={(value) => {
+                  if (value && !predecessorIds.includes(value)) {
+                    setPredecessorIds(prev => [...prev, value])
+                  }
+                }}>
                 <SelectTrigger id="predecessors" className="mt-1">
                   <SelectValue placeholder="Add a predecessor task" />
                 </SelectTrigger>
