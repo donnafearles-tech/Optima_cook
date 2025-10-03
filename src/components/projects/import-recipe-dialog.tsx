@@ -67,50 +67,52 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
       
       const tasksCol = collection(projectRef, 'tasks');
       const taskNameMap = new Map<string, string>();
-      const createdTasks = [];
+      const createdTasks: { tempId: string; finalId: string; originalTask: typeof result.tasks[0] }[] = [];
 
       // 3. First pass: Create tasks and get their future IDs
       for (const t of result.tasks) {
           const taskRef = doc(tasksCol);
           taskNameMap.set(t.name, taskRef.id);
-          const { predecessorIds, ...taskData } = t;
-
-          // Proactively suggest resources
-          let resourceIds: string[] = [];
-          if (userResources && userResources.length > 0) {
-              try {
-                  const resourceSuggestion = await suggestResourceForTask({
-                      taskName: t.name,
-                      userResources: userResources,
-                  });
-                  resourceIds = resourceSuggestion.resourceIds;
-              } catch (e) {
-                  console.warn(`AI resource suggestion failed for task "${t.name}":`, e);
-              }
-          }
-          
-          const finalTaskData = {
-            ...taskData,
-            recipeId: newRecipeRef.id,
-            status: 'pending',
-            resourceIds: resourceIds,
-            predecessorIds: [] // Will be updated in second pass
-          };
-
-          batch.set(taskRef, finalTaskData);
           createdTasks.push({ tempId: t.name, finalId: taskRef.id, originalTask: t });
       }
 
-      // 4. Second pass: Update tasks with correct predecessor IDs
-      for (const createdTask of createdTasks) {
-          const taskRef = doc(tasksCol, createdTask.finalId);
-          const mappedPredIds = createdTask.originalTask.predecessorIds
-              .map(name => taskNameMap.get(name))
-              .filter((id): id is string => !!id);
-          
-          if (mappedPredIds.length > 0) {
-              batch.update(taskRef, { predecessorIds: mappedPredIds });
+      // 4. Proactively suggest resources for all tasks in parallel
+      const resourceSuggestionPromises = createdTasks.map(async ({ finalId, originalTask }) => {
+        let resourceIds: string[] = [];
+        if (userResources && userResources.length > 0) {
+          try {
+            const resourceSuggestion = await suggestResourceForTask({
+              taskName: originalTask.name,
+              userResources: userResources,
+            });
+            resourceIds = resourceSuggestion.resourceIds;
+          } catch (e) {
+            console.warn(`AI resource suggestion failed for task "${originalTask.name}":`, e);
           }
+        }
+        return { finalId, originalTask, resourceIds };
+      });
+
+      const tasksWithResources = await Promise.all(resourceSuggestionPromises);
+
+
+      // 5. Second pass: Set full task data in the batch
+      for (const { finalId, originalTask, resourceIds } of tasksWithResources) {
+        const taskRef = doc(tasksCol, finalId);
+        const mappedPredIds = originalTask.predecessorIds
+          .map(name => taskNameMap.get(name))
+          .filter((id): id is string => !!id);
+
+        const finalTaskData = {
+          name: originalTask.name,
+          duration: originalTask.duration,
+          isAssemblyStep: originalTask.isAssemblyStep,
+          recipeId: newRecipeRef.id,
+          status: 'pending' as const,
+          resourceIds: resourceIds,
+          predecessorIds: mappedPredIds
+        };
+        batch.set(taskRef, finalTaskData);
       }
       
       await batch.commit();
