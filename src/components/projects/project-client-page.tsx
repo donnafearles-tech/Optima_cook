@@ -2,16 +2,16 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, Wand2, FileUp } from 'lucide-react';
+import { ArrowRight, Sparkles, Wand2, FileUp, Plus } from 'lucide-react';
 import type { Project, Task, Recipe } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { suggestTaskDependencies } from '@/ai/flows/suggest-task-dependencies';
 import { calculateCPM } from '@/lib/cpm';
-import TasksTable from './tasks-table';
 import EditTaskSheet from './edit-task-sheet';
-import { SuggestTaskDependenciesOutput } from '@/lib/types';
+import EditRecipeDialog from './edit-recipe-dialog'; // Nuevo
+import RecipeCard from './recipe-card'; // Nuevo
 import { useFirebase, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, doc, writeBatch } from 'firebase/firestore';
+import { collection, doc, writeBatch, deleteDoc } from 'firebase/firestore';
 
 interface ProjectClientPageProps {
   projectId: string;
@@ -21,31 +21,70 @@ interface ProjectClientPageProps {
 
 export default function ProjectClientPage({ projectId, userId, onImportRecipe }: ProjectClientPageProps) {
   const [editingTask, setEditingTask] = useState<Task | null | 'new'>(null);
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null | 'new'>(null);
+  const [targetRecipeId, setTargetRecipeId] = useState<string | null>(null);
   const [isSuggesting, setIsSuggesting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
   const { firestore } = useFirebase();
 
-  // Reference to the project document
   const projectRef = useMemoFirebase(() => {
     return doc(firestore, 'users', userId, 'projects', projectId);
   }, [firestore, userId, projectId]);
 
-  // Fetch the project document
   const { data: project, isLoading: isLoadingProject, error: projectError } = useDoc<Project>(projectRef);
 
-  // Query for the recipes subcollection within the project
   const recipesQuery = useMemoFirebase(() => {
     return collection(projectRef, 'recipes');
   }, [projectRef]);
   const { data: recipes, isLoading: isLoadingRecipes } = useCollection<Recipe>(recipesQuery);
 
-  // Query for the tasks subcollection within the project
   const tasksQuery = useMemoFirebase(() => {
     return collection(projectRef, 'tasks');
   }, [projectRef]);
   const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
 
+  const handleOpenEditTask = (task: Task | 'new', recipeId: string) => {
+    setTargetRecipeId(recipeId);
+    setEditingTask(task);
+  };
+  
+  const handleRecipeSave = (recipeToSave: Pick<Recipe, 'id' | 'name'>) => {
+    const recipesCollection = collection(projectRef, 'recipes');
+    if (recipeToSave.id) {
+        const recipeDoc = doc(recipesCollection, recipeToSave.id);
+        updateDocumentNonBlocking(recipeDoc, { name: recipeToSave.name });
+        toast({ title: 'Receta Actualizada', description: `Se ha cambiado el nombre a "${recipeToSave.name}".` });
+    } else {
+        addDocumentNonBlocking(recipesCollection, { name: recipeToSave.name });
+        toast({ title: 'Receta Creada', description: `Se ha añadido la receta "${recipeToSave.name}".` });
+    }
+    setEditingRecipe(null);
+  };
+
+  const handleRecipeDelete = async (recipeId: string) => {
+    if (!tasks) return;
+    const batch = writeBatch(firestore);
+    
+    // Delete the recipe document
+    const recipeRef = doc(projectRef, 'recipes', recipeId);
+    batch.delete(recipeRef);
+
+    // Delete all tasks associated with the recipe
+    const tasksToDelete = tasks.filter(t => t.recipeId === recipeId);
+    tasksToDelete.forEach(t => {
+        const taskRef = doc(projectRef, 'tasks', t.id);
+        batch.delete(taskRef);
+    });
+
+    try {
+        await batch.commit();
+        toast({ title: 'Receta Eliminada', description: 'La receta y todas sus tareas han sido eliminadas.' });
+    } catch (e) {
+        console.error("Error al eliminar la receta y sus tareas:", e);
+        toast({ title: 'Error', description: 'No se pudo eliminar la receta.', variant: 'destructive' });
+    }
+  };
 
   const handleTaskSave = (taskToSave: Task) => {
     const tasksCollection = collection(projectRef, 'tasks');
@@ -56,9 +95,11 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         updateDocumentNonBlocking(taskDoc, dataToSave);
     } else {
         const { id, ...dataToSave } = taskToSave;
+        // The recipeId is now set in the EditTaskSheet
         addDocumentNonBlocking(tasksCollection, dataToSave);
     }
     setEditingTask(null);
+    setTargetRecipeId(null);
   };
 
   const handleTaskDelete = (taskId: string) => {
@@ -83,7 +124,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     setIsSuggesting(true);
     try {
       const taskList = tasks.map(t => t.name);
-      const result: SuggestTaskDependenciesOutput = await suggestTaskDependencies({ recipeName: project?.name || 'Receta', taskList });
+      const result = await suggestTaskDependencies({ recipeName: project?.name || 'Receta', taskList });
       
       const taskNameMap = new Map(tasks.map(t => [t.name, t.id]));
       const batch = writeBatch(firestore);
@@ -134,18 +175,11 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   }
 
   if (!project) {
-    // This case will be hit if isLoading is false but project is still null,
-    // which can happen if the document doesn't exist.
     return <div>Proyecto no encontrado.</div>;
   }
 
-  const fullProject: Project = {
-    ...project,
-    id: projectId,
-    recipes: recipes || [],
-    tasks: tasks || [],
-  };
-
+  const allTasks = tasks || [];
+  const allRecipes = recipes || [];
 
   return (
     <>
@@ -165,7 +199,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
 
       <div className="my-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-          <h2 className="text-2xl font-bold tracking-tight font-headline">Tareas</h2>
+          <h2 className="text-2xl font-bold tracking-tight font-headline text-center flex-1">Recetas</h2>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleSuggestDependencies} disabled={isSuggesting || (tasks?.length || 0) < 2}>
               {isSuggesting ? (
@@ -173,20 +207,32 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
               ) : (
                 <Wand2 className="mr-2 h-4 w-4" />
               )}
-              Sugerir Dependencias
+              Sugerir Dependencias (Global)
             </Button>
-            <Button onClick={() => setEditingTask('new')}>Añadir Tarea</Button>
+            <Button onClick={() => setEditingRecipe('new')}>
+                <Plus className="mr-2 h-4 w-4" /> Añadir Receta
+            </Button>
           </div>
         </div>
-        <TasksTable 
-          tasks={fullProject.tasks}
-          onEditTask={(task) => setEditingTask(task)}
-          onDeleteTask={handleTaskDelete}
-        />
+        <div className="space-y-6">
+            {allRecipes.map(recipe => (
+                <RecipeCard 
+                    key={recipe.id}
+                    recipe={recipe}
+                    tasks={allTasks.filter(t => t.recipeId === recipe.id)}
+                    allTasks={allTasks}
+                    onEditRecipe={() => setEditingRecipe(recipe)}
+                    onDeleteRecipe={() => handleRecipeDelete(recipe.id)}
+                    onAddTask={() => handleOpenEditTask('new', recipe.id)}
+                    onEditTask={(task) => handleOpenEditTask(task, recipe.id)}
+                    onDeleteTask={handleTaskDelete}
+                />
+            ))}
+        </div>
       </div>
 
       <div className="mt-8 flex justify-end">
-        <Button size="lg" onClick={handleCalculatePath} disabled={fullProject.tasks.length === 0}>
+        <Button size="lg" onClick={handleCalculatePath} disabled={allTasks.length === 0}>
           Calcular Ruta Óptima <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
@@ -195,9 +241,16 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         open={editingTask !== null}
         onOpenChange={(isOpen) => !isOpen && setEditingTask(null)}
         task={editingTask === 'new' ? null : editingTask}
-        allTasks={fullProject.tasks}
-        recipes={fullProject.recipes}
+        allTasks={allTasks}
+        recipeId={targetRecipeId}
         onSave={handleTaskSave}
+      />
+      
+      <EditRecipeDialog
+          open={editingRecipe !== null}
+          onOpenChange={(isOpen) => !isOpen && setEditingRecipe(null)}
+          recipe={editingRecipe === 'new' ? null : editingRecipe}
+          onSave={handleRecipeSave}
       />
     </>
   );

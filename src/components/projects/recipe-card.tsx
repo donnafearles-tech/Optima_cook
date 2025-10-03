@@ -1,0 +1,127 @@
+'use client';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { MoreVertical, Edit, Trash2, Plus } from 'lucide-react';
+import type { Recipe, Task } from '@/lib/types';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '../ui/badge';
+
+interface RecipeCardProps {
+    recipe: Recipe;
+    tasks: Task[];
+    allTasks: Task[];
+    onEditRecipe: () => void;
+    onDeleteRecipe: () => void;
+    onAddTask: () => void;
+    onEditTask: (task: Task) => void;
+    onDeleteTask: (taskId: string) => void;
+}
+
+function formatDuration(seconds: number) {
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds > 0 ? `${remainingSeconds}s` : ''}`.trim();
+}
+
+export default function RecipeCard({
+    recipe,
+    tasks,
+    allTasks,
+    onEditRecipe,
+    onDeleteRecipe,
+    onAddTask,
+    onEditTask,
+    onDeleteTask,
+}: RecipeCardProps) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between">
+        <div>
+          <CardTitle className="font-headline">{recipe.name}</CardTitle>
+          <CardDescription>{tasks.length} paso(s)</CardDescription>
+        </div>
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                    <MoreVertical className="h-5 w-5" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onEditRecipe}>
+                    <Edit className="mr-2 h-4 w-4" /> Editar Receta
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onDeleteRecipe} className="text-destructive">
+                    <Trash2 className="mr-2 h-4 w-4" /> Eliminar Receta
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+      </CardHeader>
+      <CardContent>
+        {tasks.length > 0 ? (
+            <div className="space-y-2">
+                {tasks.map(task => {
+                     const predecessors = task.predecessorIds.map(
+                        (pId) => allTasks.find((t) => t.id === pId)?.name
+                      ).filter(Boolean);
+
+                    return (
+                        <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg">
+                           <div className="flex-1">
+                                <p className="font-medium">{task.name}</p>
+                                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                    <span>Duración: {formatDuration(task.duration)}</span>
+                                    {predecessors.length > 0 && (
+                                        <div className="flex items-center gap-1">
+                                            <span>Depende de:</span>
+                                            {predecessors.map(pName => <Badge key={pName} variant="secondary">{pName}</Badge>)}
+                                        </div>
+                                    )}
+                                </div>
+                           </div>
+                           <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => onEditTask(task)}>
+                                        <Edit className="mr-2 h-4 w-4" /> Editar Tarea
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => onDeleteTask(task.id)} className="text-destructive">
+                                        <Trash2 className="mr-2 h-4 w-4" /> Eliminar Tarea
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                    )
+                })}
+            </div>
+        ) : (
+            <div className="text-center text-sm text-muted-foreground py-8">
+                Esta receta aún no tiene pasos.
+            </div>
+        )}
+      </CardContent>
+      <CardFooter>
+        <Button variant="outline" className="w-full" onClick={onAddTask}>
+          <Plus className="mr-2 h-4 w-4" />
+          Añadir Paso o Actividad
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}

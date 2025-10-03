@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';
-import type { Task, Recipe } from '@/lib/types';
+import type { Task } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 
 interface EditTaskSheetProps {
@@ -29,7 +29,7 @@ interface EditTaskSheetProps {
   onOpenChange: (isOpen: boolean) => void;
   task: Task | null;
   allTasks: Task[];
-  recipes: Recipe[];
+  recipeId: string | null; // ID of the recipe this task belongs to
   onSave: (task: Task) => void;
 }
 
@@ -40,15 +40,14 @@ export default function EditTaskSheet({
   onOpenChange,
   task,
   allTasks,
-  recipes,
+  recipeId,
   onSave,
 }: EditTaskSheetProps) {
   const [name, setName] = useState('');
   const [durationValue, setDurationValue] = useState(0);
   const [timeUnit, setTimeUnit] = useState<TimeUnit>('minutes');
   const [predecessorIds, setPredecessorIds] = useState<string[]>([]);
-  const [recipeId, setRecipeId] = useState('');
-
+  
   useEffect(() => {
     if (open) {
       if (task) {
@@ -61,22 +60,21 @@ export default function EditTaskSheet({
           setDurationValue(task.duration / 60);
         }
         setPredecessorIds(task.predecessorIds);
-        setRecipeId(task.recipeId)
       } else {
         // Reset for new task
         setName('');
         setDurationValue(5); // Default to 5 minutes
         setTimeUnit('minutes');
         setPredecessorIds([]);
-        setRecipeId(recipes.length > 0 ? recipes[0].id : '');
       }
     }
-  }, [task, open, recipes]);
+  }, [task, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || durationValue <= 0 || !recipeId) {
-        // Add validation feedback
+        // Add validation feedback if needed
+        console.error("Missing required fields");
         return;
     }
 
@@ -87,7 +85,7 @@ export default function EditTaskSheet({
       name,
       duration: durationInSeconds,
       predecessorIds,
-      recipeId: recipeId,
+      recipeId: recipeId, // Assign the recipeId
       status: task?.status || 'pending',
     });
   };
@@ -100,7 +98,7 @@ export default function EditTaskSheet({
         <SheetHeader>
           <SheetTitle className="font-headline">{task ? 'Editar Tarea' : 'Añadir Nueva Tarea'}</SheetTitle>
           <SheetDescription>
-            Rellena los detalles de tu tarea de cocina.
+            Rellena los detalles de tu tarea de cocina. La tarea se añadirá a la receta seleccionada.
           </SheetDescription>
         </SheetHeader>
         <form onSubmit={handleSubmit} className="flex-grow flex flex-col gap-4">
@@ -138,23 +136,9 @@ export default function EditTaskSheet({
                 </SelectContent>
               </Select>
             </div>
+
             <div>
-              <Label htmlFor="recipeId">Receta</Label>
-               <Select value={recipeId} onValueChange={setRecipeId} required>
-                <SelectTrigger id="recipeId" className="mt-1">
-                  <SelectValue placeholder="Selecciona una receta" />
-                </SelectTrigger>
-                <SelectContent>
-                  {recipes.map(recipe => (
-                    <SelectItem key={recipe.id} value={recipe.id}>
-                      {recipe.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="predecessors">Dependencias</Label>
+              <Label>Dependencias</Label>
               <Select onValueChange={(value) => {
                   if (value && !predecessorIds.includes(value)) {
                     setPredecessorIds(prev => [...prev, value])
