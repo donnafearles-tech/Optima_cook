@@ -5,23 +5,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Book,
-  ChevronDown,
   Home,
-  LogOut,
   PanelLeft,
   Settings,
-  User,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   SidebarProvider,
   Sidebar,
@@ -34,53 +22,6 @@ import {
   SidebarInset,
 } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
-import { useFirebase } from '@/firebase';
-import { Skeleton } from '@/components/ui/skeleton';
-import { signInAnonymously } from 'firebase/auth';
-
-
-function UserMenu() {
-  const { auth, user, isUserLoading } = useFirebase();
-
-  if (isUserLoading) {
-    return <Skeleton className="h-8 w-24" />;
-  }
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="flex items-center gap-2"
-        >
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={user?.photoURL || "https://picsum.photos/seed/user/40/40"} alt="User" />
-            <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
-          </Avatar>
-          <span className="hidden sm:inline">{user?.isAnonymous ? "Anonymous User" : user?.displayName || 'User'}</span>
-          <ChevronDown className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>My Account</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem>
-          <User className="mr-2 h-4 w-4" />
-          <span>Profile</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem>
-          <Settings className="mr-2 h-4 w-4" />
-          <span>Settings</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => auth.signOut()}>
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
 
 function MainSidebar() {
   const pathname = usePathname();
@@ -132,21 +73,6 @@ function MainSidebar() {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(true);
-  const { auth, isUserLoading, user } = useFirebase();
-
-  React.useEffect(() => {
-    if (!isUserLoading && !user) {
-      signInAnonymously(auth);
-    }
-  }, [isUserLoading, user, auth]);
-
-  if (isUserLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <p>Loading...</p>
-      </div>
-    );
-  }
 
   return (
     <SidebarProvider open={open} onOpenChange={setOpen}>
@@ -163,7 +89,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <span className="sr-only">Toggle Menu</span>
           </Button>
           <div className="flex-1" />
-          <UserMenu />
         </header>
         <main className="flex-1 p-4 sm:p-6">{children}</main>
       </SidebarInset>
