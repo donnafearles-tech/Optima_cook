@@ -12,7 +12,7 @@ import {
 } from '@/lib/types';
 import * as z from 'zod';
 import pdf from 'pdf-parse';
-import xlsx from 'xlsx';
+import * as xlsx from 'xlsx';
 import mammoth from 'mammoth';
 
 async function extractText(
