@@ -1,20 +1,25 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlusCircle } from 'lucide-react';
 import type { Project } from '@/lib/types';
+import { getProjects } from '@/lib/data';
 import CreateProjectDialog from './create-project-dialog';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const projectImages = PlaceHolderImages.filter(p => p.id.startsWith('project-'));
 
-export default function ProjectList({ initialProjects }: { initialProjects: Project[] }) {
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
+export default function ProjectList() {
+  const [projects, setProjects] = useState<Project[]>([]);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+
+  useEffect(() => {
+    setProjects(getProjects());
+  }, []);
 
   const handleProjectCreated = (newProject: Project) => {
     setProjects(prev => [...prev, newProject]);
