@@ -7,6 +7,9 @@ import {
   Book,
   Home,
   PanelLeft,
+  User as UserIcon,
+  LogOut,
+  HardDrive
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +24,62 @@ import {
   SidebarInset,
 } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
+import { useFirebase, useUser, initiateSignOut } from '@/firebase/auth';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+function UserNav() {
+  const { user } = useUser();
+  const { auth } = useFirebase();
+
+  const handleSignOut = () => {
+    initiateSignOut(auth);
+  };
+  
+  if (!user) {
+    return null;
+  }
+  
+  const userInitial = user.email ? user.email.charAt(0).toUpperCase() : '?';
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={user.photoURL || undefined} alt={user.email || 'Avatar'} />
+            <AvatarFallback>{userInitial}</AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">
+              {user.displayName || 'Usuario'}
+            </p>
+            <p className="text-xs leading-none text-muted-foreground">
+              {user.email}
+            </p>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleSignOut}>
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Cerrar Sesión</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 
 function MainSidebar() {
   const pathname = usePathname();
@@ -38,6 +97,16 @@ function MainSidebar() {
                 <span>
                   <Home />
                   <span>Dashboard</span>
+                </span>
+              </SidebarMenuButton>
+            </Link>
+          </SidebarMenuItem>
+           <SidebarMenuItem>
+            <Link href="/resources" passHref>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/resources')}>
+                <span>
+                  <HardDrive />
+                  <span>Mis Recursos</span>
                 </span>
               </SidebarMenuButton>
             </Link>
@@ -78,6 +147,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <span className="sr-only">Alternar Menú</span>
           </Button>
           <div className="flex-1" />
+           <UserNav />
         </header>
         <main className="flex-1 p-4 sm:p-6">{children}</main>
       </SidebarInset>

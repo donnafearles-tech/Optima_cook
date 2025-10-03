@@ -37,7 +37,7 @@ export default function Home() {
       <header className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
         <Logo />
         <Button asChild>
-          <Link href="/dashboard">Comenzar</Link>
+          <Link href="/login">Comenzar</Link>
         </Button>
       </header>
 
@@ -52,7 +52,7 @@ export default function Home() {
             </p>
             <div className="mt-8 flex justify-center gap-4">
               <Button size="lg" asChild>
-                <Link href="/dashboard">Comienza tu Primer Proyecto</Link>
+                <Link href="/login">Comienza tu Primer Proyecto</Link>
               </Button>
               <Button size="lg" variant="outline">
                 Saber Más
@@ -103,7 +103,7 @@ export default function Home() {
                   Deja de hacer malabares con los temporizadores y empieza a disfrutar del arte de cocinar. Deja que Happy Bunny Food se encargue de la logística.
                 </p>
                 <Button variant="secondary" size="lg" className="mt-8" asChild>
-                  <Link href="/dashboard">Comienza Ahora</Link>
+                  <Link href="/login">Comienza Ahora</Link>
                 </Button>
               </CardContent>
             </Card>
