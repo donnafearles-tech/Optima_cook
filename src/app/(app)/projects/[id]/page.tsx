@@ -7,7 +7,7 @@ import ProjectClientPage from '@/components/projects/project-client-page';
 import type { Project, Recipe, Task } from '@/lib/types';
 import ImportRecipeDialog from '@/components/projects/import-recipe-dialog';
 import { useDoc, useCollection, useFirebase, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where } from 'firebase/firestore';
+import { doc, collection, query } from 'firebase/firestore';
 
 export default function ProjectPage() {
   const params = useParams();
@@ -15,23 +15,27 @@ export default function ProjectPage() {
   const [isImporting, setIsImporting] = useState(false);
   const { firestore, user } = useFirebase();
 
+  // Reference to the project document
   const projectRef = useMemoFirebase(() => {
     if (!id || !user) return null;
     return doc(firestore, 'users', user.uid, 'projects', id);
   }, [firestore, user, id]);
 
+  // Fetch the project document
   const { data: project, isLoading: isLoadingProject } = useDoc<Project>(projectRef);
 
+  // Query for the recipes subcollection within the project
   const recipesQuery = useMemoFirebase(() => {
-    if (!id) return null;
-    return query(collection(firestore, 'recipes'), where('projectId', '==', id));
-  }, [firestore, id]);
+    if (!projectRef) return null;
+    return collection(projectRef, 'recipes');
+  }, [projectRef]);
   const { data: recipes, isLoading: isLoadingRecipes } = useCollection<Recipe>(recipesQuery);
 
+  // Query for the tasks subcollection within the project
   const tasksQuery = useMemoFirebase(() => {
-    if (!id) return null;
-    return query(collection(firestore, 'tasks'), where('projectId', '==', id));
-  }, [firestore, id]);
+    if (!projectRef) return null;
+    return collection(projectRef, 'tasks');
+  }, [projectRef]);
   const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
 
 

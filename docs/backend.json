@@ -26,11 +26,9 @@
       "type": "object",
       "description": "Represents a single recipe within a project.",
       "properties": {
-        "name": { "type": "string", "description": "The name of the recipe." },
-        "projectId": { "type": "string", "description": "The ID of the project this recipe belongs to." },
-        "description": { "type": "string", "description": "A description of the recipe." }
+        "name": { "type": "string", "description": "The name of the recipe." }
       },
-      "required": ["name", "projectId"]
+      "required": ["name"]
     },
     "Task": {
       "title": "Task",
@@ -40,7 +38,6 @@
         "name": { "type": "string", "description": "The name of the task." },
         "duration": { "type": "number", "description": "The duration of the task in seconds." },
         "recipeId": { "type": "string", "description": "The ID of the recipe this task belongs to." },
-        "projectId": { "type": "string", "description": "The ID of the project this task belongs to." },
         "predecessorIds": {
           "type": "array",
           "items": { "type": "string" },
@@ -49,7 +46,7 @@
         "status": { "type": "string", "enum": ["pending", "in_progress", "completed"], "description": "The current status of the task." },
          "isAssemblyStep": { "type": "boolean", "description": "Indica si la tarea es un paso de ensamblaje final." }
       },
-      "required": ["name", "duration", "recipeId", "projectId", "predecessorIds", "status"]
+      "required": ["name", "duration", "recipeId", "predecessorIds", "status"]
     }
   },
   "auth": {
@@ -64,13 +61,13 @@
       "schema": { "$ref": "#/entities/Project" },
       "description": "Stores a user's cooking projects."
     },
-    "'/recipes/{recipeId}'": {
+    "'/users/{userId}/projects/{projectId}/recipes/{recipeId}'": {
       "schema": { "$ref": "#/entities/Recipe" },
-      "description": "Stores all recipes for all projects. Queries will be based on projectId."
+      "description": "Stores all recipes for a specific project."
     },
-    "'/tasks/{taskId}'": {
+    "'/users/{userId}/projects/{projectId}/tasks/{taskId}'": {
       "schema": { "$ref": "#/entities/Task" },
-      "description": "Stores all tasks for all recipes. Queries will be based on projectId and/or recipeId."
+      "description": "Stores all tasks for a specific project."
     }
   }
 }

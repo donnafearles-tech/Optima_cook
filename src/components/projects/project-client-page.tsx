@@ -25,21 +25,24 @@ export default function ProjectClientPage({ project }: ProjectClientPageProps) {
   const { firestore, user } = useFirebase();
 
   const handleTaskSave = (taskToSave: Task) => {
-    const tasksCollection = collection(firestore, 'tasks');
+    if (!user) return;
+    const projectRef = doc(firestore, 'users', user.uid, 'projects', project.id);
+    const tasksCollection = collection(projectRef, 'tasks');
+
     if (taskToSave.id) {
         const taskDoc = doc(tasksCollection, taskToSave.id);
-        // Exclude id from the data being saved
         const { id, ...dataToSave } = taskToSave;
         updateDocumentNonBlocking(taskDoc, dataToSave);
     } else {
         const { id, ...dataToSave } = taskToSave;
-        addDocumentNonBlocking(tasksCollection, {...dataToSave, projectId: project.id});
+        addDocumentNonBlocking(tasksCollection, dataToSave);
     }
     setEditingTask(null);
   };
 
   const handleTaskDelete = (taskId: string) => {
-    const taskDoc = doc(firestore, 'tasks', taskId);
+    if (!user) return;
+    const taskDoc = doc(firestore, 'users', user.uid, 'projects', project.id, 'tasks', taskId);
     deleteDocumentNonBlocking(taskDoc);
     
     // This part is tricky without a transaction, as we need to update other tasks
@@ -52,7 +55,7 @@ export default function ProjectClientPage({ project }: ProjectClientPageProps) {
   };
   
   const handleSuggestDependencies = async () => {
-    if (project.tasks.length < 2) {
+    if (!user || project.tasks.length < 2) {
       toast({
         title: 'No hay suficientes tareas',
         description: 'Necesitas al menos dos tareas para sugerir dependencias.',
@@ -67,6 +70,7 @@ export default function ProjectClientPage({ project }: ProjectClientPageProps) {
       
       const taskNameMap = new Map(project.tasks.map(t => [t.name, t.id]));
       const batch = writeBatch(firestore);
+      const tasksCollection = collection(firestore, 'users', user.uid, 'projects', project.id, 'tasks');
 
       project.tasks.forEach(task => {
         const suggestedPredNames = result[task.name] || [];
@@ -74,7 +78,7 @@ export default function ProjectClientPage({ project }: ProjectClientPageProps) {
           .map(name => taskNameMap.get(name))
           .filter((id): id is string => !!id && id !== task.id);
         
-        const taskRef = doc(firestore, 'tasks', task.id);
+        const taskRef = doc(tasksCollection, task.id);
         batch.update(taskRef, { predecessorIds });
       });
 

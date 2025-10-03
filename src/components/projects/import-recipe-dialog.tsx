@@ -33,13 +33,13 @@ export default function ImportRecipeDialog({ open, onOpenChange, project }: Impo
   const [fileName, setFileName] = useState('');
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { firestore } = useFirebase();
+  const { firestore, user } = useFirebase();
 
   const handleParse = async (textToParse: string) => {
-     if (!textToParse.trim()) {
+     if (!textToParse.trim() || !user) {
       toast({
-        title: 'No hay texto para analizar',
-        description: 'Por favor, pega o sube una receta.',
+        title: 'Faltan datos',
+        description: 'Por favor, pega o sube una receta y asegúrate de haber iniciado sesión.',
         variant: 'destructive',
       });
       return;
@@ -49,17 +49,17 @@ export default function ImportRecipeDialog({ open, onOpenChange, project }: Impo
       const result: ParseRecipeOutput = await parseRecipe({ recipeText: textToParse });
       
       const batch = writeBatch(firestore);
-      
-      // 1. Create Recipe document
-      const recipesCol = collection(firestore, 'recipes');
+      const projectRef = doc(firestore, 'users', user.uid, 'projects', project.id);
+
+      // 1. Create Recipe document in the subcollection
+      const recipesCol = collection(projectRef, 'recipes');
       const newRecipeRef = doc(recipesCol);
       batch.set(newRecipeRef, {
         name: result.recipeName,
-        projectId: project.id
       });
       
-      // 2. Create Task documents
-      const tasksCol = collection(firestore, 'tasks');
+      // 2. Create Task documents in the subcollection
+      const tasksCol = collection(projectRef, 'tasks');
       const taskNameMap = new Map<string, string>();
       
       result.tasks.forEach(t => {
@@ -69,7 +69,6 @@ export default function ImportRecipeDialog({ open, onOpenChange, project }: Impo
           batch.set(taskRef, {
             ...taskData,
             recipeId: newRecipeRef.id,
-            projectId: project.id,
             status: 'pending'
           });
       });

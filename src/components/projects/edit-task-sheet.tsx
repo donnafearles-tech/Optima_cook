@@ -45,6 +45,7 @@ export default function EditTaskSheet({
   const [durationValue, setDurationValue] = useState(0);
   const [timeUnit, setTimeUnit] = useState<TimeUnit>('minutes');
   const [predecessorIds, setPredecessorIds] = useState<string[]>([]);
+  const [recipeId, setRecipeId] = useState('');
 
   useEffect(() => {
     if (open && task) {
@@ -57,18 +58,23 @@ export default function EditTaskSheet({
         setDurationValue(task.duration / 60);
       }
       setPredecessorIds(task.predecessorIds);
+      setRecipeId(task.recipeId)
     } else {
       // Reset for new task
       setName('');
       setDurationValue(5); // Default to 5 minutes
       setTimeUnit('minutes');
       setPredecessorIds([]);
+      setRecipeId(''); // You might want to pass available recipes to select from
     }
   }, [task, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || durationValue <= 0) return;
+    if (!name || durationValue <= 0 || !recipeId) {
+        // Add validation feedback
+        return;
+    }
 
     const durationInSeconds = timeUnit === 'minutes' ? durationValue * 60 : durationValue;
 
@@ -77,7 +83,7 @@ export default function EditTaskSheet({
       name,
       duration: durationInSeconds,
       predecessorIds,
-      recipeId: task?.recipeId || 'rec_1', // Default por simplicidad
+      recipeId: recipeId,
       status: task?.status || 'pending',
     });
   };
@@ -127,6 +133,18 @@ export default function EditTaskSheet({
                   <SelectItem value="minutes">Minutos</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+             {/* This could be a select with available recipes */}
+            <div>
+                <Label htmlFor="recipeId">ID de Receta</Label>
+                <Input
+                    id="recipeId"
+                    value={recipeId}
+                    onChange={(e) => setRecipeId(e.target.value)}
+                    required
+                    className="mt-1"
+                    placeholder="Pega el ID de la receta aquí"
+                />
             </div>
             <div>
               <Label htmlFor="predecessors">Dependencias</Label>
