@@ -7,7 +7,6 @@ import {
   Book,
   Home,
   PanelLeft,
-  Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -56,16 +55,6 @@ function MainSidebar() {
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link href="#">
-                <Settings />
-                <span>Settings</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );

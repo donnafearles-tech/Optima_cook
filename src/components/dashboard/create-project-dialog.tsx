@@ -43,7 +43,6 @@ export default function CreateProjectDialog({
       id: `proj_${Date.now()}`,
       name,
       description,
-      ownerId: 'user_1', // Placeholder
       recipes: [],
       tasks: [],
     };

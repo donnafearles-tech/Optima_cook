@@ -27,7 +27,6 @@ export interface Project {
   id: string;
   name: string;
   description?: string;
-  ownerId: string; // Corresponde al UID de Firebase Auth
   recipes: Recipe[];
   tasks: Task[];
   cpmResult?: CpmResult;

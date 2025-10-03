@@ -103,7 +103,7 @@ export default function Home() {
                   Stop juggling timers and start enjoying the art of cooking. Let Optimal Cook handle the logistics.
                 </p>
                 <Button variant="secondary" size="lg" className="mt-8" asChild>
-                  <Link href="/dashboard">Create a Free Account</Link>
+                  <Link href="/dashboard">Get Started Now</Link>
                 </Button>
               </CardContent>
             </Card>
