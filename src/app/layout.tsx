@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
   title: 'Happy Bunny Food',
-  description: 'Plan your cooking like a pro with Happy Bunny Food.',
+  description: 'Planifica tu cocina como un profesional con Happy Bunny Food.',
 };
 
 export default function RootLayout({

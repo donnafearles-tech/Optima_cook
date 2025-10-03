@@ -35,13 +35,13 @@ export default function DashboardPage() {
   }
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div>Cargando...</div>;
   }
 
   return (
     <div className="container mx-auto">
       <h1 className="text-3xl font-bold tracking-tight font-headline mb-6">
-        Your Cooking Projects
+        Tus Proyectos de Cocina
       </h1>
       <ProjectList 
         projects={projects} 

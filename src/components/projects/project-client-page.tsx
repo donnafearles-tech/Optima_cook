@@ -44,8 +44,8 @@ export default function ProjectClientPage({ project, onProjectUpdate }: ProjectC
   const handleSuggestDependencies = async () => {
     if (project.tasks.length < 2) {
       toast({
-        title: 'Not enough tasks',
-        description: 'You need at least two tasks to suggest dependencies.',
+        title: 'No hay suficientes tareas',
+        description: 'Necesitas al menos dos tareas para sugerir dependencias.',
         variant: 'destructive'
       });
       return;
@@ -68,15 +68,15 @@ export default function ProjectClientPage({ project, onProjectUpdate }: ProjectC
       onProjectUpdate({ ...project, tasks: updatedTasks });
 
       toast({
-        title: 'Dependencies Suggested!',
-        description: 'AI has suggested task dependencies. Review and adjust as needed.',
+        title: '¡Dependencias Sugeridas!',
+        description: 'La IA ha sugerido dependencias de tareas. Revisa y ajusta según sea necesario.',
       });
 
     } catch (error) {
       console.error(error);
       toast({
-        title: 'Suggestion Failed',
-        description: 'Could not get AI suggestions. Please try again.',
+        title: 'Sugerencia Fallida',
+        description: 'No se pudieron obtener sugerencias de la IA. Por favor, inténtalo de nuevo.',
         variant: 'destructive',
       });
     } finally {
@@ -94,7 +94,7 @@ export default function ProjectClientPage({ project, onProjectUpdate }: ProjectC
     <>
       <div className="my-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-          <h2 className="text-2xl font-bold tracking-tight font-headline">Tasks</h2>
+          <h2 className="text-2xl font-bold tracking-tight font-headline">Tareas</h2>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleSuggestDependencies} disabled={isSuggesting}>
               {isSuggesting ? (
@@ -102,9 +102,9 @@ export default function ProjectClientPage({ project, onProjectUpdate }: ProjectC
               ) : (
                 <Wand2 className="mr-2 h-4 w-4" />
               )}
-              Suggest Dependencies
+              Sugerir Dependencias
             </Button>
-            <Button onClick={() => setEditingTask('new')}>Add Task</Button>
+            <Button onClick={() => setEditingTask('new')}>Añadir Tarea</Button>
           </div>
         </div>
         <TasksTable 
@@ -116,7 +116,7 @@ export default function ProjectClientPage({ project, onProjectUpdate }: ProjectC
 
       <div className="mt-8 flex justify-end">
         <Button size="lg" onClick={handleCalculatePath} disabled={project.tasks.length === 0}>
-          Calculate Optimal Route <ArrowRight className="ml-2 h-4 w-4" />
+          Calcular Ruta Óptima <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
 

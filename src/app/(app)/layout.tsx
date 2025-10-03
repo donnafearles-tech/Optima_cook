@@ -47,7 +47,7 @@ function MainSidebar() {
               <SidebarMenuButton asChild>
                 <span>
                   <Book />
-                  <span>All Projects</span>
+                  <span>Todos los Proyectos</span>
                 </span>
               </SidebarMenuButton>
             </Link>
@@ -75,7 +75,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             onClick={() => setOpen(!open)}
           >
             <PanelLeft />
-            <span className="sr-only">Toggle Menu</span>
+            <span className="sr-only">Alternar Menú</span>
           </Button>
           <div className="flex-1" />
         </header>

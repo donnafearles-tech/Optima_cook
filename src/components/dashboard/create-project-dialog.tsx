@@ -59,15 +59,15 @@ export default function CreateProjectDialog({
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle className="font-headline">Create New Project</DialogTitle>
+            <DialogTitle className="font-headline">Crear Nuevo Proyecto</DialogTitle>
             <DialogDescription>
-              Give your new cooking project a name and optional description.
+              Dale un nombre y una descripción opcional a tu nuevo proyecto de cocina.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="name" className="text-right">
-                Name
+                Nombre
               </Label>
               <Input
                 id="name"
@@ -79,7 +79,7 @@ export default function CreateProjectDialog({
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="description" className="text-right">
-                Description
+                Descripción
               </Label>
               <Textarea
                 id="description"
@@ -91,7 +91,7 @@ export default function CreateProjectDialog({
           </div>
           <DialogFooter>
             <Button type="submit" disabled={isSaving || !name}>
-              {isSaving ? 'Saving...' : 'Create Project'}
+              {isSaving ? 'Guardando...' : 'Crear Proyecto'}
             </Button>
           </DialogFooter>
         </form>

@@ -1,9 +1,9 @@
 'use server';
 
 /**
- * @fileOverview A task dependency suggestion AI agent.
+ * @fileOverview Un agente de IA para sugerir dependencias de tareas.
  *
- * - suggestTaskDependencies - A function that suggests task dependencies.
+ * - suggestTaskDependencies - Una función que sugiere dependencias de tareas.
  */
 
 import {ai} from '@/ai/genkit';
@@ -14,6 +14,37 @@ import {
   type SuggestTaskDependenciesOutput,
 } from '@/lib/types';
 
+const suggestTaskDependenciesPrompt = ai.definePrompt({
+  name: 'suggestTaskDependenciesPrompt',
+  input: {schema: SuggestTaskDependenciesInputSchema},
+  output: {schema: SuggestTaskDependenciesOutputSchema},
+  prompt: `Eres un asistente de IA especializado en sugerir dependencias de tareas para recetas de cocina.
+
+    Dado el nombre de una receta y una lista de tareas, sugerirás qué tareas dependen de qué otras tareas,
+    basado en prácticas comunes de cocina.
+
+    La salida debe ser un objeto JSON donde cada clave es un nombre de tarea de la lista de entrada,
+    y el valor es una lista de nombres de tareas que son sus predecesoras. Si una tarea no tiene dependencias,
+    su valor debe ser una lista vacía.
+
+    Nombre de la Receta: {{{recipeName}}}
+    Tareas: {{#each taskList}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
+
+    Ejemplo de Salida:
+    {
+      "Picar verduras": [],
+      "Hervir agua": [],
+      "Añadir verduras al agua hirviendo": ["Picar verduras", "Hervir agua"]
+    }
+    
+    Asegúrate de que las dependencias sean lógicas y sigan el orden natural de la cocina.
+    Las tareas que no tengan dependencias deben tener un array vacío.
+    No incluyas la tarea en sus propias dependencias.
+
+    Responde ÚNICAMENTE con JSON válido. No incluyas ninguna explicación u otro texto.
+    Aquí está el JSON:
+    `,
+});
 
 const suggestTaskDependenciesFlow = ai.defineFlow(
   {
@@ -22,38 +53,7 @@ const suggestTaskDependenciesFlow = ai.defineFlow(
     outputSchema: SuggestTaskDependenciesOutputSchema,
   },
   async input => {
-    const prompt = ai.definePrompt({
-      name: 'suggestTaskDependenciesPrompt',
-      input: {schema: SuggestTaskDependenciesInputSchema},
-      output: {schema: SuggestTaskDependenciesOutputSchema},
-      prompt: `You are an AI assistant specialized in suggesting task dependencies for cooking recipes.
-
-  Given a recipe name and a list of tasks, you will suggest which tasks depend on which other tasks, 
-  based on common cooking practices.
-
-  The output should be a JSON object where each key is a task name from the input list,
-  and the value is a list of task names that are its predecessors. If a task has no dependencies,
-  its value should be an empty list.
-
-  Recipe Name: {{{recipeName}}}
-  Tasks: {{#each taskList}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
-
-  Example Output:
-  {
-    "Chop vegetables": [],
-    "Boil water": [],
-    "Add vegetables to boiling water": ["Chop vegetables", "Boil water"]
-  }
-  
-  Ensure that the dependencies are logical and follow the natural order of cooking.
-  Tasks that don't have any dependencies should have an empty array.
-  Do not include the task in its own dependencies.
-
-  Respond ONLY with valid JSON. Do not include any explanation or other text.  
-  Here is the JSON:
-  `,
-    });
-    const {output} = await prompt(input);
+    const {output} = await suggestTaskDependenciesPrompt(input);
     return output!;
   }
 );

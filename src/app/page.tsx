@@ -9,23 +9,23 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 const features = [
   {
     icon: <ChefHat className="h-10 w-10 text-primary" />,
-    title: 'Project-Based Cooking',
-    description: 'Organize your meals into projects, like "Thanksgiving Dinner" or "Weekend Meal Prep".',
+    title: 'Cocina Basada en Proyectos',
+    description: 'Organiza tus comidas en proyectos, como "Cena de Navidad" o "Preparación Semanal".',
   },
   {
     icon: <UploadCloud className="h-10 w-10 text-primary" />,
-    title: 'Import Recipes Easily',
-    description: 'Import recipes from text files, PDFs, and even images. We parse the ingredients and steps for you.',
+    title: 'Importa Recetas Fácilmente',
+    description: 'Importa recetas desde archivos de texto, PDF e incluso imágenes. Analizamos los ingredientes y pasos por ti.',
   },
   {
     icon: <GitMerge className="h-10 w-10 text-primary" />,
-    title: 'AI-Powered Dependency Suggestion',
-    description: 'Our AI suggests task dependencies to build the most logical cooking sequence.',
+    title: 'Sugerencias de Dependencias con IA',
+    description: 'Nuestra IA sugiere dependencias de tareas para construir la secuencia de cocina más lógica.',
   },
   {
     icon: <Clock className="h-10 w-10 text-primary" />,
-    title: 'Optimized Cooking Path',
-    description: 'The Critical Path Method algorithm calculates the fastest way to cook everything, showing you what to do when.',
+    title: 'Ruta de Cocina Optimizada',
+    description: 'El algoritmo de Ruta Crítica calcula la forma más rápida de cocinar todo, mostrándote qué hacer y cuándo.',
   },
 ];
 
@@ -37,7 +37,7 @@ export default function Home() {
       <header className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
         <Logo />
         <Button asChild>
-          <Link href="/dashboard">Get Started</Link>
+          <Link href="/dashboard">Comenzar</Link>
         </Button>
       </header>
 
@@ -45,17 +45,17 @@ export default function Home() {
         <section className="relative py-20 md:py-32">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 className="text-4xl md:text-6xl font-headline font-bold tracking-tight text-gray-900 dark:text-white">
-              Cook Smarter, Not Harder.
+              Cocina de forma más inteligente, no más difícil.
             </h1>
             <p className="mt-4 max-w-2xl mx-auto text-lg md:text-xl text-gray-600 dark:text-gray-300">
-              Happy Bunny Food streamlines your kitchen by turning complex recipes into a simple, optimized step-by-step guide.
+              Happy Bunny Food agiliza tu cocina convirtiendo recetas complejas en una guía simple y optimizada paso a paso.
             </p>
             <div className="mt-8 flex justify-center gap-4">
               <Button size="lg" asChild>
-                <Link href="/dashboard">Start Your First Project</Link>
+                <Link href="/dashboard">Comienza tu Primer Proyecto</Link>
               </Button>
               <Button size="lg" variant="outline">
-                Learn More
+                Saber Más
               </Button>
             </div>
           </div>
@@ -75,9 +75,9 @@ export default function Home() {
         <section id="features" className="py-20 bg-white dark:bg-gray-900/50">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
-              <h2 className="text-3xl font-headline font-bold text-gray-900 dark:text-white">A Revolution in Your Kitchen</h2>
+              <h2 className="text-3xl font-headline font-bold text-gray-900 dark:text-white">Una Revolución en tu Cocina</h2>
               <p className="mt-2 text-lg text-gray-600 dark:text-gray-300">
-                Everything you need to perfectly time your complex meals.
+                Todo lo que necesitas para sincronizar perfectamente tus comidas complejas.
               </p>
             </div>
             <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
@@ -98,12 +98,12 @@ export default function Home() {
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <Card className="bg-primary text-primary-foreground shadow-2xl">
               <CardContent className="p-10 md:p-16 flex flex-col items-center text-center">
-                <h2 className="text-3xl font-headline font-bold">Ready to Become a Kitchen Maestro?</h2>
+                <h2 className="text-3xl font-headline font-bold">¿Listo para convertirte en un Maestro de la Cocina?</h2>
                 <p className="mt-4 max-w-2xl text-lg opacity-90">
-                  Stop juggling timers and start enjoying the art of cooking. Let Happy Bunny Food handle the logistics.
+                  Deja de hacer malabares con los temporizadores y empieza a disfrutar del arte de cocinar. Deja que Happy Bunny Food se encargue de la logística.
                 </p>
                 <Button variant="secondary" size="lg" className="mt-8" asChild>
-                  <Link href="/dashboard">Get Started Now</Link>
+                  <Link href="/dashboard">Comienza Ahora</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -117,7 +117,7 @@ export default function Home() {
             <Logo />
           </div>
           <p className="text-sm text-gray-500 mt-4 sm:mt-0">
-            &copy; {new Date().getFullYear()} Happy Bunny Food. All rights reserved.
+            &copy; {new Date().getFullYear()} Happy Bunny Food. Todos los derechos reservados.
           </p>
         </div>
       </footer>

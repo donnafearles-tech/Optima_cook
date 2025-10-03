@@ -44,7 +44,7 @@ export default function GuidePage() {
   }, [id]);
 
   if (!project || !project.cpmResult) {
-    return <div>Loading...</div>;
+    return <div>Cargando...</div>;
   }
 
   const { totalDuration, tasks } = project.cpmResult;
@@ -68,16 +68,16 @@ export default function GuidePage() {
         </Button>
         <div>
           <h1 className="text-3xl font-bold tracking-tight font-headline">
-            {project.name}: Your Cooking Guide
+            {project.name}: Tu Guía de Cocina
           </h1>
-          <p className="text-muted-foreground">The optimal path to culinary success.</p>
+          <p className="text-muted-foreground">La ruta óptima hacia el éxito culinario.</p>
         </div>
       </div>
 
       <Card className="mb-6 bg-primary/5 border-primary/20">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardDescription>Total Estimated Cooking Time</CardDescription>
+            <CardDescription>Tiempo Total Estimado de Cocina</CardDescription>
             <CardTitle className="text-4xl font-headline text-primary">{formatDuration(totalDuration)}</CardTitle>
           </div>
           <Clock className="h-12 w-12 text-primary/50" />
@@ -86,8 +86,8 @@ export default function GuidePage() {
       
       <Tabs defaultValue="steps">
         <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="steps"><List className="mr-2 h-4 w-4"/>Step-by-Step</TabsTrigger>
-            <TabsTrigger value="gantt"><GanttChartSquare className="mr-2 h-4 w-4"/>Gantt Chart</TabsTrigger>
+            <TabsTrigger value="steps"><List className="mr-2 h-4 w-4"/>Paso a Paso</TabsTrigger>
+            <TabsTrigger value="gantt"><GanttChartSquare className="mr-2 h-4 w-4"/>Diagrama de Gantt</TabsTrigger>
         </TabsList>
         <TabsContent value="steps">
             <div className="space-y-6 mt-4">
@@ -95,19 +95,19 @@ export default function GuidePage() {
                 <Card key={startTime} className="overflow-hidden">
                     <CardHeader className="bg-muted/50">
                         <CardTitle className="text-lg font-headline flex items-center gap-4">
-                            <Badge className="text-sm">Step {index + 1}</Badge>
-                            At {formatDuration(Number(startTime))}
+                            <Badge className="text-sm">Paso {index + 1}</Badge>
+                            A los {formatDuration(Number(startTime))}
                         </CardTitle>
-                        <CardDescription>Start these tasks now. They can be done in parallel.</CardDescription>
+                        <CardDescription>Comienza estas tareas ahora. Se pueden hacer en paralelo.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-4 space-y-3">
                     {groupTasks.map(task => (
                         <div key={task.id} className="p-3 border rounded-lg flex justify-between items-center">
                             <div>
                                 <p className="font-semibold">{task.name}</p>
-                                <p className="text-sm text-muted-foreground">Duration: {formatDuration(task.duration)}</p>
+                                <p className="text-sm text-muted-foreground">Duración: {formatDuration(task.duration)}</p>
                             </div>
-                            {task.isCritical && <Badge variant="destructive">Critical</Badge>}
+                            {task.isCritical && <Badge variant="destructive">Crítica</Badge>}
                         </div>
                     ))}
                     </CardContent>
@@ -115,15 +115,15 @@ export default function GuidePage() {
                 ))}
                 <div className="flex items-center justify-center gap-2 text-muted-foreground py-6">
                     <CheckCircle className="h-5 w-5 text-green-500" />
-                    <p className="font-semibold">All done! Enjoy your meal.</p>
+                    <p className="font-semibold">¡Todo listo! Disfruta tu comida.</p>
                 </div>
             </div>
         </TabsContent>
         <TabsContent value="gantt">
             <Card className="mt-4">
                 <CardHeader>
-                    <CardTitle className="font-headline">Cooking Timeline</CardTitle>
-                    <CardDescription>Visualizing your cooking schedule. Critical tasks are in red.</CardDescription>
+                    <CardTitle className="font-headline">Cronograma de Cocina</CardTitle>
+                    <CardDescription>Visualizando tu horario de cocina. Las tareas críticas están en rojo.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <GanttChart tasks={tasks} />

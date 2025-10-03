@@ -37,8 +37,8 @@ export default function TasksTable({ tasks, onEditTask, onDeleteTask }: TasksTab
     return (
       <Card className="flex items-center justify-center p-12 border-dashed">
         <div className="text-center">
-          <p className="text-lg font-medium">No tasks yet!</p>
-          <p className="text-muted-foreground">Add your first task to get started.</p>
+          <p className="text-lg font-medium">¡Aún no hay tareas!</p>
+          <p className="text-muted-foreground">Añade tu primera tarea para empezar.</p>
         </div>
       </Card>
     );
@@ -49,10 +49,10 @@ export default function TasksTable({ tasks, onEditTask, onDeleteTask }: TasksTab
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Task</TableHead>
-              <TableHead className="w-[100px]">Duration</TableHead>
-              <TableHead>Dependencies</TableHead>
-              <TableHead className="w-[100px] text-right">Actions</TableHead>
+              <TableHead>Tarea</TableHead>
+              <TableHead className="w-[100px]">Duración</TableHead>
+              <TableHead>Dependencias</TableHead>
+              <TableHead className="w-[100px] text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -74,7 +74,7 @@ export default function TasksTable({ tasks, onEditTask, onDeleteTask }: TasksTab
                           </Badge>
                         ))
                       ) : (
-                        <span className="text-xs text-muted-foreground">None</span>
+                        <span className="text-xs text-muted-foreground">Ninguna</span>
                       )}
                     </div>
                   </TableCell>
@@ -82,19 +82,19 @@ export default function TasksTable({ tasks, onEditTask, onDeleteTask }: TasksTab
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
+                          <span className="sr-only">Abrir menú</span>
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => onEditTask(task)}>
-                          <Edit className="mr-2 h-4 w-4" /> Edit
+                          <Edit className="mr-2 h-4 w-4" /> Editar
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive"
                           onClick={() => onDeleteTask(task.id)}
                         >
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

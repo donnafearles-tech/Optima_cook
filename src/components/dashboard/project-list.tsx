@@ -40,14 +40,14 @@ export default function ProjectList({ projects, onProjectCreated }: ProjectListP
                   </div>
                 )}
                 <CardTitle className="font-headline">{project.name}</CardTitle>
-                <CardDescription>{project.description || 'No description provided.'}</CardDescription>
+                <CardDescription>{project.description || 'Sin descripción.'}</CardDescription>
               </CardHeader>
               <CardContent className="flex-grow">
-                <p className="text-sm text-muted-foreground">{project.tasks.length} tasks</p>
+                <p className="text-sm text-muted-foreground">{project.tasks.length} tareas</p>
               </CardContent>
               <CardFooter>
                 <Button asChild className="w-full">
-                  <Link href={`/projects/${project.id}`}>Open Project</Link>
+                  <Link href={`/projects/${project.id}`}>Abrir Proyecto</Link>
                 </Button>
               </CardFooter>
             </Card>
@@ -59,8 +59,8 @@ export default function ProjectList({ projects, onProjectCreated }: ProjectListP
         >
           <div className="text-center p-6">
             <PlusCircle className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-2 text-lg font-medium font-headline">New Project</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Start a new cooking adventure.</p>
+            <h3 className="mt-2 text-lg font-medium font-headline">Nuevo Proyecto</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Comienza una nueva aventura culinaria.</p>
           </div>
         </Card>
       </div>

@@ -12,10 +12,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       <Card>
         <CardContent className="p-3">
           <p className="font-bold">{label}</p>
-          <p className="text-sm">Start: {data.range[0]}s</p>
-          <p className="text-sm">End: {data.range[1]}s</p>
-          <p className="text-sm">Duration: {duration}s</p>
-          {data.isCritical && <p className="text-sm text-primary font-bold">Critical Task</p>}
+          <p className="text-sm">Inicio: {data.range[0]}s</p>
+          <p className="text-sm">Fin: {data.range[1]}s</p>
+          <p className="text-sm">Duración: {duration}s</p>
+          {data.isCritical && <p className="text-sm text-primary font-bold">Tarea Crítica</p>}
         </CardContent>
       </Card>
     );

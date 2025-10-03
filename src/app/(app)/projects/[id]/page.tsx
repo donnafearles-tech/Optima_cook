@@ -39,7 +39,7 @@ export default function ProjectPage() {
   };
 
   if (!project) {
-    return <div>Loading project...</div>;
+    return <div>Cargando proyecto...</div>;
   }
 
   return (
@@ -52,7 +52,7 @@ export default function ProjectPage() {
           </div>
           <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={() => setIsImporting(true)}>
-              <FileUp className="mr-2 h-4 w-4" /> Import Recipe
+              <FileUp className="mr-2 h-4 w-4" /> Importar Receta
             </Button>
           </div>
         </div>
