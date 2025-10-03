@@ -5,8 +5,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
-  title: 'Optimal Cook',
-  description: 'Cook multiple dishes efficiently with the power of AI and critical path analysis.',
+  title: 'Happy Bunny Food',
+  description: 'Plan your cooking like a pro with Happy Bunny Food.',
 };
 
 export default function RootLayout({

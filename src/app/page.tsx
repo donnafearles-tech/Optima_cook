@@ -48,7 +48,7 @@ export default function Home() {
               Cook Smarter, Not Harder.
             </h1>
             <p className="mt-4 max-w-2xl mx-auto text-lg md:text-xl text-gray-600 dark:text-gray-300">
-              Optimal Cook streamlines your kitchen by turning complex recipes into a simple, optimized step-by-step guide.
+              Happy Bunny Food streamlines your kitchen by turning complex recipes into a simple, optimized step-by-step guide.
             </p>
             <div className="mt-8 flex justify-center gap-4">
               <Button size="lg" asChild>
@@ -100,7 +100,7 @@ export default function Home() {
               <CardContent className="p-10 md:p-16 flex flex-col items-center text-center">
                 <h2 className="text-3xl font-headline font-bold">Ready to Become a Kitchen Maestro?</h2>
                 <p className="mt-4 max-w-2xl text-lg opacity-90">
-                  Stop juggling timers and start enjoying the art of cooking. Let Optimal Cook handle the logistics.
+                  Stop juggling timers and start enjoying the art of cooking. Let Happy Bunny Food handle the logistics.
                 </p>
                 <Button variant="secondary" size="lg" className="mt-8" asChild>
                   <Link href="/dashboard">Get Started Now</Link>
@@ -117,7 +117,7 @@ export default function Home() {
             <Logo />
           </div>
           <p className="text-sm text-gray-500 mt-4 sm:mt-0">
-            &copy; {new Date().getFullYear()} Optimal Cook. All rights reserved.
+            &copy; {new Date().getFullYear()} Happy Bunny Food. All rights reserved.
           </p>
         </div>
       </footer>
