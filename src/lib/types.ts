@@ -47,11 +47,6 @@ const AiTaskSchema = z.object({
   isAssemblyStep: z.boolean().describe("Es 'true' si la tarea es parte del proceso de armado final, 'false' si es una tarea de preparación (mise en place).")
 });
 
-const DependencySchema = z.object({
-    task: z.string().describe("El nombre de la tarea."),
-    predecessors: z.array(z.string()).describe("Una lista de los nombres de las tareas que deben completarse antes de que esta tarea pueda comenzar.")
-});
-
 export const ParseRecipeInputSchema = z.object({
   recipeText: z.string().optional().describe('El texto completo de la receta para analizar.'),
   ingredients: z.array(z.string()).optional().describe('Lista de ingredientes para deducir el ensamblaje.'),
