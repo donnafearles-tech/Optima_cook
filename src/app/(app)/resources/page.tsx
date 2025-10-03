@@ -16,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Trash2, Edit } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Sparkles } from 'lucide-react';
 import { useCollection, useFirebase, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import type { UserResource } from '@/lib/types';
 import { collection, doc } from 'firebase/firestore';

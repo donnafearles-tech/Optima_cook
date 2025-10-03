@@ -51,7 +51,7 @@ export default function RecipeCard({
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between">
-        <div>
+        <div className="flex-1">
           <CardTitle className="font-headline">{recipe.name}</CardTitle>
           <CardDescription>{tasks.length} paso(s)</CardDescription>
         </div>
