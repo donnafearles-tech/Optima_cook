@@ -35,7 +35,7 @@ export default function GuidePage() {
     return doc(firestore, 'users', user.uid, 'projects', id);
   }, [firestore, user, id]);
 
-  const { data: project, isLoading, error, setData: setProject } = useDoc<Project>(projectRef);
+  const { data: project, isLoading, error } = useDoc<Project>(projectRef);
   
   if (isLoading || !user) {
     return <div>Cargando guía...</div>;
@@ -88,7 +88,7 @@ export default function GuidePage() {
     </div>
   );
 
-  if (!project.cpmResult || !project.cpmResult.tasks) {
+  if (!project.cpmResult || !project.cpmResult.tasks || project.cpmResult.tasks.some(t => t.es === undefined)) {
     return (
         <div className="container mx-auto p-4">
             {goBackButton}
@@ -96,7 +96,7 @@ export default function GuidePage() {
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Guía no disponible</AlertTitle>
               <AlertDescription>
-                La guía de ruta óptima aún no ha sido generada o no se encontró. Por favor, vuelve a la página del proyecto y haz clic en "Calcular Ruta Óptima".
+                La guía de ruta óptima aún no ha sido generada o está incompleta. Por favor, vuelve a la página del proyecto y haz clic en "Calcular Ruta Óptima".
               </AlertDescription>
             </Alert>
         </div>

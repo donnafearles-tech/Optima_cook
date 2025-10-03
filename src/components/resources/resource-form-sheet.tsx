@@ -122,7 +122,8 @@ export default function ResourceFormSheet({
         return;
     }
     
-    const finalQuantity = Math.max(1, Number(quantity));
+    const finalQuantity = quantity === '' ? 1 : Math.max(1, Number(quantity));
+
 
     onSave({
       name,

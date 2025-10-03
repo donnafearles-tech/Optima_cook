@@ -192,7 +192,6 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         const cpmResult = calculateCPM(tasks);
         updateDocumentNonBlocking(projectRef, { cpmResult });
         
-        // Immediately update local state to show the "View Guide" button
         if (setProject) {
             setProject({ ...project, cpmResult });
         }
@@ -261,15 +260,15 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
 
       <div className="my-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-          <h2 className="text-2xl font-bold tracking-tight font-headline text-center flex-1">Recetas</h2>
+          <h2 className="text-2xl font-bold tracking-tight font-headline flex-1">Recetas</h2>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleSuggestDependencies} disabled={isSuggesting || (tasks?.length || 0) < 2}>
+            <Button variant="outline" onClick={handleSuggestDependencies} disabled={isSuggesting || allTasks.length < 2}>
               {isSuggesting ? (
                 <Sparkles className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Wand2 className="mr-2 h-4 w-4" />
               )}
-              Sugerir Dependencias (Global)
+              Sugerir Dependencias
             </Button>
             <Button onClick={() => setEditingRecipe('new')}>
                 <Plus className="mr-2 h-4 w-4" /> Añadir Receta
@@ -309,8 +308,8 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         <Button size="lg" onClick={handleCalculatePath} disabled={allTasks.length === 0 || isCalculatingPath}>
           {isCalculatingPath ? (
             <>
+              <Sparkles className="mr-2 h-4 w-4 animate-spin" />
               Calculando...
-              <ArrowRight className="ml-2 h-4 w-4 animate-spin" />
             </>
           ) : (
             <>

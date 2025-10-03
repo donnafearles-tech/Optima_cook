@@ -12,13 +12,14 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { parseRecipe } from '@/ai/flows/parse-recipe';
-import type { ParseRecipeOutput } from '@/lib/types';
+import { suggestResourceForTask } from '@/ai/flows/suggest-resource-for-task';
+import type { ParseRecipeOutput, UserResource } from '@/lib/types';
 import { Sparkles, Upload } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { extractTextFromFile } from '@/ai/flows/extract-text-from-file';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, writeBatch, doc } from 'firebase/firestore';
 
 interface ImportRecipeDialogProps {
@@ -36,6 +37,10 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { firestore } = useFirebase();
 
+  const userRef = useMemoFirebase(() => doc(firestore, 'users', userId), [firestore, userId]);
+  const resourcesQuery = useMemoFirebase(() => collection(userRef, 'resources'), [userRef]);
+  const { data: userResources } = useCollection<UserResource>(resourcesQuery);
+
   const handleParse = async (textToParse: string) => {
      if (!textToParse.trim()) {
       toast({
@@ -47,44 +52,66 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
     }
     setIsParsing(true);
     try {
+      // 1. Parse recipe to get tasks
       const result: ParseRecipeOutput = await parseRecipe({ recipeText: textToParse });
       
       const batch = writeBatch(firestore);
       const projectRef = doc(firestore, 'users', userId, 'projects', projectId);
 
-      // 1. Create Recipe document in the subcollection
+      // 2. Create Recipe document
       const recipesCol = collection(projectRef, 'recipes');
       const newRecipeRef = doc(recipesCol);
       batch.set(newRecipeRef, {
         name: result.recipeName,
       });
       
-      // 2. Create Task documents in the subcollection
       const tasksCol = collection(projectRef, 'tasks');
       const taskNameMap = new Map<string, string>();
-      
-      result.tasks.forEach(t => {
+      const createdTasks = [];
+
+      // 3. First pass: Create tasks and get their future IDs
+      for (const t of result.tasks) {
           const taskRef = doc(tasksCol);
           taskNameMap.set(t.name, taskRef.id);
           const { predecessorIds, ...taskData } = t;
-          batch.set(taskRef, {
+
+          // Proactively suggest resources
+          let resourceIds: string[] = [];
+          if (userResources && userResources.length > 0) {
+              try {
+                  const resourceSuggestion = await suggestResourceForTask({
+                      taskName: t.name,
+                      userResources: userResources,
+                  });
+                  resourceIds = resourceSuggestion.resourceIds;
+              } catch (e) {
+                  console.warn(`AI resource suggestion failed for task "${t.name}":`, e);
+              }
+          }
+          
+          const finalTaskData = {
             ...taskData,
             recipeId: newRecipeRef.id,
-            status: 'pending'
-          });
-      });
+            status: 'pending',
+            resourceIds: resourceIds,
+            predecessorIds: [] // Will be updated in second pass
+          };
 
-      // 3. Update tasks with correct predecessor IDs
-      result.tasks.forEach(t => {
-        const currentTaskId = taskNameMap.get(t.name);
-        if (currentTaskId) {
-            const taskRef = doc(tasksCol, currentTaskId);
-            const mappedPredIds = t.predecessorIds
-                .map(name => taskNameMap.get(name))
-                .filter((id): id is string => !!id);
-            batch.update(taskRef, { predecessorIds: mappedPredIds });
-        }
-      });
+          batch.set(taskRef, finalTaskData);
+          createdTasks.push({ tempId: t.name, finalId: taskRef.id, originalTask: t });
+      }
+
+      // 4. Second pass: Update tasks with correct predecessor IDs
+      for (const createdTask of createdTasks) {
+          const taskRef = doc(tasksCol, createdTask.finalId);
+          const mappedPredIds = createdTask.originalTask.predecessorIds
+              .map(name => taskNameMap.get(name))
+              .filter((id): id is string => !!id);
+          
+          if (mappedPredIds.length > 0) {
+              batch.update(taskRef, { predecessorIds: mappedPredIds });
+          }
+      }
       
       await batch.commit();
 
@@ -159,7 +186,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
         <DialogHeader>
           <DialogTitle className="font-headline">Importar Receta</DialogTitle>
           <DialogDescription>
-            Pega tu receta, o sube un archivo. La IA la analizará para extraer el nombre, las tareas y sus dependencias.
+            Pega tu receta o sube un archivo. La IA la analizará para extraer tareas y asignar recursos automáticamente.
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="paste">

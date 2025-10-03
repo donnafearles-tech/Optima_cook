@@ -91,8 +91,12 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
     }
   }, [nodes]);
 
-  if (!tasks || tasks.length === 0) {
-    return <div className="text-center p-8 text-muted-foreground">No hay tareas para mostrar en el diagrama.</div>;
+  if (!tasks || tasks.length === 0 || tasks.some(t => t.es === undefined || t.ef === undefined)) {
+    return (
+        <div className="text-center p-8 text-muted-foreground">
+            No hay datos de cronograma para mostrar. Por favor, calcula la Ruta Óptima primero.
+        </div>
+    );
   }
   
   const levels = Array.from(new Set(nodes.map(n => n.level)));
@@ -133,19 +137,11 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
             const startPos = positions[predId];
             const endPos = positions[node.id];
             if (!startPos || !endPos) return null;
-            
-            const nodeWidth = 80;
-            const startX = startPos.x;
-            const endX = endPos.x;
-
-            // Determine if the curve should be above or below
-            const isReverse = endPos.x < startPos.x;
-            const curveFactor = isReverse ? -50 : 50;
 
             return (
               <path
                 key={`${predId}-${node.id}`}
-                d={`M ${startPos.x},${startPos.y} C ${startPos.x + curveFactor},${startPos.y} ${endPos.x - curveFactor},${endPos.y} ${endPos.x},${endPos.y}`}
+                d={`M ${startPos.x},${startPos.y} C ${startPos.x + 50},${startPos.y} ${endPos.x - 50},${endPos.y} ${endPos.x},${endPos.y}`}
                 stroke="#166534"
                 strokeWidth="2"
                 fill="none"
