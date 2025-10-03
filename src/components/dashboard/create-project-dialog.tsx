@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { Project } from '@/lib/types';
 import { createProject } from '@/lib/data';
+import { useFirebase } from '@/firebase';
 
 interface CreateProjectDialogProps {
   open: boolean;
@@ -30,22 +31,25 @@ export default function CreateProjectDialog({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const { firestore, user } = useFirebase();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name) return;
+    if (!name || !firestore || !user) return;
 
     setIsSaving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
     
-    const newProject = createProject({ name, description });
-    onProjectCreated(newProject);
-    
-    setIsSaving(false);
-    onOpenChange(false);
-    setName('');
-    setDescription('');
+    try {
+      const newProject = await createProject(firestore, user.uid, { name, description });
+      onProjectCreated(newProject);
+      onOpenChange(false);
+      setName('');
+      setDescription('');
+    } catch (error) {
+      console.error("Failed to create project:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (

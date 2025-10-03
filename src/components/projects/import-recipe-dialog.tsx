@@ -16,6 +16,7 @@ import type { Project } from '@/lib/types';
 import { saveProject } from '@/lib/data';
 import { Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useFirebase } from '@/firebase';
 
 interface ImportRecipeDialogProps {
   open: boolean;
@@ -28,8 +29,11 @@ export default function ImportRecipeDialog({ open, onOpenChange, project }: Impo
   const [isParsing, setIsParsing] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const { firestore, user } = useFirebase();
 
   const handleImport = async () => {
+    if (!firestore || !user) return;
+
     if (!recipeText.trim()) {
       toast({
         title: 'Recipe text is empty',
@@ -60,11 +64,11 @@ export default function ImportRecipeDialog({ open, onOpenChange, project }: Impo
 
       const updatedProject = {
         ...project,
-        recipes: [...project.recipes, newRecipe],
-        tasks: [...project.tasks, ...newTasks],
+        recipes: [...(project.recipes || []), newRecipe],
+        tasks: [...(project.tasks || []), ...newTasks],
       };
       
-      saveProject(updatedProject);
+      saveProject(firestore, user.uid, updatedProject);
 
       toast({
         title: 'Recipe Imported!',

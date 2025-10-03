@@ -1,6 +1,5 @@
 'use client';
 import { notFound, useRouter, useParams } from 'next/navigation';
-import { getProject } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, CheckCircle, Clock, List, GanttChartSquare } from 'lucide-react';
 import GanttChart from '@/components/projects/gantt-chart';
@@ -9,6 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEffect, useState } from 'react';
 import type { Project } from '@/lib/types';
+import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
 
 function formatDuration(seconds: number) {
   const hours = Math.floor(seconds / 3600);
@@ -27,17 +29,23 @@ export default function GuidePage() {
   const router = useRouter();
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
-  const [project, setProject] = useState<Project | null | undefined>(undefined);
+  const { firestore, user } = useFirebase();
 
-  useEffect(() => {
-    if (id) {
-      setProject(getProject(id));
-    }
-  }, [id]);
+  const projectRef = useMemoFirebase(() => {
+    if (!firestore || !user || !id) return null;
+    return doc(firestore, 'users', user.uid, 'projects', id);
+  }, [firestore, user, id]);
 
+  const { data: project, isLoading } = useDoc<Project>(projectRef);
 
-  if (project === undefined) {
-    return <div>Loading...</div>;
+  if (isLoading) {
+    return (
+      <div>
+        <Skeleton className="h-12 w-full mb-6" />
+        <Skeleton className="h-24 w-full mb-6" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
   }
   
   if (!project || !project.cpmResult) {

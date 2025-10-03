@@ -10,6 +10,7 @@ import { suggestTaskDependencies } from '@/ai/flows/suggest-task-dependencies';
 import { calculateCPM } from '@/lib/cpm';
 import TasksTable from './tasks-table';
 import EditTaskSheet from './edit-task-sheet';
+import { useFirebase } from '@/firebase';
 
 export default function ProjectClientPage({ project: initialProject }: { project: Project }) {
   const [project, setProjectState] = useState<Project>(initialProject);
@@ -17,8 +18,11 @@ export default function ProjectClientPage({ project: initialProject }: { project
   const [isSuggesting, setIsSuggesting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const { firestore, user } = useFirebase();
 
   const handleTaskSave = (taskToSave: Task) => {
+    if (!firestore || !user) return;
+    
     let updatedTasks: Task[];
     if (taskToSave.id && project.tasks.some(t => t.id === taskToSave.id)) {
       updatedTasks = project.tasks.map(t => (t.id === taskToSave.id ? taskToSave : t));
@@ -27,21 +31,25 @@ export default function ProjectClientPage({ project: initialProject }: { project
     }
     const updatedProject = { ...project, tasks: updatedTasks };
     setProjectState(updatedProject);
-    saveProject(updatedProject);
+    saveProject(firestore, user.uid, updatedProject);
     setEditingTask(null);
   };
 
   const handleTaskDelete = (taskId: string) => {
+    if (!firestore || !user) return;
+
     const updatedTasks = project.tasks.filter(t => t.id !== taskId)
       // Also remove from dependencies of other tasks
       .map(t => ({...t, predecessorIds: t.predecessorIds.filter(id => id !== taskId)}));
     
     const updatedProject = { ...project, tasks: updatedTasks };
     setProjectState(updatedProject);
-    saveProject(updatedProject);
+    saveProject(firestore, user.uid, updatedProject);
   };
   
   const handleSuggestDependencies = async () => {
+    if (!firestore || !user) return;
+
     if (project.tasks.length < 2) {
       toast({
         title: 'Not enough tasks',
@@ -67,7 +75,7 @@ export default function ProjectClientPage({ project: initialProject }: { project
       
       const updatedProject = { ...project, tasks: updatedTasks };
       setProjectState(updatedProject);
-      saveProject(updatedProject);
+      saveProject(firestore, user.uid, updatedProject);
 
       toast({
         title: 'Dependencies Suggested!',
@@ -87,9 +95,11 @@ export default function ProjectClientPage({ project: initialProject }: { project
   };
 
   const handleCalculatePath = () => {
+    if (!firestore || !user) return;
+
     const cpmResult = calculateCPM(project.tasks);
     const updatedProject = { ...project, cpmResult };
-    saveProject(updatedProject);
+    saveProject(firestore, user.uid, updatedProject);
     router.push(`/projects/${project.id}/guide`);
   };
 
@@ -111,14 +121,14 @@ export default function ProjectClientPage({ project: initialProject }: { project
           </div>
         </div>
         <TasksTable 
-          tasks={project.tasks}
+          tasks={project.tasks || []}
           onEditTask={(task) => setEditingTask(task)}
           onDeleteTask={handleTaskDelete}
         />
       </div>
 
       <div className="mt-8 flex justify-end">
-        <Button size="lg" onClick={handleCalculatePath} disabled={project.tasks.length === 0}>
+        <Button size="lg" onClick={handleCalculatePath} disabled={!project.tasks || project.tasks.length === 0}>
           Calculate Optimal Route <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
@@ -127,7 +137,7 @@ export default function ProjectClientPage({ project: initialProject }: { project
         open={editingTask !== null}
         onOpenChange={(isOpen) => !isOpen && setEditingTask(null)}
         task={editingTask === 'new' ? null : editingTask}
-        allTasks={project.tasks}
+        allTasks={project.tasks || []}
         onSave={handleTaskSave}
       />
     </>

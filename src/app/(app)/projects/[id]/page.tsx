@@ -2,31 +2,28 @@
 import { useState, useEffect } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { getProject } from '@/lib/data';
 import { FileUp } from 'lucide-react';
 import ProjectClientPage from '@/components/projects/project-client-page';
 import type { Project } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import ImportRecipeDialog from '@/components/projects/import-recipe-dialog';
+import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
 export default function ProjectPage() {
-  const [project, setProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isImporting, setIsImporting] = useState(false);
+  const { firestore, user } = useFirebase();
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const [isImporting, setIsImporting] = useState(false);
 
-  useEffect(() => {
-    if (id) {
-      const projectData = getProject(id);
-      if (projectData) {
-        setProject(projectData);
-      }
-    }
-    setLoading(false);
-  }, [id]);
+  const projectRef = useMemoFirebase(() => {
+    if (!firestore || !user || !id) return null;
+    return doc(firestore, 'users', user.uid, 'projects', id);
+  }, [firestore, user, id]);
 
-  if (loading) {
+  const { data: project, isLoading } = useDoc<Project>(projectRef);
+
+  if (isLoading) {
     return (
       <div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">

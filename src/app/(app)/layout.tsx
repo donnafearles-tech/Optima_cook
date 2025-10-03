@@ -34,9 +34,17 @@ import {
   SidebarInset,
 } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
-import { cn } from '@/lib/utils';
+import { useFirebase } from '@/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 function UserMenu() {
+  const { auth, user, isUserLoading } = useFirebase();
+
+  if (isUserLoading) {
+    return <Skeleton className="h-8 w-24" />;
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -45,10 +53,10 @@ function UserMenu() {
           className="flex items-center gap-2"
         >
           <Avatar className="h-8 w-8">
-            <AvatarImage src="https://picsum.photos/seed/user/40/40" alt="User" />
-            <AvatarFallback>U</AvatarFallback>
+            <AvatarImage src={user?.photoURL || "https://picsum.photos/seed/user/40/40"} alt="User" />
+            <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
           </Avatar>
-          <span className="hidden sm:inline">User</span>
+          <span className="hidden sm:inline">{user?.isAnonymous ? "Anonymous User" : user?.displayName || 'User'}</span>
           <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -64,7 +72,7 @@ function UserMenu() {
           <span>Settings</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => auth.signOut()}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>
@@ -123,6 +131,21 @@ function MainSidebar() {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(true);
+  const { auth, isUserLoading, user } = useFirebase();
+
+  React.useEffect(() => {
+    if (!isUserLoading && !user) {
+      auth.signInAnonymously();
+    }
+  }, [isUserLoading, user, auth]);
+
+  if (isUserLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider open={open} onOpenChange={setOpen}>
