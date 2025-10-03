@@ -192,7 +192,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         const cpmResult = calculateCPM(tasks);
         updateDocumentNonBlocking(projectRef, { cpmResult });
         
-        if (setProject) {
+        if (setProject && project) {
             setProject({ ...project, cpmResult });
         }
 
