@@ -18,20 +18,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { extractTextFromFile } from '@/ai/flows/extract-text-from-file';
+import { useFirebase } from '@/firebase';
+import { collection, writeBatch, doc } from 'firebase/firestore';
 
 interface ImportRecipeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   project: Project;
-  onProjectUpdate: (project: Project) => void;
 }
 
-export default function ImportRecipeDialog({ open, onOpenChange, project, onProjectUpdate }: ImportRecipeDialogProps) {
+export default function ImportRecipeDialog({ open, onOpenChange, project }: ImportRecipeDialogProps) {
   const [recipeText, setRecipeText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [fileName, setFileName] = useState('');
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { firestore } = useFirebase();
 
   const handleParse = async (textToParse: string) => {
      if (!textToParse.trim()) {
@@ -46,48 +48,49 @@ export default function ImportRecipeDialog({ open, onOpenChange, project, onProj
     try {
       const result: ParseRecipeOutput = await parseRecipe({ recipeText: textToParse });
       
-      const newRecipeId = `rec_${Date.now()}`;
-      const taskNameMap = new Map<string, string>();
-
-      const newTasks: Task[] = result.tasks.map(t => {
-        const taskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-        taskNameMap.set(t.name, taskId);
-        return {
-          id: taskId,
-          name: t.name,
-          duration: t.duration,
-          recipeId: newRecipeId,
-          predecessorIds: [], // Se llenará en el siguiente paso
-          status: 'pending' as const,
-          isAssemblyStep: t.isAssemblyStep,
-        };
-      });
-
-      // Mapear dependencias usando los nuevos IDs
-      newTasks.forEach(task => {
-        const originalTask = result.tasks.find(t => t.name === task.name);
-        const predNames = originalTask?.predecessorIds || [];
-        task.predecessorIds = predNames
-          .map(name => taskNameMap.get(name))
-          .filter((id): id is string => !!id);
-      });
-
-      const newRecipe = {
-        id: newRecipeId,
-        name: result.recipeName,
-      };
-
-      const updatedProject: Project = {
-        ...project,
-        recipes: [...project.recipes, newRecipe],
-        tasks: [...project.tasks, ...newTasks],
-      };
+      const batch = writeBatch(firestore);
       
-      onProjectUpdate(updatedProject);
+      // 1. Create Recipe document
+      const recipesCol = collection(firestore, 'recipes');
+      const newRecipeRef = doc(recipesCol);
+      batch.set(newRecipeRef, {
+        name: result.recipeName,
+        projectId: project.id
+      });
+      
+      // 2. Create Task documents
+      const tasksCol = collection(firestore, 'tasks');
+      const taskNameMap = new Map<string, string>();
+      
+      result.tasks.forEach(t => {
+          const taskRef = doc(tasksCol);
+          taskNameMap.set(t.name, taskRef.id);
+          const { predecessorIds, ...taskData } = t;
+          batch.set(taskRef, {
+            ...taskData,
+            recipeId: newRecipeRef.id,
+            projectId: project.id,
+            status: 'pending'
+          });
+      });
+
+      // 3. Update tasks with correct predecessor IDs
+      result.tasks.forEach(t => {
+        const currentTaskId = taskNameMap.get(t.name);
+        if (currentTaskId) {
+            const taskRef = doc(tasksCol, currentTaskId);
+            const mappedPredIds = t.predecessorIds
+                .map(name => taskNameMap.get(name))
+                .filter((id): id is string => !!id);
+            batch.update(taskRef, { predecessorIds: mappedPredIds });
+        }
+      });
+      
+      await batch.commit();
 
       toast({
         title: '¡Receta Importada!',
-        description: `Se importó "${result.recipeName}" y se añadieron ${newTasks.length} tareas.`,
+        description: `Se importó "${result.recipeName}" y se añadieron ${result.tasks.length} tareas.`,
       });
 
       onOpenChange(false);

@@ -7,6 +7,7 @@ export interface Task {
   name: string;
   duration: number; // en segundos
   recipeId: string;
+  projectId: string;
   predecessorIds: string[];
   status: TaskStatus;
   isAssemblyStep?: boolean;
@@ -22,12 +23,14 @@ export interface Task {
 export interface Recipe {
   id:string;
   name: string;
+  projectId: string;
 }
 
 export interface Project {
   id: string;
   name: string;
   description?: string;
+  ownerId: string;
   recipes: Recipe[];
   tasks: Task[];
   cpmResult?: CpmResult;

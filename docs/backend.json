@@ -1,244 +1,76 @@
 {
   "entities": {
     "User": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user of the Optimal Cook application.",
+      "description": "Represents a user of the application.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the user entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The user's name."
-        },
-        "email": {
-          "type": "string",
-          "description": "The user's email address.",
-          "format": "email"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "email"
-      ]
+        "name": { "type": "string", "description": "The user's display name." },
+        "email": { "type": "string", "description": "The user's email address.", "format": "email" }
+      }
     },
     "Project": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Project",
       "type": "object",
-      "description": "Represents a cooking project, containing multiple recipes and tasks.",
+      "description": "Represents a cooking project.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the project entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the project."
-        },
-        "description": {
-          "type": "string",
-          "description": "A description of the project."
-        },
-        "ownerId": {
-          "type": "string",
-          "description": "Reference to the User who owns the project. (Relationship: User 1:N Project)"
-        },
-        "creationDate": {
-          "type": "string",
-          "description": "The date and time the project was created.",
-          "format": "date-time"
-        },
-        "estimatedTotalDuration": {
-          "type": "number",
-          "description": "The estimated total duration of the project in seconds."
-        }
+        "name": { "type": "string", "description": "The name of the project." },
+        "description": { "type": "string", "description": "A description of the project." },
+        "ownerId": { "type": "string", "description": "The ID of the user who owns the project." },
+        "creationDate": { "type": "string", "format": "date-time", "description": "The date the project was created." },
+        "estimatedTotalDuration": { "type": "number", "description": "The estimated total duration in seconds." }
       },
-      "required": [
-        "id",
-        "name",
-        "description",
-        "ownerId",
-        "creationDate",
-        "estimatedTotalDuration"
-      ]
+      "required": ["name", "ownerId", "creationDate"]
     },
     "Recipe": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Recipe",
       "type": "object",
-      "description": "Represents a recipe within a cooking project.",
+      "description": "Represents a single recipe within a project.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the recipe entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the recipe."
-        },
-        "projectId": {
-          "type": "string",
-          "description": "Reference to the Project this recipe belongs to. (Relationship: Project 1:N Recipe)"
-        },
-        "description": {
-          "type": "string",
-          "description": "A description of the recipe."
-        }
+        "name": { "type": "string", "description": "The name of the recipe." },
+        "projectId": { "type": "string", "description": "The ID of the project this recipe belongs to." },
+        "description": { "type": "string", "description": "A description of the recipe." }
       },
-      "required": [
-        "id",
-        "name",
-        "projectId",
-        "description"
-      ]
+      "required": ["name", "projectId"]
     },
     "Task": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Task",
       "type": "object",
-      "description": "Represents a task within a recipe.",
+      "description": "Represents a single task within a recipe.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the task entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the task."
-        },
-        "duration": {
-          "type": "number",
-          "description": "The duration of the task in seconds."
-        },
-        "recipeId": {
-          "type": "string",
-          "description": "Reference to the Recipe this task belongs to. (Relationship: Recipe 1:N Task)"
-        },
-        "projectId": {
-          "type": "string",
-          "description": "Reference to the Project this task belongs to. (Relationship: Project 1:N Task)"
-        },
+        "name": { "type": "string", "description": "The name of the task." },
+        "duration": { "type": "number", "description": "The duration of the task in seconds." },
+        "recipeId": { "type": "string", "description": "The ID of the recipe this task belongs to." },
+        "projectId": { "type": "string", "description": "The ID of the project this task belongs to." },
         "predecessorIds": {
           "type": "array",
-          "description": "References to predecessor Tasks. (Relationship: Task 1:N Task (predecessor))",
-          "items": {
-            "type": "string"
-          }
+          "items": { "type": "string" },
+          "description": "An array of task IDs that must be completed before this task can start."
         },
-        "status": {
-          "type": "string",
-          "description": "The status of the task (e.g., pending, in_progress, completed)."
-        }
+        "status": { "type": "string", "enum": ["pending", "in_progress", "completed"], "description": "The current status of the task." }
       },
-      "required": [
-        "id",
-        "name",
-        "duration",
-        "recipeId",
-        "projectId",
-        "predecessorIds",
-        "status"
-      ]
+      "required": ["name", "duration", "recipeId", "projectId", "predecessorIds", "status"]
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["anonymous"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores user profiles.  Access is restricted to the user themselves.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/projects/{projectId}",
-        "definition": {
-          "entityName": "Project",
-          "schema": {
-            "$ref": "#/backend/entities/Project"
-          },
-          "description": "Stores cooking projects owned by a specific user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "projectId",
-              "description": "The unique identifier of the project."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/projects/{projectId}/recipes/{recipeId}",
-        "definition": {
-          "entityName": "Recipe",
-          "schema": {
-            "$ref": "#/backend/entities/Recipe"
-          },
-          "description": "Stores recipes belonging to a specific project.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "projectId",
-              "description": "The unique identifier of the project."
-            },
-            {
-              "name": "recipeId",
-              "description": "The unique identifier of the recipe."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/projects/{projectId}/tasks/{taskId}",
-        "definition": {
-          "entityName": "Task",
-          "schema": {
-            "$ref": "#/backend/entities/Task"
-          },
-          "description": "Stores tasks associated with a specific recipe within a project.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "projectId",
-              "description": "The unique identifier of the project."
-            },
-            {
-              "name": "taskId",
-              "description": "The unique identifier of the task."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure is designed to optimize for the Optimal Cook application's requirements, focusing on authorization independence, scalability, and query efficiency. It leverages structural segregation and denormalization to simplify security rules and enable atomic operations.\n\n**Authorization Independence:**\n\n*   The `ownerId` field is present in the `projects` collection to identify the project owner. Security rules will use this to restrict access.  Because recipes and tasks are in subcollections of the user, we do not need to denormalize. Because ownership is determined by the path, authorization is straightforward.\n\n**Structural Segregation:**\n\n*   Data with different access needs are stored in separate collections to streamline security rules. User profiles are stored in `/users/{userId}`, while cooking projects, recipes and tasks are stored in collections nested under the user's document.\n\n**Access Modeling:**\n\n*   **Path-Based Ownership:** The structure `/users/{userId}/projects/{projectId}` establishes clear ownership of projects by users. Recipes and Tasks are stored in subcollections within each Project which implicitly grants the project owner access to these collections.\n\n**QAPs (Rules are not Filters):**\n\n*   The design supports secure `list` operations because the collection structure inherently limits access based on user ID. A user can only list projects (and their corresponding recipes and tasks) under their own user ID path. This eliminates the need for complex filtering within the security rules themselves.\n\nThis structure ensures that security rules can be written to validate ownership based on the path, without needing to perform costly `get()` operations to retrieve parent document data. The segregation of data based on ownership simplifies the rules and improves performance."
+    "'/users/{userId}'": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profile information."
+    },
+    "'/projects/{projectId}'": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Stores all cooking projects. Security rules will enforce that users can only access their own projects via the ownerId field."
+    },
+    "'/recipes/{recipeId}'": {
+      "schema": { "$ref": "#/entities/Recipe" },
+      "description": "Stores all recipes for all projects. Queries will be based on projectId."
+    },
+    "'/tasks/{taskId}'": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "Stores all tasks for all recipes. Queries will be based on projectId and/or recipeId."
+    }
   }
 }

@@ -1,41 +1,44 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import ProjectList from '@/components/dashboard/project-list';
+import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 import type { Project } from '@/lib/types';
+import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
+import { useEffect } from 'react';
 
 export default function DashboardPage() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { firestore, user, isUserLoading, auth } = useFirebase();
 
+  // Automatically sign in anonymously if not logged in
   useEffect(() => {
-    const savedProjects = localStorage.getItem('projects');
-    if (savedProjects) {
-      setProjects(JSON.parse(savedProjects));
+    if (!isUserLoading && !user) {
+      initiateAnonymousSignIn(auth);
     }
-    setLoading(false);
-  }, []);
+  }, [isUserLoading, user, auth]);
 
-  const handleProjectCreated = (newProject: Project) => {
-    const updatedProjects = [...projects, newProject];
-    setProjects(updatedProjects);
-    localStorage.setItem('projects', JSON.stringify(updatedProjects));
-  };
+  const projectsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(firestore, 'projects'),
+      where('ownerId', '==', user.uid)
+    );
+  }, [firestore, user]);
 
-  const handleProjectUpdate = (updatedProject: Project) => {
-    const updatedProjects = projects.map(p => p.id === updatedProject.id ? updatedProject : p);
-    setProjects(updatedProjects);
-    localStorage.setItem('projects', JSON.stringify(updatedProjects));
-  }
+  const {
+    data: projects,
+    isLoading: isLoadingProjects,
+    error,
+  } = useCollection<Project>(projectsQuery);
 
-  const handleProjectDelete = (projectId: string) => {
-    const updatedProjects = projects.filter(p => p.id !== projectId);
-    setProjects(updatedProjects);
-    localStorage.setItem('projects', JSON.stringify(updatedProjects));
-  }
-
-  if (loading) {
+  if (isUserLoading || isLoadingProjects) {
     return <div>Cargando...</div>;
+  }
+  
+  if (error) {
+    console.error(error);
+    return <div>Error al cargar proyectos.</div>
   }
 
   return (
@@ -43,10 +46,7 @@ export default function DashboardPage() {
       <h1 className="text-3xl font-bold tracking-tight font-headline mb-6">
         Tus Proyectos de Cocina
       </h1>
-      <ProjectList 
-        projects={projects} 
-        onProjectCreated={handleProjectCreated}
-      />
+      <ProjectList projects={projects || []} />
     </div>
   );
 }

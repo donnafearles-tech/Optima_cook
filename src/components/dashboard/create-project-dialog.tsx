@@ -14,40 +14,41 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { Project } from '@/lib/types';
+import { useFirebase, addDocumentNonBlocking } from '@/firebase';
+import { collection, serverTimestamp } from 'firebase/firestore';
 
 interface CreateProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onProjectCreated: (project: Project) => void;
 }
 
 export default function CreateProjectDialog({
   open,
   onOpenChange,
-  onProjectCreated,
 }: CreateProjectDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const { firestore, user } = useFirebase();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name) return;
+    if (!name || !user) return;
 
     setIsSaving(true);
     
-    // Simulate network request
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const projectsCol = collection(firestore, 'projects');
     
-    const newProject: Project = {
-      id: `proj_${Date.now()}`,
+    const newProjectData = {
       name,
       description,
-      recipes: [],
-      tasks: [],
+      ownerId: user.uid,
+      creationDate: serverTimestamp(),
+      estimatedTotalDuration: 0,
     };
+
+    addDocumentNonBlocking(projectsCol, newProjectData);
     
-    onProjectCreated(newProject);
     setIsSaving(false);
     setName('');
     setDescription('');

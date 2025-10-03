@@ -4,43 +4,52 @@ import { notFound, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { FileUp } from 'lucide-react';
 import ProjectClientPage from '@/components/projects/project-client-page';
-import type { Project } from '@/lib/types';
+import type { Project, Recipe, Task } from '@/lib/types';
 import ImportRecipeDialog from '@/components/projects/import-recipe-dialog';
+import { useDoc, useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { doc, collection, query, where } from 'firebase/firestore';
 
 export default function ProjectPage() {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
-  const [project, setProject] = useState<Project | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const { firestore, user } = useFirebase();
 
-  useEffect(() => {
-    const savedProjects = localStorage.getItem('projects');
-    if (savedProjects) {
-      const projects: Project[] = JSON.parse(savedProjects);
-      const currentProject = projects.find(p => p.id === id);
-      if (currentProject) {
-        setProject(currentProject);
-      } else {
-        notFound();
-      }
-    } else {
-      notFound();
-    }
-  }, [id]);
+  const projectRef = useMemoFirebase(() => {
+    if (!id) return null;
+    return doc(firestore, 'projects', id);
+  }, [firestore, id]);
 
-  const handleProjectUpdate = (updatedProject: Project) => {
-    setProject(updatedProject);
-    const savedProjects = localStorage.getItem('projects');
-    if (savedProjects) {
-      const projects: Project[] = JSON.parse(savedProjects);
-      const updatedProjects = projects.map(p => p.id === updatedProject.id ? updatedProject : p);
-      localStorage.setItem('projects', JSON.stringify(updatedProjects));
-    }
-  };
+  const { data: project, isLoading: isLoadingProject } = useDoc<Project>(projectRef);
 
-  if (!project) {
+  const recipesQuery = useMemoFirebase(() => {
+    if (!id) return null;
+    return query(collection(firestore, 'recipes'), where('projectId', '==', id));
+  }, [firestore, id]);
+  const { data: recipes, isLoading: isLoadingRecipes } = useCollection<Recipe>(recipesQuery);
+
+  const tasksQuery = useMemoFirebase(() => {
+    if (!id) return null;
+    return query(collection(firestore, 'tasks'), where('projectId', '==', id));
+  }, [firestore, id]);
+  const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
+
+
+  if (isLoadingProject || isLoadingRecipes || isLoadingTasks) {
     return <div>Cargando proyecto...</div>;
   }
+
+  if (!project) {
+    return notFound();
+  }
+  
+  // Combine project data with its recipes and tasks
+  const fullProject: Project = {
+    ...project,
+    recipes: recipes || [],
+    tasks: tasks || [],
+  };
+
 
   return (
     <>
@@ -57,13 +66,12 @@ export default function ProjectPage() {
           </div>
         </div>
 
-        <ProjectClientPage project={project} onProjectUpdate={handleProjectUpdate} />
+        <ProjectClientPage project={fullProject} />
       </div>
       <ImportRecipeDialog
         open={isImporting}
         onOpenChange={setIsImporting}
-        project={project}
-        onProjectUpdate={handleProjectUpdate}
+        project={fullProject}
       />
     </>
   );
