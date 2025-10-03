@@ -1,7 +1,5 @@
 'use client';
 import { useParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { FileUp } from 'lucide-react';
 import ProjectClientPage from '@/components/projects/project-client-page';
 import { useState } from 'react';
 import ImportRecipeDialog from '@/components/projects/import-recipe-dialog';
