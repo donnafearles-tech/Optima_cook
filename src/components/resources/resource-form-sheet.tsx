@@ -77,9 +77,18 @@ export default function ResourceFormSheet({
   }
 
   const handleAddKeyword = () => {
-    if (newKeyword && !keywords.includes(newKeyword.toLowerCase())) {
-        setKeywords(prev => [...prev, newKeyword.toLowerCase().trim()]);
-        setNewKeyword('');
+    const trimmedKeyword = newKeyword.toLowerCase().trim();
+    if (trimmedKeyword) {
+      if (keywords.includes(trimmedKeyword)) {
+        toast({
+            title: "Palabra Clave Duplicada",
+            description: `La palabra clave "${trimmedKeyword}" ya ha sido añadida.`,
+            variant: "destructive",
+        });
+      } else {
+        setKeywords(prev => [...prev, trimmedKeyword]);
+      }
+      setNewKeyword('');
     }
   }
 
@@ -157,13 +166,13 @@ export default function ResourceFormSheet({
               <p className="text-xs text-muted-foreground mt-1">Pulsa Enter o clic en Añadir.</p>
               
               <div className="mt-2 flex flex-wrap gap-1">
-                {keywords.map(kw => (
-                  <Badge key={kw} variant="secondary">
+                {keywords.map((kw, index) => (
+                  <Badge key={`${kw}-${index}`} variant="secondary">
                     {kw}
                     <button
                       type="button"
                       className="ml-1 rounded-full p-0.5 hover:bg-destructive/20"
-                      onClick={() => setKeywords(prev => prev.filter(k => k !== kw))}
+                      onClick={() => setKeywords(prev => prev.filter((_, i) => i !== index))}
                     >
                       <X className="h-3 w-3" />
                     </button>

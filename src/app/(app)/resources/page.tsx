@@ -95,7 +95,7 @@ export default function ResourcesPage() {
                         <TableCell>{resource.quantity}</TableCell>
                         <TableCell>
                             <div className="flex flex-wrap gap-1">
-                                {resource.keywords.map(kw => <Badge key={kw} variant="secondary">{kw}</Badge>)}
+                                {resource.keywords.map((kw, index) => <Badge key={`${kw}-${index}`} variant="secondary">{kw}</Badge>)}
                             </div>
                         </TableCell>
                         <TableCell className="text-right">
