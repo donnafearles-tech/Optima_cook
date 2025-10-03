@@ -44,9 +44,9 @@ export default function CreateProjectDialog({
     try {
       const newProject = await createProject(firestore, user.uid, { name, description });
       onProjectCreated(newProject);
-      onOpenChange(false);
       setName('');
       setDescription('');
+      onOpenChange(false);
       router.push(`/projects/${newProject.id}`);
     } catch (error) {
       console.error("Failed to create project:", error);

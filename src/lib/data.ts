@@ -1,7 +1,6 @@
 'use client';
 import type { Project, Task } from './types';
 import {
-  setDocumentNonBlocking,
   addDocumentNonBlocking,
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking,
@@ -11,16 +10,17 @@ import {
   doc,
   writeBatch,
   Firestore,
+  setDoc,
 } from 'firebase/firestore';
 
-export const saveProject = (
+export const saveProject = async (
   db: Firestore,
   userId: string,
   project: Project
-): void => {
+): Promise<void> => {
   if (!userId) return;
   const projectRef = doc(db, 'users', userId, 'projects', project.id);
-  setDocumentNonBlocking(projectRef, project, { merge: true });
+  await setDoc(projectRef, project, { merge: true });
 };
 
 export const createProject = async (
@@ -37,7 +37,7 @@ export const createProject = async (
     tasks: [],
     ...projectData,
   };
-  await setDocumentNonBlocking(projectRef, newProject, { merge: true });
+  await setDoc(projectRef, newProject, { merge: true });
   return newProject;
 };
 

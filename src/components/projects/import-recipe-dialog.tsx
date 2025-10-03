@@ -68,7 +68,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, project }: Impo
         tasks: [...(project.tasks || []), ...newTasks],
       };
       
-      saveProject(firestore, user.uid, updatedProject);
+      await saveProject(firestore, user.uid, updatedProject);
 
       toast({
         title: 'Recipe Imported!',

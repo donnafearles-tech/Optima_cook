@@ -20,7 +20,7 @@ export default function ProjectClientPage({ project: initialProject }: { project
   const { toast } = useToast();
   const { firestore, user } = useFirebase();
 
-  const handleTaskSave = (taskToSave: Task) => {
+  const handleTaskSave = async (taskToSave: Task) => {
     if (!firestore || !user) return;
     
     let updatedTasks: Task[];
@@ -31,11 +31,11 @@ export default function ProjectClientPage({ project: initialProject }: { project
     }
     const updatedProject = { ...project, tasks: updatedTasks };
     setProjectState(updatedProject);
-    saveProject(firestore, user.uid, updatedProject);
+    await saveProject(firestore, user.uid, updatedProject);
     setEditingTask(null);
   };
 
-  const handleTaskDelete = (taskId: string) => {
+  const handleTaskDelete = async (taskId: string) => {
     if (!firestore || !user) return;
 
     const updatedTasks = project.tasks.filter(t => t.id !== taskId)
@@ -44,7 +44,7 @@ export default function ProjectClientPage({ project: initialProject }: { project
     
     const updatedProject = { ...project, tasks: updatedTasks };
     setProjectState(updatedProject);
-    saveProject(firestore, user.uid, updatedProject);
+    await saveProject(firestore, user.uid, updatedProject);
   };
   
   const handleSuggestDependencies = async () => {
@@ -75,7 +75,7 @@ export default function ProjectClientPage({ project: initialProject }: { project
       
       const updatedProject = { ...project, tasks: updatedTasks };
       setProjectState(updatedProject);
-      saveProject(firestore, user.uid, updatedProject);
+      await saveProject(firestore, user.uid, updatedProject);
 
       toast({
         title: 'Dependencies Suggested!',
@@ -94,12 +94,12 @@ export default function ProjectClientPage({ project: initialProject }: { project
     }
   };
 
-  const handleCalculatePath = () => {
+  const handleCalculatePath = async () => {
     if (!firestore || !user) return;
 
     const cpmResult = calculateCPM(project.tasks);
     const updatedProject = { ...project, cpmResult };
-    saveProject(firestore, user.uid, updatedProject);
+    await saveProject(firestore, user.uid, updatedProject);
     router.push(`/projects/${project.id}/guide`);
   };
 
