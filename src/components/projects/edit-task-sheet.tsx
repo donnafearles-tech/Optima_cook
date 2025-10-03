@@ -107,7 +107,11 @@ export default function EditTaskSheet({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || durationValue <= 0 || !recipeId) {
-        console.error("Missing required fields");
+        toast({
+            title: "Faltan campos",
+            description: "Asegúrate de que la tarea tenga un nombre, duración y una receta asociada.",
+            variant: "destructive",
+        });
         return;
     }
 
@@ -130,7 +134,7 @@ export default function EditTaskSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-md flex flex-col">
         <SheetHeader>
-          <SheetTitle className="font-headline">{task ? 'Editar Tarea' : 'Añadir Nueva Tarea'}</SheetTitle>
+          <SheetTitle className="font-headline">{task && task.id ? 'Editar Tarea' : 'Añadir Nueva Tarea'}</SheetTitle>
           <SheetDescription>
             Rellena los detalles de tu tarea de cocina.
           </SheetDescription>

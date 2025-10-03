@@ -61,7 +61,8 @@ export default function GuidePage() {
 
   if (!project) {
     // This case handles if the project ID is invalid.
-    return notFound();
+    notFound();
+    return null;
   }
 
   const goBackButton = (
@@ -79,7 +80,7 @@ export default function GuidePage() {
 
   if (!project.cpmResult) {
     return (
-        <div>
+        <div className="container mx-auto p-4">
             {goBackButton}
              <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
@@ -106,7 +107,7 @@ export default function GuidePage() {
   }, {} as Record<number, typeof tasks>);
 
   return (
-    <div>
+    <div className="container mx-auto p-4">
       <div className="flex items-center gap-4 mb-6">
         <Button variant="outline" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4" />

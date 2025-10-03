@@ -12,6 +12,8 @@ import EditRecipeDialog from './edit-recipe-dialog';
 import RecipeCard from './recipe-card';
 import { useFirebase, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, doc, writeBatch } from 'firebase/firestore';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { notFound } from 'next/navigation';
 
 interface ProjectClientPageProps {
   projectId: string;
@@ -42,7 +44,21 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
 
 
   const handleOpenEditTask = (task: Task | 'new') => {
-    setEditingTask(task);
+    const defaultRecipeId = recipes?.[0]?.id || null;
+    if (task === 'new') {
+        const newTaskTemplate: Task = {
+            id: '',
+            name: '',
+            duration: 300,
+            predecessorIds: [],
+            resourceIds: [],
+            status: 'pending',
+            recipeId: defaultRecipeId || '',
+        };
+        setEditingTask(newTaskTemplate);
+    } else {
+        setEditingTask(task);
+    }
   };
   
   const handleRecipeSave = (recipeToSave: Pick<Recipe, 'id' | 'name'>) => {
@@ -83,6 +99,15 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const handleTaskSave = (taskToSave: Task) => {
     const tasksCollection = collection(projectRef, 'tasks');
     const { id, ...dataToSave } = taskToSave;
+
+    if (!dataToSave.recipeId) {
+        toast({
+            title: 'Error al Guardar',
+            description: 'Toda tarea debe estar asociada a una receta.',
+            variant: 'destructive',
+        });
+        return;
+    }
 
     if (id) {
         const taskDoc = doc(tasksCollection, id);
@@ -166,11 +191,19 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   }
   
   if (projectError) {
-      return <div>Error al cargar el proyecto. Es posible que no exista o que no tengas permisos para verlo.</div>
+      return (
+        <Alert variant="destructive">
+            <AlertTitle>Error al cargar el proyecto</AlertTitle>
+            <AlertDescription>
+                Es posible que no exista o que no tengas permisos para verlo.
+            </AlertDescription>
+        </Alert>
+      );
   }
 
   if (!project) {
-    return <div>Proyecto no encontrado.</div>;
+    notFound();
+    return null; // notFound() throws an error, so this is for type safety.
   }
 
   const allTasks = tasks || [];
@@ -248,7 +281,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
       <EditTaskSheet
         open={editingTask !== null}
         onOpenChange={(isOpen) => !isOpen && setEditingTask(null)}
-        task={editingTask === 'new' ? null : editingTask}
+        task={editingTask === 'new' ? null : editingTask as Task | null}
         allTasks={allTasks}
         allRecipes={allRecipes}
         allResources={allResources}
