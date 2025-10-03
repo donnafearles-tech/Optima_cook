@@ -27,17 +27,19 @@ export const ParseRecipeOutputSchema = z.object({
 });
 export type ParseRecipeOutput = z.infer<typeof ParseRecipeOutputSchema>;
 
-export async function parseRecipe(
-  input: ParseRecipeInput
-): Promise<ParseRecipeOutput> {
-  return parseRecipeFlow(input);
-}
 
-const prompt = ai.definePrompt({
-  name: 'parseRecipePrompt',
-  input: {schema: ParseRecipeInputSchema},
-  output: {schema: ParseRecipeOutputSchema},
-  prompt: `You are an expert recipe parser. Your job is to read a recipe and break it down into a series of tasks with estimated durations.
+const parseRecipeFlow = ai.defineFlow(
+  {
+    name: 'parseRecipeFlow',
+    inputSchema: ParseRecipeInputSchema,
+    outputSchema: ParseRecipeOutputSchema,
+  },
+  async input => {
+    const prompt = ai.definePrompt({
+      name: 'parseRecipePrompt',
+      input: {schema: ParseRecipeInputSchema},
+      output: {schema: ParseRecipeOutputSchema},
+      prompt: `You are an expert recipe parser. Your job is to read a recipe and break it down into a series of tasks with estimated durations.
 
   Extract the recipe name and a list of tasks from the following recipe text. For each task, provide a descriptive name and an estimated duration in seconds.
 
@@ -52,16 +54,15 @@ const prompt = ai.definePrompt({
   Respond ONLY with valid JSON. Do not include any explanation or other text.
   Here is the JSON:
   `,
-});
+    });
 
-const parseRecipeFlow = ai.defineFlow(
-  {
-    name: 'parseRecipeFlow',
-    inputSchema: ParseRecipeInputSchema,
-    outputSchema: ParseRecipeOutputSchema,
-  },
-  async input => {
     const {output} = await prompt(input);
     return output!;
   }
 );
+
+export async function parseRecipe(
+  input: ParseRecipeInput
+): Promise<ParseRecipeOutput> {
+  return await parseRecipeFlow(input);
+}

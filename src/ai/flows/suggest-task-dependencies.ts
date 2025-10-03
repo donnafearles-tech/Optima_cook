@@ -11,7 +11,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-const SuggestTaskDependenciesInputSchema = z.object({
+export const SuggestTaskDependenciesInputSchema = z.object({
   recipeName: z.string().describe('The name of the recipe.'),
   taskList: z
     .array(z.string())
@@ -21,7 +21,7 @@ export type SuggestTaskDependenciesInput = z.infer<
   typeof SuggestTaskDependenciesInputSchema
 >;
 
-const SuggestTaskDependenciesOutputSchema = z.record(
+export const SuggestTaskDependenciesOutputSchema = z.record(
   z.string(),
   z.array(z.string())
 ).describe('A map of task names to a list of suggested predecessor task names.');
@@ -29,17 +29,18 @@ export type SuggestTaskDependenciesOutput = z.infer<
   typeof SuggestTaskDependenciesOutputSchema
 >;
 
-export async function suggestTaskDependencies(
-  input: SuggestTaskDependenciesInput
-): Promise<SuggestTaskDependenciesOutput> {
-  return suggestTaskDependenciesFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'suggestTaskDependenciesPrompt',
-  input: {schema: SuggestTaskDependenciesInputSchema},
-  output: {schema: SuggestTaskDependenciesOutputSchema},
-  prompt: `You are an AI assistant specialized in suggesting task dependencies for cooking recipes.
+const suggestTaskDependenciesFlow = ai.defineFlow(
+  {
+    name: 'suggestTaskDependenciesFlow',
+    inputSchema: SuggestTaskDependenciesInputSchema,
+    outputSchema: SuggestTaskDependenciesOutputSchema,
+  },
+  async input => {
+    const prompt = ai.definePrompt({
+      name: 'suggestTaskDependenciesPrompt',
+      input: {schema: SuggestTaskDependenciesInputSchema},
+      output: {schema: SuggestTaskDependenciesOutputSchema},
+      prompt: `You are an AI assistant specialized in suggesting task dependencies for cooking recipes.
 
   Given a recipe name and a list of tasks, you will suggest which tasks depend on which other tasks, 
   based on common cooking practices.
@@ -65,16 +66,14 @@ const prompt = ai.definePrompt({
   Respond ONLY with valid JSON. Do not include any explanation or other text.  
   Here is the JSON:
   `,
-});
-
-const suggestTaskDependenciesFlow = ai.defineFlow(
-  {
-    name: 'suggestTaskDependenciesFlow',
-    inputSchema: SuggestTaskDependenciesInputSchema,
-    outputSchema: SuggestTaskDependenciesOutputSchema,
-  },
-  async input => {
+    });
     const {output} = await prompt(input);
     return output!;
   }
 );
+
+export async function suggestTaskDependencies(
+  input: SuggestTaskDependenciesInput
+): Promise<SuggestTaskDependenciesOutput> {
+  return await suggestTaskDependenciesFlow(input);
+}
