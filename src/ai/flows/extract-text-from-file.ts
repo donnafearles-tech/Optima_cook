@@ -11,7 +11,7 @@ import {
   type ExtractTextFromFileOutput,
 } from '@/lib/types';
 import * as z from 'zod';
-import pdf from 'pdf-parse';
+import pdf from 'pdf-parse/lib/pdf-parse.js';
 import * as xlsx from 'xlsx';
 import mammoth from 'mammoth';
 

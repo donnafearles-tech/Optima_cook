@@ -13,7 +13,7 @@ export interface Task {
   es?: number; // Early Start
   ef?: number; // Early Finish
   ls?: number; // Late Start
-  lf?: "number" | number; // Late Finish - Allow number for CPM calculation
+  lf?: number; // Late Finish
   float?: number; // Slack/Float
   isCritical?: boolean;
 }
