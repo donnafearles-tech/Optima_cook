@@ -3,15 +3,15 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Wand2, FileUp, Plus } from 'lucide-react';
-import type { Project, Task, Recipe } from '@/lib/types';
+import type { Project, Task, Recipe, UserResource } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { suggestTaskDependencies } from '@/ai/flows/suggest-task-dependencies';
 import { calculateCPM } from '@/lib/cpm';
 import EditTaskSheet from './edit-task-sheet';
-import EditRecipeDialog from './edit-recipe-dialog'; // Nuevo
-import RecipeCard from './recipe-card'; // Nuevo
+import EditRecipeDialog from './edit-recipe-dialog';
+import RecipeCard from './recipe-card';
 import { useFirebase, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, doc, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch } from 'firebase/firestore';
 
 interface ProjectClientPageProps {
   projectId: string;
@@ -22,30 +22,27 @@ interface ProjectClientPageProps {
 export default function ProjectClientPage({ projectId, userId, onImportRecipe }: ProjectClientPageProps) {
   const [editingTask, setEditingTask] = useState<Task | null | 'new'>(null);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null | 'new'>(null);
-  const [targetRecipeId, setTargetRecipeId] = useState<string | null>(null);
   const [isSuggesting, setIsSuggesting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
   const { firestore } = useFirebase();
 
-  const projectRef = useMemoFirebase(() => {
-    return doc(firestore, 'users', userId, 'projects', projectId);
-  }, [firestore, userId, projectId]);
+  const userRef = useMemoFirebase(() => doc(firestore, 'users', userId), [firestore, userId]);
+  const projectRef = useMemoFirebase(() => doc(userRef, 'projects', projectId), [userRef, projectId]);
 
   const { data: project, isLoading: isLoadingProject, error: projectError } = useDoc<Project>(projectRef);
-
-  const recipesQuery = useMemoFirebase(() => {
-    return collection(projectRef, 'recipes');
-  }, [projectRef]);
+  
+  const recipesQuery = useMemoFirebase(() => collection(projectRef, 'recipes'), [projectRef]);
   const { data: recipes, isLoading: isLoadingRecipes } = useCollection<Recipe>(recipesQuery);
 
-  const tasksQuery = useMemoFirebase(() => {
-    return collection(projectRef, 'tasks');
-  }, [projectRef]);
+  const tasksQuery = useMemoFirebase(() => collection(projectRef, 'tasks'), [projectRef]);
   const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
+  
+  const resourcesQuery = useMemoFirebase(() => collection(userRef, 'resources'), [userRef]);
+  const { data: resources, isLoading: isLoadingResources } = useCollection<UserResource>(resourcesQuery);
+
 
   const handleOpenEditTask = (task: Task | 'new', recipeId: string) => {
-    setTargetRecipeId(recipeId);
     setEditingTask(task);
   };
   
@@ -66,11 +63,9 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     if (!tasks) return;
     const batch = writeBatch(firestore);
     
-    // Delete the recipe document
     const recipeRef = doc(projectRef, 'recipes', recipeId);
     batch.delete(recipeRef);
 
-    // Delete all tasks associated with the recipe
     const tasksToDelete = tasks.filter(t => t.recipeId === recipeId);
     tasksToDelete.forEach(t => {
         const taskRef = doc(projectRef, 'tasks', t.id);
@@ -88,18 +83,15 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
 
   const handleTaskSave = (taskToSave: Task) => {
     const tasksCollection = collection(projectRef, 'tasks');
+    const { id, ...dataToSave } = taskToSave;
 
-    if (taskToSave.id) {
-        const taskDoc = doc(tasksCollection, taskToSave.id);
-        const { id, ...dataToSave } = taskToSave;
+    if (id) {
+        const taskDoc = doc(tasksCollection, id);
         updateDocumentNonBlocking(taskDoc, dataToSave);
     } else {
-        const { id, ...dataToSave } = taskToSave;
-        // The recipeId is now set in the EditTaskSheet
         addDocumentNonBlocking(tasksCollection, dataToSave);
     }
     setEditingTask(null);
-    setTargetRecipeId(null);
   };
 
   const handleTaskDelete = (taskId: string) => {
@@ -166,7 +158,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     router.push(`/projects/${projectId}/guide`);
   };
 
-  if (isLoadingProject || isLoadingRecipes || isLoadingTasks) {
+  if (isLoadingProject || isLoadingRecipes || isLoadingTasks || isLoadingResources) {
     return <div>Cargando proyecto...</div>;
   }
   
@@ -180,6 +172,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
 
   const allTasks = tasks || [];
   const allRecipes = recipes || [];
+  const allResources = resources || [];
 
   return (
     <>
@@ -221,6 +214,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
                     recipe={recipe}
                     tasks={allTasks.filter(t => t.recipeId === recipe.id)}
                     allTasks={allTasks}
+                    allResources={allResources}
                     onEditRecipe={() => setEditingRecipe(recipe)}
                     onDeleteRecipe={() => handleRecipeDelete(recipe.id)}
                     onAddTask={() => handleOpenEditTask('new', recipe.id)}
@@ -242,7 +236,8 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         onOpenChange={(isOpen) => !isOpen && setEditingTask(null)}
         task={editingTask === 'new' ? null : editingTask}
         allTasks={allTasks}
-        recipeId={targetRecipeId}
+        allRecipes={allRecipes}
+        allResources={allResources}
         onSave={handleTaskSave}
       />
       

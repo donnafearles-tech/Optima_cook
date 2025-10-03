@@ -8,8 +8,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Edit, Trash2, Plus } from 'lucide-react';
-import type { Recipe, Task } from '@/lib/types';
+import { MoreVertical, Edit, Trash2, Plus, HardHat } from 'lucide-react';
+import type { Recipe, Task, UserResource } from '@/lib/types';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +22,7 @@ interface RecipeCardProps {
     recipe: Recipe;
     tasks: Task[];
     allTasks: Task[];
+    allResources: UserResource[];
     onEditRecipe: () => void;
     onDeleteRecipe: () => void;
     onAddTask: () => void;
@@ -40,6 +41,7 @@ export default function RecipeCard({
     recipe,
     tasks,
     allTasks,
+    allResources,
     onEditRecipe,
     onDeleteRecipe,
     onAddTask,
@@ -76,17 +78,27 @@ export default function RecipeCard({
                      const predecessors = task.predecessorIds.map(
                         (pId) => allTasks.find((t) => t.id === pId)?.name
                       ).filter(Boolean);
+                      
+                     const resources = (task.resourceIds || []).map(
+                        (rId) => allResources.find((r) => r.id === rId)?.name
+                     ).filter(Boolean);
 
                     return (
                         <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg">
                            <div className="flex-1">
                                 <p className="font-medium">{task.name}</p>
-                                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-1 text-xs text-muted-foreground">
                                     <span>Duración: {formatDuration(task.duration)}</span>
                                     {predecessors.length > 0 && (
                                         <div className="flex items-center gap-1">
                                             <span>Depende de:</span>
                                             {predecessors.map(pName => <Badge key={pName} variant="secondary">{pName}</Badge>)}
+                                        </div>
+                                    )}
+                                    {resources.length > 0 && (
+                                        <div className="flex items-center gap-1">
+                                            <HardHat className="h-3 w-3" />
+                                            {resources.map(rName => <Badge key={rName} variant="outline">{rName}</Badge>)}
                                         </div>
                                     )}
                                 </div>

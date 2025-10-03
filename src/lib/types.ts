@@ -8,6 +8,7 @@ export interface Task {
   duration: number; // en segundos
   recipeId: string;
   predecessorIds: string[];
+  resourceIds: string[];
   status: TaskStatus;
   isAssemblyStep?: boolean;
   // Propiedades CPM
@@ -22,6 +23,13 @@ export interface Task {
 export interface Recipe {
   id:string;
   name: string;
+}
+
+export interface UserResource {
+  id: string;
+  name: string;
+  quantity: number;
+  keywords: string[];
 }
 
 export interface Project {
@@ -96,3 +104,22 @@ export const ExtractTextFromFileOutputSchema = z.object({
 export type ExtractTextFromFileOutput = z.infer<
   typeof ExtractTextFromFileOutputSchema
 >;
+
+
+const UserResourceSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    quantity: z.number(),
+    keywords: z.array(z.string()),
+});
+
+export const SuggestResourceForTaskInputSchema = z.object({
+  taskName: z.string().describe('El nombre de la tarea para la que se necesita un recurso.'),
+  userResources: z.array(UserResourceSchema).describe('La lista de recursos de cocina disponibles para el usuario, incluyendo sus palabras clave.'),
+});
+export type SuggestResourceForTaskInput = z.infer<typeof SuggestResourceForTaskInputSchema>;
+
+export const SuggestResourceForTaskOutputSchema = z.object({
+    resourceIds: z.array(z.string()).describe('Una lista de los IDs de los recursos sugeridos para la tarea.'),
+});
+export type SuggestResourceForTaskOutput = z.infer<typeof SuggestResourceForTaskOutputSchema>;

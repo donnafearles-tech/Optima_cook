@@ -20,16 +20,20 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { X } from 'lucide-react';
-import type { Task } from '@/lib/types';
+import { X, Sparkles } from 'lucide-react';
+import type { Task, Recipe, UserResource } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
+import { useFirebase } from '@/firebase';
+import { suggestResourceForTask } from '@/ai/flows/suggest-resource-for-task';
+import { useToast } from '@/hooks/use-toast';
 
 interface EditTaskSheetProps {
   open: boolean;
   onOpenChange: (isOpen: boolean) => void;
   task: Task | null;
   allTasks: Task[];
-  recipeId: string | null; // ID of the recipe this task belongs to
+  allRecipes: Recipe[];
+  allResources: UserResource[];
   onSave: (task: Task) => void;
 }
 
@@ -40,13 +44,18 @@ export default function EditTaskSheet({
   onOpenChange,
   task,
   allTasks,
-  recipeId,
+  allRecipes,
+  allResources,
   onSave,
 }: EditTaskSheetProps) {
   const [name, setName] = useState('');
   const [durationValue, setDurationValue] = useState(0);
   const [timeUnit, setTimeUnit] = useState<TimeUnit>('minutes');
   const [predecessorIds, setPredecessorIds] = useState<string[]>([]);
+  const [recipeId, setRecipeId] = useState<string | null>(null);
+  const [resourceIds, setResourceIds] = useState<string[]>([]);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const { toast } = useToast();
   
   useEffect(() => {
     if (open) {
@@ -60,20 +69,44 @@ export default function EditTaskSheet({
           setDurationValue(task.duration / 60);
         }
         setPredecessorIds(task.predecessorIds);
+        setRecipeId(task.recipeId);
+        setResourceIds(task.resourceIds || []);
       } else {
         // Reset for new task
         setName('');
         setDurationValue(5); // Default to 5 minutes
         setTimeUnit('minutes');
         setPredecessorIds([]);
+        setRecipeId(allRecipes[0]?.id || null);
+        setResourceIds([]);
       }
     }
-  }, [task, open]);
+  }, [task, open, allRecipes]);
+
+  const handleSuggestResources = async () => {
+    if (!name) return;
+    setIsSuggesting(true);
+    try {
+        const result = await suggestResourceForTask({
+            taskName: name,
+            userResources: allResources,
+        });
+        if (result.resourceIds.length > 0) {
+            setResourceIds(prev => [...new Set([...prev, ...result.resourceIds])]);
+            toast({ title: 'Recurso Sugerido', description: 'La IA ha vinculado un recurso a esta tarea.' });
+        } else {
+            toast({ title: 'Sin Sugerencias', description: 'La IA no encontró un recurso relevante para esta tarea.' });
+        }
+    } catch(e) {
+        toast({ title: 'Error de IA', description: 'No se pudieron obtener sugerencias.', variant: 'destructive' });
+    } finally {
+        setIsSuggesting(false);
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || durationValue <= 0 || !recipeId) {
-        // Add validation feedback if needed
         console.error("Missing required fields");
         return;
     }
@@ -85,7 +118,8 @@ export default function EditTaskSheet({
       name,
       duration: durationInSeconds,
       predecessorIds,
-      recipeId: recipeId, // Assign the recipeId
+      recipeId: recipeId,
+      resourceIds,
       status: task?.status || 'pending',
     });
   };
@@ -98,11 +132,24 @@ export default function EditTaskSheet({
         <SheetHeader>
           <SheetTitle className="font-headline">{task ? 'Editar Tarea' : 'Añadir Nueva Tarea'}</SheetTitle>
           <SheetDescription>
-            Rellena los detalles de tu tarea de cocina. La tarea se añadirá a la receta seleccionada.
+            Rellena los detalles de tu tarea de cocina.
           </SheetDescription>
         </SheetHeader>
         <form onSubmit={handleSubmit} className="flex-grow flex flex-col gap-4">
           <div className="space-y-4 py-4 flex-grow">
+            <div>
+                <Label htmlFor="recipeId">Receta</Label>
+                 <Select value={recipeId || ''} onValueChange={setRecipeId} required>
+                    <SelectTrigger id="recipeId" className="mt-1">
+                        <SelectValue placeholder="Selecciona una receta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {allRecipes.map(recipe => (
+                            <SelectItem key={recipe.id} value={recipe.id}>{recipe.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
             <div>
               <Label htmlFor="name">Nombre de la Tarea</Label>
               <Input
@@ -136,9 +183,54 @@ export default function EditTaskSheet({
                 </SelectContent>
               </Select>
             </div>
+            
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <Label>Recursos Requeridos</Label>
+                <Button type="button" size="sm" variant="ghost" onClick={handleSuggestResources} disabled={isSuggesting || !name}>
+                    {isSuggesting ? <Sparkles className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4" />}
+                    Sugerencia IA
+                </Button>
+              </div>
+               <Select onValueChange={(value) => {
+                  if (value && !resourceIds.includes(value)) {
+                    setResourceIds(prev => [...prev, value])
+                  }
+                }}>
+                <SelectTrigger id="resources" >
+                  <SelectValue placeholder="Añadir un recurso" />
+                </SelectTrigger>
+                <SelectContent>
+                  <ScrollArea className="h-48">
+                    {allResources.filter(r => !resourceIds.includes(r.id)).map(res => (
+                      <SelectItem key={res.id} value={res.id}>
+                        {res.name}
+                      </SelectItem>
+                    ))}
+                  </ScrollArea>
+                </SelectContent>
+              </Select>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {resourceIds.map(rId => {
+                  const resource = allResources.find(r => r.id === rId);
+                  return (
+                    <Badge key={rId} variant="secondary">
+                      {resource?.name}
+                      <button
+                        type="button"
+                        className="ml-1 rounded-full p-0.5 hover:bg-destructive/20"
+                        onClick={() => setResourceIds(prev => prev.filter(id => id !== rId))}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  );
+                })}
+              </div>
+            </div>
 
             <div>
-              <Label>Dependencias</Label>
+              <Label>Dependencias (Predecesores)</Label>
               <Select onValueChange={(value) => {
                   if (value && !predecessorIds.includes(value)) {
                     setPredecessorIds(prev => [...prev, value])
