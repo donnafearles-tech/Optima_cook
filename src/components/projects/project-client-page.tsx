@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Wand2 } from 'lucide-react';
-import type { Project, Task, CpmResult } from '@/lib/types';
+import type { Project, Task } from '@/lib/types';
 import { saveProject } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { suggestTaskDependencies } from '@/ai/flows/suggest-task-dependencies';

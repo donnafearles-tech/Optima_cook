@@ -4,29 +4,15 @@
  * @fileOverview A recipe parsing AI agent.
  *
  * - parseRecipe - A function that parses a recipe from text.
- * - ParseRecipeInput - The input type for the parseRecipe function.
- * - ParseRecipeOutput - The return type for the parseRecipe function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-
-const TaskSchema = z.object({
-    name: z.string().describe('The name of the task.'),
-    duration: z.number().describe('The estimated duration of the task in seconds.'),
-});
-
-export const ParseRecipeInputSchema = z.object({
-  recipeText: z.string().describe('The full text of the recipe to parse.'),
-});
-export type ParseRecipeInput = z.infer<typeof ParseRecipeInputSchema>;
-
-export const ParseRecipeOutputSchema = z.object({
-    recipeName: z.string().describe('The name of the recipe.'),
-    tasks: z.array(TaskSchema).describe('The list of tasks extracted from the recipe, with estimated durations.'),
-});
-export type ParseRecipeOutput = z.infer<typeof ParseRecipeOutputSchema>;
-
+import {
+  ParseRecipeInputSchema,
+  ParseRecipeOutputSchema,
+  type ParseRecipeInput,
+  type ParseRecipeOutput,
+} from '@/lib/types';
 
 const parseRecipeFlow = ai.defineFlow(
   {

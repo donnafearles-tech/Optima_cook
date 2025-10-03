@@ -4,30 +4,16 @@
  * @fileOverview A task dependency suggestion AI agent.
  *
  * - suggestTaskDependencies - A function that suggests task dependencies.
- * - SuggestTaskDependenciesInput - The input type for the suggestTaskDependencies function.
- * - SuggestTaskDependenciesOutput - The return type for the suggestTaskDependencies function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {
+  SuggestTaskDependenciesInputSchema,
+  SuggestTaskDependenciesOutputSchema,
+  type SuggestTaskDependenciesInput,
+  type SuggestTaskDependenciesOutput,
+} from '@/lib/types';
 
-export const SuggestTaskDependenciesInputSchema = z.object({
-  recipeName: z.string().describe('The name of the recipe.'),
-  taskList: z
-    .array(z.string())
-    .describe('A list of task names in the recipe.'),
-});
-export type SuggestTaskDependenciesInput = z.infer<
-  typeof SuggestTaskDependenciesInputSchema
->;
-
-export const SuggestTaskDependenciesOutputSchema = z.record(
-  z.string(),
-  z.array(z.string())
-).describe('A map of task names to a list of suggested predecessor task names.');
-export type SuggestTaskDependenciesOutput = z.infer<
-  typeof SuggestTaskDependenciesOutputSchema
->;
 
 const suggestTaskDependenciesFlow = ai.defineFlow(
   {
