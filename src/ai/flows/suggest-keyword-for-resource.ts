@@ -7,17 +7,13 @@
  */
 
 import {ai} from '@/ai/genkit';
-import { z } from 'zod';
+import {
+  SuggestKeywordsForResourceInputSchema,
+  SuggestKeywordsForResourceOutputSchema,
+  type SuggestKeywordsForResourceInput,
+  type SuggestKeywordsForResourceOutput,
+} from '@/lib/types';
 
-export const SuggestKeywordsForResourceInputSchema = z.object({
-  resourceName: z.string().describe('El nombre del recurso de cocina (ej. "Sartén", "Licuadora").'),
-});
-export type SuggestKeywordsForResourceInput = z.infer<typeof SuggestKeywordsForResourceInputSchema>;
-
-export const SuggestKeywordsForResourceOutputSchema = z.object({
-    keywords: z.array(z.string()).describe('Una lista de palabras clave sugeridas (verbos de acción o sinónimos) asociadas con el recurso.'),
-});
-export type SuggestKeywordsForResourceOutput = z.infer<typeof SuggestKeywordsForResourceOutputSchema>;
 
 const suggestKeywordsPrompt = ai.definePrompt({
   name: 'suggestKeywordsPrompt',

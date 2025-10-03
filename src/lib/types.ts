@@ -123,3 +123,14 @@ export const SuggestResourceForTaskOutputSchema = z.object({
     resourceIds: z.array(z.string()).describe('Una lista de los IDs de los recursos sugeridos para la tarea.'),
 });
 export type SuggestResourceForTaskOutput = z.infer<typeof SuggestResourceForTaskOutputSchema>;
+
+
+export const SuggestKeywordsForResourceInputSchema = z.object({
+  resourceName: z.string().describe('El nombre del recurso de cocina (ej. "Sartén", "Licuadora").'),
+});
+export type SuggestKeywordsForResourceInput = z.infer<typeof SuggestKeywordsForResourceInputSchema>;
+
+export const SuggestKeywordsForResourceOutputSchema = z.object({
+    keywords: z.array(z.string()).describe('Una lista de palabras clave sugeridas (verbos de acción o sinónimos) asociadas con el recurso.'),
+});
+export type SuggestKeywordsForResourceOutput = z.infer<typeof SuggestKeywordsForResourceOutputSchema>;
