@@ -7,6 +7,7 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   signOut,
+  FirebaseError,
 } from 'firebase/auth';
 import { useFirebase } from '@/firebase/provider';
 
@@ -21,7 +22,7 @@ export function initiateEmailSignUp(authInstance: Auth, email: string, password:
 }
 
 /** Initiate email/password sign-in (non-blocking). */
-export function initiateEmailSignIn(authInstance: Auth, email: string, password: string): void {
+export function initiateEmailSignIn(authInstance: Auth, email: string, password: string): void  {
   signInWithEmailAndPassword(authInstance, email, password).catch(err => {
       console.error("Sign in failed:", err);
   });
@@ -30,8 +31,11 @@ export function initiateEmailSignIn(authInstance: Auth, email: string, password:
 /** Initiate Google sign-in (non-blocking). */
 export function initiateGoogleSignIn(authInstance: Auth): void {
   const provider = new GoogleAuthProvider();
-  signInWithPopup(authInstance, provider).catch(err => {
+  signInWithPopup(authInstance, provider).catch((err: FirebaseError) => {
+    // This is a common scenario and not a true "error" to be logged.
+    if (err.code !== 'auth/popup-closed-by-user') {
       console.error("Google sign in failed:", err);
+    }
   });
 }
 
