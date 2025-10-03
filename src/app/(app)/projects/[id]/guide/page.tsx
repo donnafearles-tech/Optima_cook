@@ -1,13 +1,13 @@
 'use client';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CheckCircle, Clock, List, GanttChartSquare, AlertTriangle } from 'lucide-react';
-import GanttChart from '@/components/projects/gantt-chart';
+import { ArrowLeft, CheckCircle, Clock, List, Network, AlertTriangle } from 'lucide-react';
+import CpmDiagram from '@/components/projects/cpm-diagram';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { Project } from '@/lib/types';
+import type { Project, Task } from '@/lib/types';
 import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
@@ -35,7 +35,7 @@ export default function GuidePage() {
     return doc(firestore, 'users', user.uid, 'projects', id);
   }, [firestore, user, id]);
 
-  const { data: project, isLoading, error } = useDoc<Project>(projectRef);
+  const { data: project, isLoading, error, setData: setProject } = useDoc<Project>(projectRef);
   
   if (isLoading || !user) {
     return <div>Cargando guía...</div>;
@@ -88,7 +88,7 @@ export default function GuidePage() {
     </div>
   );
 
-  if (!project.cpmResult) {
+  if (!project.cpmResult || !project.cpmResult.tasks) {
     return (
         <div className="container mx-auto p-4">
             {goBackButton}
@@ -143,7 +143,7 @@ export default function GuidePage() {
       <Tabs defaultValue="steps">
         <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="steps"><List className="mr-2 h-4 w-4"/>Paso a Paso</TabsTrigger>
-            <TabsTrigger value="gantt"><GanttChartSquare className="mr-2 h-4 w-4"/>Diagrama de Gantt</TabsTrigger>
+            <TabsTrigger value="network"><Network className="mr-2 h-4 w-4"/>Diagrama de Red</TabsTrigger>
         </TabsList>
         <TabsContent value="steps">
             <div className="space-y-6 mt-4">
@@ -175,14 +175,14 @@ export default function GuidePage() {
                 </div>
             </div>
         </TabsContent>
-        <TabsContent value="gantt">
+        <TabsContent value="network">
             <Card className="mt-4">
                 <CardHeader>
-                    <CardTitle className="font-headline">Cronograma de Cocina</CardTitle>
-                    <CardDescription>Visualizando tu horario de cocina. Las tareas críticas están en rojo.</CardDescription>
+                    <CardTitle className="font-headline">Diagrama de Red (CPM)</CardTitle>
+                    <CardDescription>Visualización del flujo de trabajo. Las tareas críticas están resaltadas.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <GanttChart tasks={tasks} />
+                <CardContent className="min-h-[400px]">
+                    <CpmDiagram tasks={tasks} />
                 </CardContent>
             </Card>
         </TabsContent>
