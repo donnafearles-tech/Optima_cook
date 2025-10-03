@@ -23,6 +23,12 @@
       "description": "An assortment of meal prep containers.",
       "imageUrl": "https://images.unsplash.com/photo-1667499745120-f9bcef8f584e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtZWFsJTIwcHJlcHxlbnwwfHx8fDE3NTk0NDE5NTB8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "meal prep"
+    },
+    {
+      "id": "qr-code",
+      "description": "QR code for Happy Bunny Food.",
+      "imageUrl": "https://storage.googleapis.com/studiopaper-dev.appspot.com/projects%2Fstudio-99491860-5533f%2Fassets%2F53907c13-a4c3-455b-a78c-0255c23a7e3a",
+      "imageHint": "qr code"
     }
   ]
 }

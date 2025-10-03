@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, ChefHat, Clock, GitMerge, UploadCloud } from 'lucide-react';
 import Logo from '@/components/logo';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -30,6 +30,8 @@ const features = [
 ];
 
 const heroImage = PlaceHolderImages.find((img) => img.id === 'hero');
+const qrImage = PlaceHolderImages.find((img) => img.id === 'qr-code');
+
 
 export default function Home() {
   return (
@@ -43,6 +45,15 @@ export default function Home() {
 
       <main className="flex-grow">
         <section className="relative py-20 md:py-32">
+          <div className="absolute inset-0 -z-10 overflow-hidden">
+             {heroImage && <Image
+                src={heroImage.imageUrl}
+                alt={heroImage.description}
+                fill
+                className="object-cover opacity-10"
+                data-ai-hint={heroImage.imageHint}
+              />}
+          </div>
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 className="text-4xl md:text-6xl font-headline font-bold tracking-tight text-gray-900 dark:text-white">
               Cocina de forma más inteligente, no más difícil.
@@ -54,22 +65,11 @@ export default function Home() {
               <Button size="lg" asChild>
                 <Link href="/login">Comienza tu Primer Proyecto</Link>
               </Button>
-              <Button size="lg" variant="outline">
-                Saber Más
+              <Button size="lg" variant="outline" asChild>
+                <Link href="/about">Saber Más</Link>
               </Button>
             </div>
           </div>
-          {heroImage && (
-            <div className="absolute inset-0 -z-10 overflow-hidden">
-               <Image
-                  src={heroImage.imageUrl}
-                  alt={heroImage.description}
-                  fill
-                  className="object-cover opacity-10"
-                  data-ai-hint={heroImage.imageHint}
-                />
-            </div>
-          )}
         </section>
 
         <section id="features" className="py-20 bg-white dark:bg-gray-900/50">
