@@ -32,7 +32,7 @@ export default function ResourceFormSheet({
   onSave,
 }: ResourceFormSheetProps) {
   const [name, setName] = useState('');
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<number | string>(1);
   const [keywords, setKeywords] = useState<string[]>([]);
   const [newKeyword, setNewKeyword] = useState('');
   const [isSuggesting, setIsSuggesting] = useState(false);
@@ -92,6 +92,25 @@ export default function ResourceFormSheet({
     }
   }
 
+  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value === '') {
+      setQuantity('');
+    } else {
+      const num = Number(value);
+      if (!isNaN(num)) {
+        setQuantity(num);
+      }
+    }
+  };
+
+  const handleQuantityBlur = () => {
+    if (quantity === '' || Number(quantity) < 1) {
+      setQuantity(1);
+    }
+  };
+
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name) {
@@ -102,10 +121,12 @@ export default function ResourceFormSheet({
         });
         return;
     }
+    
+    const finalQuantity = Math.max(1, Number(quantity));
 
     onSave({
       name,
-      quantity,
+      quantity: finalQuantity,
       keywords,
     });
   };
@@ -138,7 +159,8 @@ export default function ResourceFormSheet({
                 id="quantity"
                 type="number"
                 value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
+                onChange={handleQuantityChange}
+                onBlur={handleQuantityBlur}
                 required
                 min="1"
                 className="mt-1"
