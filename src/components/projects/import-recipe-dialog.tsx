@@ -14,7 +14,6 @@ import { useToast } from '@/hooks/use-toast';
 import { parseRecipe } from '@/ai/flows/parse-recipe';
 import type { Project, Task, ParseRecipeOutput } from '@/lib/types';
 import { Sparkles, Upload } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -32,7 +31,6 @@ export default function ImportRecipeDialog({ open, onOpenChange, project, onProj
   const [isParsing, setIsParsing] = useState(false);
   const [fileName, setFileName] = useState('');
   const { toast } = useToast();
-  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleParse = async (textToParse: string) => {
@@ -80,8 +78,6 @@ export default function ImportRecipeDialog({ open, onOpenChange, project, onProj
       onOpenChange(false);
       setRecipeText('');
       setFileName('');
-      // Force a re-render by navigating to the same page
-      router.refresh();
 
     } catch (error) {
       console.error('Failed to parse recipe', error);

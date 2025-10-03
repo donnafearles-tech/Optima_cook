@@ -16,17 +16,11 @@ interface ProjectClientPageProps {
   onProjectUpdate: (project: Project) => void;
 }
 
-export default function ProjectClientPage({ project: initialProject, onProjectUpdate }: ProjectClientPageProps) {
-  const [project, setProjectState] = useState<Project>(initialProject);
+export default function ProjectClientPage({ project, onProjectUpdate }: ProjectClientPageProps) {
   const [editingTask, setEditingTask] = useState<Task | null | 'new'>(null);
   const [isSuggesting, setIsSuggesting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-
-  const handleProjectChange = (updatedProject: Project) => {
-    setProjectState(updatedProject);
-    onProjectUpdate(updatedProject);
-  }
 
   const handleTaskSave = (taskToSave: Task) => {
     let updatedTasks: Task[];
@@ -35,7 +29,7 @@ export default function ProjectClientPage({ project: initialProject, onProjectUp
     } else {
       updatedTasks = [...project.tasks, { ...taskToSave, id: `task_${Date.now()}` }];
     }
-    handleProjectChange({ ...project, tasks: updatedTasks });
+    onProjectUpdate({ ...project, tasks: updatedTasks });
     setEditingTask(null);
   };
 
@@ -44,7 +38,7 @@ export default function ProjectClientPage({ project: initialProject, onProjectUp
       // Also remove from dependencies of other tasks
       .map(t => ({...t, predecessorIds: t.predecessorIds.filter(id => id !== taskId)}));
     
-    handleProjectChange({ ...project, tasks: updatedTasks });
+    onProjectUpdate({ ...project, tasks: updatedTasks });
   };
   
   const handleSuggestDependencies = async () => {
@@ -71,7 +65,7 @@ export default function ProjectClientPage({ project: initialProject, onProjectUp
         return { ...task, predecessorIds };
       });
       
-      handleProjectChange({ ...project, tasks: updatedTasks });
+      onProjectUpdate({ ...project, tasks: updatedTasks });
 
       toast({
         title: 'Dependencies Suggested!',
@@ -92,7 +86,7 @@ export default function ProjectClientPage({ project: initialProject, onProjectUp
 
   const handleCalculatePath = () => {
     const cpmResult = calculateCPM(project.tasks);
-    handleProjectChange({ ...project, cpmResult });
+    onProjectUpdate({ ...project, cpmResult });
     router.push(`/projects/${project.id}/guide`);
   };
 
