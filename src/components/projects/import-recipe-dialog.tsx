@@ -11,8 +11,8 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { parseRecipe, type ParseRecipeOutput } from '@/ai/flows/parse-recipe';
-import type { Project, Task } from '@/lib/types';
+import { parseRecipe } from '@/ai/flows/parse-recipe';
+import type { Project, Task, ParseRecipeOutput } from '@/lib/types';
 import { Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 

@@ -3,12 +3,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Wand2 } from 'lucide-react';
-import type { Project, Task, SuggestTaskDependenciesOutput } from '@/lib/types';
+import type { Project, Task } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { suggestTaskDependencies } from '@/ai/flows/suggest-task-dependencies';
 import { calculateCPM } from '@/lib/cpm';
 import TasksTable from './tasks-table';
 import EditTaskSheet from './edit-task-sheet';
+import { SuggestTaskDependenciesOutput } from '@/lib/types';
 
 interface ProjectClientPageProps {
   project: Project;

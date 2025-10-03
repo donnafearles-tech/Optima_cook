@@ -7,26 +7,14 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {
+  ParseRecipeInputSchema,
+  ParseRecipeOutputSchema,
+  type ParseRecipeInput,
+  type ParseRecipeOutput,
+} from '@/lib/types';
 
-const AiTaskSchema = z.object({
-  name: z.string().describe('The name of the task.'),
-  duration: z.number().describe('The estimated duration of the task in seconds.'),
-});
-
-export const ParseRecipeInputSchema = z.object({
-  recipeText: z.string().describe('The full text of the recipe to parse.'),
-});
-export type ParseRecipeInput = z.infer<typeof ParseRecipeInputSchema>;
-
-export const ParseRecipeOutputSchema = z.object({
-    recipeName: z.string().describe('The name of the recipe.'),
-    tasks: z.array(AiTaskSchema).describe('The list of tasks extracted from the recipe, with estimated durations.'),
-});
-export type ParseRecipeOutput = z.infer<typeof ParseRecipeOutputSchema>;
-
-
-export const parseRecipeFlow = ai.defineFlow(
+const parseRecipeFlow = ai.defineFlow(
   {
     name: 'parseRecipeFlow',
     inputSchema: ParseRecipeInputSchema,
