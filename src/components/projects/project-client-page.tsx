@@ -22,7 +22,7 @@ export default function ProjectClientPage({ project }: ProjectClientPageProps) {
   const [isSuggesting, setIsSuggesting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { firestore } = useFirebase();
+  const { firestore, user } = useFirebase();
 
   const handleTaskSave = (taskToSave: Task) => {
     const tasksCollection = collection(firestore, 'tasks');
@@ -98,8 +98,9 @@ export default function ProjectClientPage({ project }: ProjectClientPageProps) {
   };
 
   const handleCalculatePath = () => {
+    if (!user) return;
     const cpmResult = calculateCPM(project.tasks);
-    const projectRef = doc(firestore, 'projects', project.id);
+    const projectRef = doc(firestore, 'users', user.uid, 'projects', project.id);
     updateDocumentNonBlocking(projectRef, { cpmResult });
     router.push(`/projects/${project.id}/guide`);
   };

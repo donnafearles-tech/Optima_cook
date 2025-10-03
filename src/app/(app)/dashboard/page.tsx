@@ -20,10 +20,8 @@ export default function DashboardPage() {
 
   const projectsQuery = useMemoFirebase(() => {
     if (!user) return null;
-    return query(
-      collection(firestore, 'projects'),
-      where('ownerId', '==', user.uid)
-    );
+    // Query the subcollection of projects for the current user
+    return collection(firestore, 'users', user.uid, 'projects');
   }, [firestore, user]);
 
   const {
@@ -37,8 +35,9 @@ export default function DashboardPage() {
   }
   
   if (error) {
-    console.error(error);
-    return <div>Error al cargar proyectos.</div>
+    // The FirebaseErrorListener will throw the error to the Next.js overlay
+    // but we can still show a fallback UI here.
+    return <div>Error al cargar proyectos. Revisa la consola para más detalles.</div>
   }
 
   return (

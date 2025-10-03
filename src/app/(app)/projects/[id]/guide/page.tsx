@@ -28,12 +28,12 @@ export default function GuidePage() {
   const router = useRouter();
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
-  const { firestore } = useFirebase();
+  const { firestore, user } = useFirebase();
 
   const projectRef = useMemoFirebase(() => {
-    if (!id) return null;
-    return doc(firestore, 'projects', id);
-  }, [firestore, id]);
+    if (!id || !user) return null;
+    return doc(firestore, 'users', user.uid, 'projects', id);
+  }, [firestore, user, id]);
 
   const { data: project, isLoading } = useDoc<Project>(projectRef);
   

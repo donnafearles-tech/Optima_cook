@@ -16,9 +16,9 @@ export default function ProjectPage() {
   const { firestore, user } = useFirebase();
 
   const projectRef = useMemoFirebase(() => {
-    if (!id) return null;
-    return doc(firestore, 'projects', id);
-  }, [firestore, id]);
+    if (!id || !user) return null;
+    return doc(firestore, 'users', user.uid, 'projects', id);
+  }, [firestore, user, id]);
 
   const { data: project, isLoading: isLoadingProject } = useDoc<Project>(projectRef);
 
@@ -35,7 +35,7 @@ export default function ProjectPage() {
   const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
 
 
-  if (isLoadingProject || isLoadingRecipes || isLoadingTasks) {
+  if (isLoadingProject || isLoadingRecipes || isLoadingTasks || !user) {
     return <div>Cargando proyecto...</div>;
   }
 

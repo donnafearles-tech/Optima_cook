@@ -37,12 +37,12 @@ export default function CreateProjectDialog({
 
     setIsSaving(true);
     
-    const projectsCol = collection(firestore, 'projects');
+    // Get a reference to the user's projects subcollection
+    const projectsCol = collection(firestore, 'users', user.uid, 'projects');
     
     const newProjectData = {
       name,
       description,
-      ownerId: user.uid,
       creationDate: serverTimestamp(),
       estimatedTotalDuration: 0,
     };

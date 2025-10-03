@@ -16,11 +16,10 @@
       "properties": {
         "name": { "type": "string", "description": "The name of the project." },
         "description": { "type": "string", "description": "A description of the project." },
-        "ownerId": { "type": "string", "description": "The ID of the user who owns the project." },
         "creationDate": { "type": "string", "format": "date-time", "description": "The date the project was created." },
         "estimatedTotalDuration": { "type": "number", "description": "The estimated total duration in seconds." }
       },
-      "required": ["name", "ownerId", "creationDate"]
+      "required": ["name", "creationDate"]
     },
     "Recipe": {
       "title": "Recipe",
@@ -47,7 +46,8 @@
           "items": { "type": "string" },
           "description": "An array of task IDs that must be completed before this task can start."
         },
-        "status": { "type": "string", "enum": ["pending", "in_progress", "completed"], "description": "The current status of the task." }
+        "status": { "type": "string", "enum": ["pending", "in_progress", "completed"], "description": "The current status of the task." },
+         "isAssemblyStep": { "type": "boolean", "description": "Indica si la tarea es un paso de ensamblaje final." }
       },
       "required": ["name", "duration", "recipeId", "projectId", "predecessorIds", "status"]
     }
@@ -60,9 +60,9 @@
       "schema": { "$ref": "#/entities/User" },
       "description": "Stores user profile information."
     },
-    "'/projects/{projectId}'": {
+    "'/users/{userId}/projects/{projectId}'": {
       "schema": { "$ref": "#/entities/Project" },
-      "description": "Stores all cooking projects. Security rules will enforce that users can only access their own projects via the ownerId field."
+      "description": "Stores a user's cooking projects."
     },
     "'/recipes/{recipeId}'": {
       "schema": { "$ref": "#/entities/Recipe" },
