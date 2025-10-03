@@ -46,7 +46,7 @@ const AiTaskSchema = z.object({
 });
 
 export const ParseRecipeInputSchema = z.object({
-  recipeText: z.string().describe('El texto completo de la receta para analizar.'),
+  recipeText: z.string().optional().describe('El texto completo de la receta para analizar.'),
   ingredients: z.array(z.string()).optional().describe('Lista de ingredientes para deducir el ensamblaje.'),
 });
 export type ParseRecipeInput = z.infer<typeof ParseRecipeInputSchema>;
@@ -54,7 +54,11 @@ export type ParseRecipeInput = z.infer<typeof ParseRecipeInputSchema>;
 export const ParseRecipeOutputSchema = z.object({
     recipeName: z.string().describe('El nombre de la receta.'),
     tasks: z.array(AiTaskSchema).describe('La lista de tareas extraídas de la receta, con duraciones estimadas.'),
-    dependencies: z.record(z.array(z.string())).optional().describe('Un mapa de nombres de tareas a una lista de nombres de tareas predecesoras sugeridas.'),
+    dependencies: z
+    .object({})
+    .catchall(z.array(z.string()))
+    .optional()
+    .describe('Un mapa de nombres de tareas a una lista de nombres de tareas predecesoras sugeridas.'),
 });
 export type ParseRecipeOutput = z
   .infer<typeof ParseRecipeOutputSchema>;
