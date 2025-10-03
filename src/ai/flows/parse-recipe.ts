@@ -14,18 +14,11 @@ import {
   type ParseRecipeOutput,
 } from '@/lib/types';
 
-const parseRecipeFlow = ai.defineFlow(
-  {
-    name: 'parseRecipeFlow',
-    inputSchema: ParseRecipeInputSchema,
-    outputSchema: ParseRecipeOutputSchema,
-  },
-  async input => {
-    const prompt = ai.definePrompt({
-      name: 'parseRecipePrompt',
-      input: {schema: ParseRecipeInputSchema},
-      output: {schema: ParseRecipeOutputSchema},
-      prompt: `Eres un Chef Ejecutivo experto en optimización de procesos de cocina. Tu tarea es analizar una receta y/o una lista de ingredientes para generar una secuencia de tareas lógicas y eficientes, incluyendo preparación y ensamblaje.
+const parseRecipePrompt = ai.definePrompt({
+  name: 'parseRecipePrompt',
+  input: {schema: ParseRecipeInputSchema},
+  output: {schema: ParseRecipeOutputSchema},
+  prompt: `Eres un Chef Ejecutivo experto en optimización de procesos de cocina. Tu tarea es analizar una receta y/o una lista de ingredientes para generar una secuencia de tareas lógicas y eficientes, incluyendo preparación y ensamblaje.
 
       **Instrucciones:**
       1.  **Analiza la entrada**: Recibirás el texto de una receta y/o una lista de ingredientes.
@@ -54,9 +47,16 @@ const parseRecipeFlow = ai.defineFlow(
       **Salida Requerida:**
       Responde **ÚNICAMENTE** con un objeto JSON válido que contenga "recipeName", "tasks" (con "name" y "duration" en segundos), y "dependencies" (un objeto donde la clave es el nombre de la tarea y el valor es un array de sus predecesoras).
       `,
-    });
+});
 
-    const {output} = await prompt(input);
+const parseRecipeFlow = ai.defineFlow(
+  {
+    name: 'parseRecipeFlow',
+    inputSchema: ParseRecipeInputSchema,
+    outputSchema: ParseRecipeOutputSchema,
+  },
+  async input => {
+    const {output} = await parseRecipePrompt(input);
     return output!;
   }
 );
