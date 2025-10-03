@@ -35,13 +35,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { initiateSignOut } from '@/firebase/auth';
 
 function UserNav() {
   const { user } = useFirebaseAuth();
   const { auth } = useFirebase();
 
   const handleSignOut = () => {
-    auth.initiateSignOut(auth);
+    initiateSignOut(auth);
   };
   
   if (!user) {
