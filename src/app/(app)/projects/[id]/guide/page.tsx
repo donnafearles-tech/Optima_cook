@@ -37,7 +37,7 @@ export default function GuidePage() {
 
   const { data: project, isLoading, error } = useDoc<Project>(projectRef);
   
-  if (isLoading) {
+  if (isLoading || !user) {
     return <div>Cargando guía...</div>;
   }
   

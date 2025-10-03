@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Wand2, FileUp, Plus } from 'lucide-react';
-import type { Project, Task, Recipe, UserResource } from '@/lib/types';
+import type { Project, Task, Recipe, UserResource, CpmResult } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { suggestTaskDependencies } from '@/ai/flows/suggest-task-dependencies';
 import { calculateCPM } from '@/lib/cpm';
@@ -33,7 +33,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const userRef = useMemoFirebase(() => doc(firestore, 'users', userId), [firestore, userId]);
   const projectRef = useMemoFirebase(() => doc(userRef, 'projects', projectId), [userRef, projectId]);
 
-  const { data: project, isLoading: isLoadingProject, error: projectError } = useDoc<Project>(projectRef);
+  const { data: project, isLoading: isLoadingProject, error: projectError, setData: setProject } = useDoc<Project>(projectRef);
   
   const recipesQuery = useMemoFirebase(() => collection(projectRef, 'recipes'), [projectRef]);
   const { data: recipes, isLoading: isLoadingRecipes } = useCollection<Recipe>(recipesQuery);
@@ -186,15 +186,20 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   };
 
   const handleCalculatePath = () => {
-    if (!tasks) return;
+    if (!tasks || !project) return;
     setIsCalculatingPath(true);
     try {
         const cpmResult = calculateCPM(tasks);
         updateDocumentNonBlocking(projectRef, { cpmResult });
         
+        // Immediately update local state to show the "View Guide" button
+        if (setProject) {
+            setProject({ ...project, cpmResult });
+        }
+
         toast({
           title: "¡Ruta Óptima Calculada!",
-          description: "Tu guía de cocina está lista. El botón para verla aparecerá en breve.",
+          description: "Tu guía de cocina está lista.",
         });
     } catch(error) {
         console.error(error);
