@@ -1,13 +1,41 @@
+'use client';
+import { useState, useEffect } from 'react';
 import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { getProject } from '@/lib/data';
-import { calculateCPM } from '@/lib/cpm';
-import Link from 'next/link';
-import { ArrowRight, FileUp, Sparkles, Wand2 } from 'lucide-react';
+import { FileUp } from 'lucide-react';
 import ProjectClientPage from '@/components/projects/project-client-page';
+import type { Project } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ProjectPage({ params }: { params: { id: string } }) {
-  const project = getProject(params.id);
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const projectData = getProject(params.id);
+    if (projectData) {
+      setProject(projectData);
+    }
+    setLoading(false);
+  }, [params.id]);
+
+  if (loading) {
+    return (
+      <div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <Skeleton className="h-9 w-64 mb-2" />
+            <Skeleton className="h-5 w-80" />
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Skeleton className="h-10 w-36" />
+          </div>
+        </div>
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
   if (!project) {
     notFound();
