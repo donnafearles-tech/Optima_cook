@@ -106,8 +106,8 @@ export default function GuidePage() {
              <div className="flex flex-col items-center justify-center text-center border-2 border-dashed rounded-lg p-12">
                 <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
                 <h3 className="text-xl font-semibold">Generando guía...</h3>
-                <p className="mt-2 text-muted-foreground">
-                    El cálculo está en progreso. La guía aparecerá aquí automáticamente en unos segundos.
+                <p className="mt-2 text-muted-foreground max-w-md">
+                    El cálculo está en progreso. La guía aparecerá aquí automáticamente. Esto puede tardar hasta un minuto dependiendo de la complejidad del proyecto.
                 </p>
             </div>
         </div>
