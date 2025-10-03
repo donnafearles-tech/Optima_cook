@@ -1,5 +1,5 @@
 'use client';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LabelList } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LabelList, Cell } from 'recharts';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Task } from '@/lib/types';
 import { useTheme } from 'next-themes';
@@ -26,53 +26,48 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function GanttChart({ tasks }: { tasks: Task[] }) {
   const { resolvedTheme } = useTheme();
   
+  if (!tasks || tasks.length === 0) {
+    return (
+        <div className="text-center text-muted-foreground p-8">
+            No hay tareas para mostrar en el diagrama.
+        </div>
+    )
+  }
+  
   const data = tasks.map(task => ({
     name: task.name,
     range: [task.es, task.ef],
     isCritical: task.isCritical,
-  })).sort((a,b) => a.range[0] - b.range[0]);
+  })).sort((a,b) => (a.range[0] ?? 0) - (b.range[0] ?? 0));
 
-  const yAxisWidth = Math.max(...data.map(d => d.name.length)) * 6 + 20;
+  const yAxisWidth = Math.max(...data.map(d => d.name.length)) * 7 + 30;
+
+  const primaryColor = 'hsl(var(--primary))';
+  const accentColor = 'hsl(var(--accent))';
 
   return (
-    <div style={{ width: '100%', height: 60 * data.length }}>
+    <div style={{ width: '100%', height: Math.max(200, 50 * data.length) }}>
       <ResponsiveContainer>
         <BarChart
           data={data}
           layout="vertical"
-          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+          margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+          barCategoryGap="35%"
         >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis type="number" unit="s" domain={['dataMin', 'dataMax + 100']} />
-          <YAxis dataKey="name" type="category" width={yAxisWidth} interval={0} />
-          <Tooltip content={<CustomTooltip />} />
-          <Bar dataKey="range" fill={resolvedTheme === 'dark' ? 'hsl(var(--primary))' : 'hsl(var(--accent))'}>
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+          <XAxis type="number" unit="s" domain={['dataMin', 'dataMax']} />
+          <YAxis dataKey="name" type="category" width={yAxisWidth} interval={0} tickLine={false} axisLine={false} />
+          <Tooltip content={<CustomTooltip />} cursor={{fill: 'hsl(var(--muted) / 0.5)'}} />
+          <Bar dataKey="range" radius={[4, 4, 4, 4]}>
             {data.map((entry, index) => (
-               <Bar
-                key={`bar-${index}`}
-                dataKey="range"
-                fill={entry.isCritical ? 'hsl(var(--primary))' : 'hsl(var(--accent))'}
-                shape={<rect />} // This is needed to apply fill per bar
-              />
+              <Cell key={`cell-${index}`} fill={entry.isCritical ? primaryColor : accentColor} />
             ))}
              <LabelList 
                 dataKey="name" 
-                position="insideLeft" 
-                content={(props:any) => {
-                    const { x, y, width, height, value } = props;
-                    return (
-                        <text 
-                            x={x + 10} 
-                            y={y + height / 2} 
-                            fill={resolvedTheme === 'dark' ? '#fff' : '#000'} 
-                            textAnchor="start" 
-                            dominantBaseline="middle"
-                            className="text-xs font-semibold"
-                        >
-                            {value}
-                        </text>
-                    );
-                }} 
+                position="insideLeft"
+                offset={10}
+                fill="#fff"
+                className="text-xs font-bold"
             />
           </Bar>
         </BarChart>
