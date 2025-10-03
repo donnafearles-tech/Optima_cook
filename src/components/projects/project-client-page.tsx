@@ -13,7 +13,6 @@ import RecipeCard from './recipe-card';
 import { useFirebase, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, doc, writeBatch } from 'firebase/firestore';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { notFound } from 'next/navigation';
 
 interface ProjectClientPageProps {
   projectId: string;
@@ -195,15 +194,21 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         <Alert variant="destructive">
             <AlertTitle>Error al cargar el proyecto</AlertTitle>
             <AlertDescription>
-                Es posible que no exista o que no tengas permisos para verlo.
+                Ha ocurrido un error al cargar el proyecto. Es posible que no tengas permisos o que haya un problema de red.
             </AlertDescription>
         </Alert>
       );
   }
 
   if (!project) {
-    notFound();
-    return null; // notFound() throws an error, so this is for type safety.
+    return (
+        <Alert variant="destructive">
+            <AlertTitle>Proyecto no encontrado</AlertTitle>
+            <AlertDescription>
+                El proyecto que buscas no existe. Por favor, vuelve al dashboard.
+            </AlertDescription>
+        </Alert>
+    );
   }
 
   const allTasks = tasks || [];
@@ -269,7 +274,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
 
       <div className="mt-8 flex justify-end gap-2">
         {project.cpmResult && (
-          <Button size="lg" variant="outline" asChild>
+          <Button size="lg" asChild>
             <Link href={`/projects/${projectId}/guide`}>Ver Guía <ArrowRight className="ml-2 h-4 w-4" /></Link>
           </Button>
         )}

@@ -1,5 +1,5 @@
 'use client';
-import { notFound, useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, CheckCircle, Clock, List, GanttChartSquare, AlertTriangle } from 'lucide-react';
 import GanttChart from '@/components/projects/gantt-chart';
@@ -42,7 +42,6 @@ export default function GuidePage() {
   }
   
   if (error) {
-    // Instead of notFound(), show a more graceful error.
     return (
         <div className="container mx-auto p-4">
              <Alert variant="destructive">
@@ -60,9 +59,20 @@ export default function GuidePage() {
   }
 
   if (!project) {
-    // This case handles if the project ID is invalid.
-    notFound();
-    return null;
+    return (
+        <div className="container mx-auto p-4">
+             <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Proyecto no encontrado</AlertTitle>
+              <AlertDescription>
+                El proyecto que buscas no existe.
+                <div className="mt-4">
+                    <Button variant="outline" onClick={() => router.back()}>Volver</Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+        </div>
+    )
   }
 
   const goBackButton = (
