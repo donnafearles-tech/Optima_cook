@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Project, Task } from '@/lib/types';
 import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
+import { Progress } from '@/components/ui/progress';
+import { useState, useEffect } from 'react';
 
 function formatDuration(seconds: number) {
   const hours = Math.floor(seconds / 3600);
@@ -29,6 +31,8 @@ export default function GuidePage() {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const { firestore, user } = useFirebase();
+  const [progress, setProgress] = useState(10);
+
 
   const projectRef = useMemoFirebase(() => {
     if (!id || !user) return null;
@@ -36,6 +40,19 @@ export default function GuidePage() {
   }, [firestore, user, id]);
 
   const { data: project, isLoading, error } = useDoc<Project>(projectRef);
+
+  useEffect(() => {
+    // Only run the animation if the guide is being generated
+    if (project && (!project.cpmResult || !project.cpmResult.tasks || project.cpmResult.tasks.some(t => t.es === undefined))) {
+        const timer = setInterval(() => {
+            setProgress((prev) => (prev >= 90 ? 10 : prev + 10));
+        }, 600);
+
+        return () => {
+            clearInterval(timer);
+        };
+    }
+  }, [project]);
   
   const goBackButton = (
     <div className="flex items-center gap-4 mb-6">
@@ -104,8 +121,8 @@ export default function GuidePage() {
         <div className="container mx-auto p-4">
             {goBackButton}
              <div className="flex flex-col items-center justify-center text-center border-2 border-dashed rounded-lg p-12">
-                <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-                <h3 className="text-xl font-semibold">Generando guía...</h3>
+                <h3 className="text-xl font-semibold mb-4">Generando guía de cocina...</h3>
+                <Progress value={progress} className="w-full max-w-md mb-4" />
                 <p className="mt-2 text-muted-foreground max-w-md">
                     El cálculo está en progreso. La guía aparecerá aquí automáticamente. Esto puede tardar hasta un minuto dependiendo de la complejidad del proyecto.
                 </p>
