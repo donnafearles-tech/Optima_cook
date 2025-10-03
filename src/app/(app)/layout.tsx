@@ -22,9 +22,10 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarInset,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
-import { useFirebase, useUser, initiateSignOut } from '@/firebase/auth';
+import { useFirebase, useUser as useFirebaseAuth, initiateSignOut } from '@/firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -36,7 +37,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 function UserNav() {
-  const { user } = useUser();
+  const { user } = useFirebaseAuth();
   const { auth } = useFirebase();
 
   const handleSignOut = () => {
@@ -87,7 +88,9 @@ function MainSidebar() {
   return (
     <Sidebar>
       <SidebarHeader>
-        <Logo />
+        <Link href="/dashboard">
+          <Logo />
+        </Link>
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
@@ -129,26 +132,31 @@ function MainSidebar() {
   );
 }
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = React.useState(true);
-
+function Header() {
+  const { toggleSidebar } = useSidebar();
   return (
-    <SidebarProvider open={open} onOpenChange={setOpen}>
+     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden"
+          onClick={toggleSidebar}
+        >
+          <PanelLeft />
+          <span className="sr-only">Alternar Menú</span>
+        </Button>
+        <div className="flex-1" />
+        <UserNav />
+      </header>
+  )
+}
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider>
       <MainSidebar />
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setOpen(!open)}
-          >
-            <PanelLeft />
-            <span className="sr-only">Alternar Menú</span>
-          </Button>
-          <div className="flex-1" />
-           <UserNav />
-        </header>
+        <Header/>
         <main className="flex-1 p-4 sm:p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
