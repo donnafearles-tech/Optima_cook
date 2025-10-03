@@ -144,6 +144,7 @@ export default function ProjectClientPage({ project }: ProjectClientPageProps) {
         onOpenChange={(isOpen) => !isOpen && setEditingTask(null)}
         task={editingTask === 'new' ? null : editingTask}
         allTasks={project.tasks}
+        recipes={project.recipes}
         onSave={handleTaskSave}
       />
     </>

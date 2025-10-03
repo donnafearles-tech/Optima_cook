@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';
-import type { Task } from '@/lib/types';
+import type { Task, Recipe } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 
 interface EditTaskSheetProps {
@@ -29,6 +29,7 @@ interface EditTaskSheetProps {
   onOpenChange: (isOpen: boolean) => void;
   task: Task | null;
   allTasks: Task[];
+  recipes: Recipe[];
   onSave: (task: Task) => void;
 }
 
@@ -39,6 +40,7 @@ export default function EditTaskSheet({
   onOpenChange,
   task,
   allTasks,
+  recipes,
   onSave,
 }: EditTaskSheetProps) {
   const [name, setName] = useState('');
@@ -48,26 +50,28 @@ export default function EditTaskSheet({
   const [recipeId, setRecipeId] = useState('');
 
   useEffect(() => {
-    if (open && task) {
-      setName(task.name);
-      if (task.duration < 60 || task.duration % 60 !== 0) {
-        setTimeUnit('seconds');
-        setDurationValue(task.duration);
+    if (open) {
+      if (task) {
+        setName(task.name);
+        if (task.duration < 60 || task.duration % 60 !== 0) {
+          setTimeUnit('seconds');
+          setDurationValue(task.duration);
+        } else {
+          setTimeUnit('minutes');
+          setDurationValue(task.duration / 60);
+        }
+        setPredecessorIds(task.predecessorIds);
+        setRecipeId(task.recipeId)
       } else {
+        // Reset for new task
+        setName('');
+        setDurationValue(5); // Default to 5 minutes
         setTimeUnit('minutes');
-        setDurationValue(task.duration / 60);
+        setPredecessorIds([]);
+        setRecipeId(recipes.length > 0 ? recipes[0].id : '');
       }
-      setPredecessorIds(task.predecessorIds);
-      setRecipeId(task.recipeId)
-    } else {
-      // Reset for new task
-      setName('');
-      setDurationValue(5); // Default to 5 minutes
-      setTimeUnit('minutes');
-      setPredecessorIds([]);
-      setRecipeId(''); // You might want to pass available recipes to select from
     }
-  }, [task, open]);
+  }, [task, open, recipes]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,17 +138,20 @@ export default function EditTaskSheet({
                 </SelectContent>
               </Select>
             </div>
-             {/* This could be a select with available recipes */}
             <div>
-                <Label htmlFor="recipeId">ID de Receta</Label>
-                <Input
-                    id="recipeId"
-                    value={recipeId}
-                    onChange={(e) => setRecipeId(e.target.value)}
-                    required
-                    className="mt-1"
-                    placeholder="Pega el ID de la receta aquí"
-                />
+              <Label htmlFor="recipeId">Receta</Label>
+               <Select value={recipeId} onValueChange={setRecipeId} required>
+                <SelectTrigger id="recipeId" className="mt-1">
+                  <SelectValue placeholder="Selecciona una receta" />
+                </SelectTrigger>
+                <SelectContent>
+                  {recipes.map(recipe => (
+                    <SelectItem key={recipe.id} value={recipe.id}>
+                      {recipe.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="predecessors">Dependencias</Label>
