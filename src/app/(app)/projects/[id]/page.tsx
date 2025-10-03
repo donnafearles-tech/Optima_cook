@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { FileUp } from 'lucide-react';
@@ -40,6 +40,7 @@ export default function ProjectPage() {
     );
   }
 
+  // After the initial load, if the project is still not found, then it's a true 404.
   if (!project) {
     notFound();
   }
