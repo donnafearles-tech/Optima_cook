@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useEffect, useState } from 'react';
 import type { Project } from '@/lib/types';
 import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -42,23 +41,46 @@ export default function GuidePage() {
     return <div>Cargando guía...</div>;
   }
   
-  if (error || !project) {
+  if (error) {
+    // Instead of notFound(), show a more graceful error.
+    return (
+        <div className="container mx-auto p-4">
+             <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Error al Cargar</AlertTitle>
+              <AlertDescription>
+                No se pudo cargar la guía del proyecto. Es posible que no tengas permisos o que haya ocurrido un error de red.
+                <div className="mt-4">
+                    <Button variant="outline" onClick={() => router.back()}>Volver</Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+        </div>
+    )
+  }
+
+  if (!project) {
+    // This case handles if the project ID is invalid.
     return notFound();
   }
+
+  const goBackButton = (
+    <div className="flex items-center gap-4 mb-6">
+        <Button variant="outline" size="icon" onClick={() => router.back()}>
+        <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div>
+        <h1 className="text-3xl font-bold tracking-tight font-headline">
+            {project.name}: Guía de Cocina
+        </h1>
+        </div>
+    </div>
+  );
 
   if (!project.cpmResult) {
     return (
         <div>
-            <div className="flex items-center gap-4 mb-6">
-                <Button variant="outline" size="icon" onClick={() => router.back()}>
-                <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <div>
-                <h1 className="text-3xl font-bold tracking-tight font-headline">
-                    {project.name}: Guía de Cocina
-                </h1>
-                </div>
-            </div>
+            {goBackButton}
              <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Guía no disponible</AlertTitle>

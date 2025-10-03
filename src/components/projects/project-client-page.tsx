@@ -1,7 +1,6 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Wand2, FileUp, Plus } from 'lucide-react';
 import type { Project, Task, Recipe, UserResource } from '@/lib/types';
@@ -24,7 +23,6 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const [editingTask, setEditingTask] = useState<Task | null | 'new'>(null);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null | 'new'>(null);
   const [isSuggesting, setIsSuggesting] = useState(false);
-  const router = useRouter();
   const { toast } = useToast();
   const { firestore } = useFirebase();
 
@@ -159,12 +157,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     
     toast({
       title: "¡Ruta Óptima Calculada!",
-      description: "Tu guía de cocina está lista para ser consultada.",
-      action: (
-        <Button asChild>
-          <Link href={`/projects/${projectId}/guide`}>Ver Guía</Link>
-        </Button>
-      )
+      description: "Tu guía de cocina está lista. El botón para verla aparecerá en breve.",
     });
   };
 
@@ -232,10 +225,21 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
                     onDeleteTask={handleTaskDelete}
                 />
             ))}
+             {allRecipes.length === 0 && (
+              <div className="text-center text-muted-foreground border-2 border-dashed rounded-lg p-12">
+                <h3 className="text-lg font-semibold">Este proyecto está vacío</h3>
+                <p className="mt-1">Comienza por importar o añadir una receta.</p>
+              </div>
+            )}
         </div>
       </div>
 
-      <div className="mt-8 flex justify-end">
+      <div className="mt-8 flex justify-end gap-2">
+        {project.cpmResult && (
+          <Button size="lg" variant="outline" asChild>
+            <Link href={`/projects/${projectId}/guide`}>Ver Guía <ArrowRight className="ml-2 h-4 w-4" /></Link>
+          </Button>
+        )}
         <Button size="lg" onClick={handleCalculatePath} disabled={allTasks.length === 0}>
           Calcular Ruta Óptima <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
