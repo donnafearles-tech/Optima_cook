@@ -11,14 +11,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function ProjectPage({ params }: { params: { id: string } }) {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const { id } = params;
 
   useEffect(() => {
-    const projectData = getProject(params.id);
+    const projectData = getProject(id);
     if (projectData) {
       setProject(projectData);
     }
     setLoading(false);
-  }, [params.id]);
+  }, [id]);
 
   if (loading) {
     return (
