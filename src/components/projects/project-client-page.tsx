@@ -13,6 +13,7 @@ import RecipeCard from './recipe-card';
 import { useFirebase, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, doc, writeBatch } from 'firebase/firestore';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { notFound, useRouter } from 'next/navigation';
 
 interface ProjectClientPageProps {
   projectId: string;
@@ -26,6 +27,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const [isSuggesting, setIsSuggesting] = useState(false);
   const { toast } = useToast();
   const { firestore } = useFirebase();
+  const router = useRouter();
 
   const userRef = useMemoFirebase(() => doc(firestore, 'users', userId), [firestore, userId]);
   const projectRef = useMemoFirebase(() => doc(userRef, 'projects', projectId), [userRef, projectId]);
@@ -43,8 +45,16 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
 
 
   const handleOpenEditTask = (task: Task | 'new') => {
-    const defaultRecipeId = recipes?.[0]?.id || null;
     if (task === 'new') {
+        const defaultRecipeId = recipes?.[0]?.id || null;
+        if (!defaultRecipeId) {
+            toast({
+                title: "No hay recetas",
+                description: "Crea una receta antes de añadir una tarea.",
+                variant: "destructive",
+            });
+            return;
+        }
         const newTaskTemplate: Task = {
             id: '',
             name: '',
@@ -52,7 +62,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
             predecessorIds: [],
             resourceIds: [],
             status: 'pending',
-            recipeId: defaultRecipeId || '',
+            recipeId: defaultRecipeId,
         };
         setEditingTask(newTaskTemplate);
     } else {

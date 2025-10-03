@@ -26,10 +26,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function GanttChart({ tasks }: { tasks: Task[] }) {
   const { resolvedTheme } = useTheme();
   
-  if (!tasks || tasks.length === 0) {
+  if (!tasks || tasks.length === 0 || !tasks.every(t => typeof t.es === 'number' && typeof t.ef === 'number')) {
     return (
         <div className="text-center text-muted-foreground p-8">
-            No hay tareas para mostrar en el diagrama.
+            No hay datos de cronograma para mostrar. Por favor, calcula la Ruta Óptima primero.
         </div>
     )
   }
@@ -59,16 +59,16 @@ export default function GanttChart({ tasks }: { tasks: Task[] }) {
           <YAxis dataKey="name" type="category" width={yAxisWidth} interval={0} tickLine={false} axisLine={false} />
           <Tooltip content={<CustomTooltip />} cursor={{fill: 'hsl(var(--muted) / 0.5)'}} />
           <Bar dataKey="range" radius={[4, 4, 4, 4]}>
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.isCritical ? primaryColor : accentColor} />
-            ))}
-             <LabelList 
+            <LabelList 
                 dataKey="name" 
                 position="insideLeft"
                 offset={10}
                 fill="#fff"
                 className="text-xs font-bold"
             />
+            {data.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.isCritical ? primaryColor : accentColor} />
+            ))}
           </Bar>
         </BarChart>
       </ResponsiveContainer>

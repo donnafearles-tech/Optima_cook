@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 const BunnyIcon = ({ className }: { className?: string }) => (
   <svg
@@ -15,9 +16,9 @@ const BunnyIcon = ({ className }: { className?: string }) => (
 
 export default function Logo({ className }: { className?: string }) {
   return (
-    <div className={cn("flex items-center gap-2 font-headline font-bold text-lg", className)}>
+    <Link href="/" className={cn("flex items-center gap-2 font-headline font-bold text-lg", className)}>
       <BunnyIcon className="h-7 w-7 text-primary" />
       <span>Happy Bunny Food</span>
-    </div>
+    </Link>
   );
 }
