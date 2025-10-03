@@ -1,5 +1,5 @@
 'use client';
-import { notFound, useRouter } from 'next/navigation';
+import { notFound, useRouter, useParams } from 'next/navigation';
 import { getProject } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, CheckCircle, Clock, List, GanttChartSquare } from 'lucide-react';
@@ -7,6 +7,8 @@ import GanttChart from '@/components/projects/gantt-chart';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useEffect, useState } from 'react';
+import type { Project } from '@/lib/types';
 
 function formatDuration(seconds: number) {
   const hours = Math.floor(seconds / 3600);
@@ -21,10 +23,23 @@ function formatDuration(seconds: number) {
   return result.trim() || '0s';
 }
 
-export default function GuidePage({ params }: { params: { id: string } }) {
-  const project = getProject(params.id);
+export default function GuidePage() {
   const router = useRouter();
+  const params = useParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const [project, setProject] = useState<Project | null | undefined>(undefined);
 
+  useEffect(() => {
+    if (id) {
+      setProject(getProject(id));
+    }
+  }, [id]);
+
+
+  if (project === undefined) {
+    return <div>Loading...</div>;
+  }
+  
   if (!project || !project.cpmResult) {
     notFound();
   }

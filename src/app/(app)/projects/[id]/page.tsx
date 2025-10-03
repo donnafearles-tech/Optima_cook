@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { getProject } from '@/lib/data';
 import { FileUp } from 'lucide-react';
@@ -8,15 +8,18 @@ import ProjectClientPage from '@/components/projects/project-client-page';
 import type { Project } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function ProjectPage({ params }: { params: { id: string } }) {
+export default function ProjectPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
-  const { id } = params;
+  const params = useParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
   useEffect(() => {
-    const projectData = getProject(id);
-    if (projectData) {
-      setProject(projectData);
+    if (id) {
+      const projectData = getProject(id);
+      if (projectData) {
+        setProject(projectData);
+      }
     }
     setLoading(false);
   }, [id]);
