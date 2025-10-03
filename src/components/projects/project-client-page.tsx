@@ -155,16 +155,19 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
       const taskNameMap = new Map(tasks.map(t => [t.name, t.id]));
       const batch = writeBatch(firestore);
       const tasksCollection = collection(projectRef, 'tasks');
-
-      tasks.forEach(task => {
-        const suggestedPredNames = result[task.name] || [];
-        const predecessorIds = suggestedPredNames
-          .map(name => taskNameMap.get(name))
-          .filter((id): id is string => !!id && id !== task.id);
-        
-        const taskRef = doc(tasksCollection, task.id);
-        batch.update(taskRef, { predecessorIds });
+      
+      result.dependencies.forEach(depPair => {
+        const taskId = taskNameMap.get(depPair.taskName);
+        if (taskId) {
+            const predecessorIds = depPair.predecessorNames
+              .map(name => taskNameMap.get(name))
+              .filter((id): id is string => !!id && id !== taskId);
+            
+            const taskRef = doc(tasksCollection, taskId);
+            batch.update(taskRef, { predecessorIds });
+        }
       });
+
 
       await batch.commit();
 
@@ -264,7 +267,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleSuggestDependencies} disabled={isSuggesting || allTasks.length < 2}>
               {isSuggesting ? (
-                <Sparkles className="mr-2 h-4 w-4 animate-spin" />
+                <Wand2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Wand2 className="mr-2 h-4 w-4" />
               )}

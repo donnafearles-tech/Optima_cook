@@ -79,10 +79,14 @@ export type SuggestTaskDependenciesInput = z.infer<
   typeof SuggestTaskDependenciesInputSchema
 >;
 
-export const SuggestTaskDependenciesOutputSchema = z.record(
-  z.string(),
-  z.array(z.string())
-).describe('Un mapa de nombres de tareas a una lista de nombres de tareas predecesoras sugeridas.');
+const DependencyPairSchema = z.object({
+  taskName: z.string().describe('El nombre de la tarea.'),
+  predecessorNames: z.array(z.string()).describe('Una lista de nombres de tareas que son sus predecesoras.'),
+});
+
+export const SuggestTaskDependenciesOutputSchema = z.object({
+  dependencies: z.array(DependencyPairSchema).describe('Una lista de tareas, cada una con sus predecesoras sugeridas.'),
+});
 export type SuggestTaskDependenciesOutput = z.infer<
   typeof SuggestTaskDependenciesOutputSchema
 >;
