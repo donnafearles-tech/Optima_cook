@@ -36,6 +36,7 @@ import {
 import Logo from '@/components/logo';
 import { useFirebase } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { signInAnonymously } from 'firebase/auth';
 
 
 function UserMenu() {
@@ -135,7 +136,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     if (!isUserLoading && !user) {
-      auth.signInAnonymously();
+      signInAnonymously(auth);
     }
   }, [isUserLoading, user, auth]);
 
