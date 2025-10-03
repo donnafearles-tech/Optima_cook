@@ -4,17 +4,12 @@ import type { Task } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Separator } from '../ui/separator';
 
 interface Node {
   id: string;
   level: number;
   task: Task;
-}
-
-function formatDuration(seconds: number) {
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}m`;
 }
 
 // Function to calculate node levels
@@ -102,22 +97,39 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
   const levels = Array.from(new Set(nodes.map(n => n.level)));
 
   return (
-    <div ref={containerRef} className="relative w-full overflow-x-auto p-4">
-      <div className="flex gap-12 items-start">
+    <div ref={containerRef} className="relative w-full overflow-x-auto p-4 min-h-[500px]">
+      <div className="flex gap-16 items-start">
         {levels.map(level => (
           <div key={level} className="flex flex-col gap-8 items-center">
             {nodes.filter(n => n.level === level).map(node => (
               <div key={node.id} ref={el => (nodeRefs.current[node.id] = el)}>
                 <Card 
-                  className={cn("w-40 shadow-md", 
+                  className={cn("w-48 shadow-lg", 
                     node.task.isCritical 
-                    ? "bg-yellow-100 border-yellow-400 border-2" 
-                    : "bg-white"
+                    ? "bg-[#FF6600] text-white" 
+                    : "bg-card"
                   )}
                 >
                   <CardContent className="p-3 text-center">
-                    <p className="font-semibold text-sm text-gray-800">{node.task.name}</p>
-                    <Badge variant="secondary" className="mt-2 text-xs">{formatDuration(node.task.duration)}</Badge>
+                    <p className="font-bold text-sm truncate">{node.task.name}</p>
+                    <Separator className={cn("my-2", node.task.isCritical ? "bg-white/30" : "bg-border")} />
+                    <div className="grid grid-cols-2 text-xs gap-x-2 gap-y-1 text-left">
+                        <div className="font-semibold">ES: {node.task.es}</div>
+                        <div className="font-semibold">EF: {node.task.ef}</div>
+                        <div className="font-semibold">LS: {node.task.ls}</div>
+                        <div className="font-semibold">LF: {node.task.lf}</div>
+                    </div>
+                     <Separator className={cn("my-2", node.task.isCritical ? "bg-white/30" : "bg-border")} />
+                     <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <div className="font-semibold tracking-wider">DUR</div>
+                            <div>{node.task.duration}s</div>
+                        </div>
+                        <div>
+                            <div className="font-semibold tracking-wider">HOLGURA</div>
+                            <div>{node.task.float}</div>
+                        </div>
+                     </div>
                   </CardContent>
                 </Card>
               </div>
@@ -141,9 +153,9 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
             return (
               <path
                 key={`${predId}-${node.id}`}
-                d={`M ${startPos.x},${startPos.y} C ${startPos.x + 50},${startPos.y} ${endPos.x - 50},${endPos.y} ${endPos.x},${endPos.y}`}
+                d={`M ${startPos.x},${startPos.y} C ${startPos.x + 80},${startPos.y} ${endPos.x - 80},${endPos.y} ${endPos.x},${endPos.y}`}
                 stroke="#166534"
-                strokeWidth="2"
+                strokeWidth="2.5"
                 fill="none"
                 markerEnd="url(#arrowhead)"
               />
