@@ -104,9 +104,15 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
           <div key={level} className="flex flex-col gap-8 items-center">
             {nodes.filter(n => n.level === level).map(node => (
               <div key={node.id} ref={el => (nodeRefs.current[node.id] = el)}>
-                <Card className={cn("w-40 shadow-md", node.task.isCritical && "border-primary border-2")}>
+                <Card 
+                  className={cn("w-40 shadow-md", 
+                    node.task.isCritical 
+                    ? "bg-yellow-100 border-yellow-400 border-2" 
+                    : "bg-white"
+                  )}
+                >
                   <CardContent className="p-3 text-center">
-                    <p className="font-semibold text-sm">{node.task.name}</p>
+                    <p className="font-semibold text-sm text-gray-800">{node.task.name}</p>
                     <Badge variant="secondary" className="mt-2 text-xs">{formatDuration(node.task.duration)}</Badge>
                   </CardContent>
                 </Card>
@@ -119,7 +125,7 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
       <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ zIndex: -1 }}>
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="hsl(var(--muted-foreground))" />
+            <polygon points="0 0, 10 3.5, 0 7" fill="#166534" />
           </marker>
         </defs>
         {nodes.map(node =>
@@ -129,15 +135,19 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
             if (!startPos || !endPos) return null;
             
             const nodeWidth = 80;
-            const startX = startPos.x + nodeWidth;
-            const endX = endPos.x - nodeWidth;
+            const startX = startPos.x;
+            const endX = endPos.x;
+
+            // Determine if the curve should be above or below
+            const isReverse = endPos.x < startPos.x;
+            const curveFactor = isReverse ? -50 : 50;
 
             return (
               <path
                 key={`${predId}-${node.id}`}
-                d={`M ${startX},${startPos.y} C ${startX + 50},${startPos.y} ${endX - 50},${endPos.y} ${endX},${endPos.y}`}
-                stroke="hsl(var(--muted-foreground))"
-                strokeWidth="1.5"
+                d={`M ${startPos.x},${startPos.y} C ${startPos.x + curveFactor},${startPos.y} ${endPos.x - curveFactor},${endPos.y} ${endPos.x},${endPos.y}`}
+                stroke="#166534"
+                strokeWidth="2"
                 fill="none"
                 markerEnd="url(#arrowhead)"
               />
