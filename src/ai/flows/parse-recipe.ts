@@ -1,9 +1,9 @@
 'use server';
 
 /**
- * @fileOverview Un agente de IA para analizar recetas.
+ * @fileOverview Un agente de IA para analizar recetas, actuando como un Chef Ejecutivo y un Ingeniero de Procesos.
  *
- * - parseRecipe - Una función que analiza una receta a partir de texto y/o ingredientes.
+ * - parseRecipe - Una función que analiza una receta para generar una estructura de tareas ultra-detallada, incluyendo lógica de ensamblaje físico.
  */
 
 import {ai} from '@/ai/genkit';
@@ -18,22 +18,40 @@ const parseRecipePrompt = ai.definePrompt({
   name: 'parseRecipePrompt',
   input: {schema: ParseRecipeInputSchema},
   output: {schema: ParseRecipeOutputSchema},
-  prompt: `Eres un Chef Ejecutivo experto en optimización de procesos de cocina. Tu tarea es analizar una receta y/o una lista de ingredientes para generar una secuencia de tareas lógicas y eficientes, incluyendo preparación y ensamblaje.
+  prompt: `Actúa como un Chef de alta cocina experto en optimización de procesos (Mise en Place) y simultáneamente como un Ingeniero de Procesos. Tu nivel de detalle es equiparable al de un manual de ensamblaje industrial.
 
-      **Instrucciones:**
-      1.  **Analiza la entrada**: Recibirás el texto de una receta y/o una lista de ingredientes.
-      2.  **Genera Tareas de Preparación**: A partir de los ingredientes, deduce tareas de preparación básicas (ej. "picar cebolla", "rebanar jitomate").
-      3.  **Genera Tareas de Ensamblaje (Lógica de Chef)**: Si solo se dan ingredientes, o si los pasos no están claros, deduce la secuencia de ensamblaje más lógica y estable. Piensa como un chef: ¿qué va primero para crear una base estable? ¿Qué actúa como barrera de humedad?
-          *   **Ejemplo de Sándwich (Ingredientes: pan, mayonesa, jamón, lechuga):**
-              1.  "Untar mayonesa en pan (base)" -> La mayonesa es barrera de humedad.
-              2.  "Colocar jamón sobre la mayonesa" -> El jamón es estable y se adhiere bien.
-              3.  "Añadir lechuga sobre el jamón" -> La lechuga es menos estable, va encima de la base.
-              4.  "Colocar tapa de pan" -> Cierre final.
-      4.  **Integra Pasos Explícitos**: Si se provee el texto de la receta, úsalo como guía principal, pero enriquécelo con las tareas de preparación y ensamblaje que hayas deducido.
-      5.  **Estima Duraciones**: Asigna una duración razonable en **segundos** para cada tarea.
-      6.  **Genera Dependencias**: Crea una lista de objetos de dependencia. Cada objeto debe tener una propiedad "task" (el nombre de la tarea) y "predecessors" (un array con los nombres de las tareas que deben completarse antes). La tarea "Colocar jamón" depende de "Untar mayonesa". Una cocción depende de tener los ingredientes picados.
-      
-      **Entrada:**
+    **Objetivo Principal:**
+    Analiza la receta de cocina proporcionada y genera una estructura de datos JSON ultra-detallada. Esta estructura debe incluir el nombre de la receta y una secuencia de pasos de preparación (tareas). El análisis de tareas debe ser exhaustivo, identificando dependencias lógicas y, de forma crítica, **dependencias físicas de ensamblaje** para productos que requieren armado.
+
+    **Instrucciones Detalladas:**
+
+    1.  **Análisis y Desglose a Nivel Atómico (EDT):**
+        *   Realiza una Estructura de Desglose del Trabajo (EDT) extremadamente granular.
+        *   Descompón cada paso en sus tareas más elementales. Ejemplo: "Cortar vegetales" se desglosa en "Lavar tomate", "Secar tomate", "Cortar tomate en rodajas".
+
+    2.  **Secuenciación y Dependencias (CRÍTICO):**
+        *   **Dependencias Lógicas:** Identifica las tareas predecesoras obvias. (Ej: "Picar cebolla" debe venir después de "Pelar cebolla").
+        *   **Dependencias Físicas y de Ensamblaje (Nivel de Tornillo):** Para productos que requieren armado (sándwiches, hamburguesas, lasañas), analiza el orden de montaje para garantizar la estabilidad estructural. Piensa en la física: los ingredientes resbaladizos no deben servir de base para otros más pesados.
+            *   **Ejemplo de Lógica para un Sándwich:**
+                1.  "Untar mayonesa en pan base" (actúa como barrera de humedad y adhesivo).
+                2.  "Colocar loncha de queso sobre la mayonesa" (se adhiere bien).
+                3.  "Colocar hoja de lechuga sobre el queso".
+                4.  "Colocar loncha de jamón sobre la lechuga" (el jamón "ancla" la lechuga).
+                5.  "Colocar rodajas de tomate sobre el jamón".
+                6.  "Colocar tapa de pan".
+            *   Genera las tareas y sus dependencias siguiendo esta lógica de construcción estable. Para productos que no requieren armado (ej. una sopa), enfócate solo en las dependencias lógicas de preparación.
+
+    3.  **Estimación de Duración:** Asigna una duración estimada y realista en **segundos** a cada tarea atómica.
+
+    4.  **Generación del Output (Formato JSON Estricto):**
+        *   Responde **ÚNICAMENTE** con un objeto JSON válido.
+        *   El objeto de receta debe contener 'recipeName' y 'tasks'.
+        *   Cada objeto 'task' debe tener: 'name' (string), 'duration' (number en segundos), 'predecessorIds' (array de strings con los nombres de las tareas predecesoras), y 'isAssemblyStep' (boolean).
+        *   Las tareas de preparación (p. ej., picar, lavar, medir) deben tener 'isAssemblyStep: false'.
+        *   Las tareas que forman parte del armado final del platillo (p. ej., "Colocar lechuga sobre el jamón") deben tener 'isAssemblyStep: true'.
+        *   Si una tarea no tiene dependencias, su 'predecessorIds' debe ser un array vacío [].
+
+      **Entrada de la Receta:**
       {{#if recipeText}}
       Texto de la Receta:
       {{{recipeText}}}
@@ -43,9 +61,6 @@ const parseRecipePrompt = ai.definePrompt({
       Lista de Ingredientes:
       {{#each ingredients}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
       {{/if}}
-
-      **Salida Requerida:**
-      Responde **ÚNICAMENTE** con un objeto JSON válido que contenga "recipeName", "tasks" (con "name" y "duration" en segundos), y "dependencies" (un array de objetos, donde cada objeto tiene "task" y "predecessors").
       `,
 });
 

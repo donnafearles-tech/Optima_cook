@@ -47,8 +47,8 @@ export default function ImportRecipeDialog({ open, onOpenChange, project, onProj
       const result: ParseRecipeOutput = await parseRecipe({ recipeText: textToParse });
       
       const newRecipeId = `rec_${Date.now()}`;
-      
       const taskNameMap = new Map<string, string>();
+
       const newTasks: Task[] = result.tasks.map(t => {
         const taskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
         taskNameMap.set(t.name, taskId);
@@ -57,26 +57,20 @@ export default function ImportRecipeDialog({ open, onOpenChange, project, onProj
           name: t.name,
           duration: t.duration,
           recipeId: newRecipeId,
-          predecessorIds: [],
+          predecessorIds: [], // Se llenará en el siguiente paso
           status: 'pending' as const,
+          isAssemblyStep: t.isAssemblyStep,
         };
       });
 
-      // Mapear dependencias si existen
-      if (result.dependencies) {
-        const dependenciesMap = new Map<string, string[]>();
-        result.dependencies.forEach(dep => {
-            dependenciesMap.set(dep.task, dep.predecessors);
-        });
-
-        newTasks.forEach(task => {
-          const predNames = dependenciesMap.get(task.name) || [];
-          task.predecessorIds = predNames
-            .map(name => taskNameMap.get(name))
-            .filter((id): id is string => !!id);
-        });
-      }
-
+      // Mapear dependencias usando los nuevos IDs
+      newTasks.forEach(task => {
+        const originalTask = result.tasks.find(t => t.name === task.name);
+        const predNames = originalTask?.predecessorIds || [];
+        task.predecessorIds = predNames
+          .map(name => taskNameMap.get(name))
+          .filter((id): id is string => !!id);
+      });
 
       const newRecipe = {
         id: newRecipeId,

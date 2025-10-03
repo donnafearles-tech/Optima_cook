@@ -9,6 +9,7 @@ export interface Task {
   recipeId: string;
   predecessorIds: string[];
   status: TaskStatus;
+  isAssemblyStep?: boolean;
   // Propiedades CPM
   es?: number; // Early Start
   ef?: number; // Early Finish
@@ -42,6 +43,8 @@ export interface CpmResult {
 const AiTaskSchema = z.object({
   name: z.string().describe('El nombre de la tarea.'),
   duration: z.number().describe('La duración estimada de la tarea en segundos.'),
+  predecessorIds: z.array(z.string()).describe("Una lista de los nombres de las tareas que deben completarse antes de que esta tarea pueda comenzar."),
+  isAssemblyStep: z.boolean().describe("Es 'true' si la tarea es parte del proceso de armado final, 'false' si es una tarea de preparación (mise en place).")
 });
 
 const DependencySchema = z.object({
@@ -57,11 +60,7 @@ export type ParseRecipeInput = z.infer<typeof ParseRecipeInputSchema>;
 
 export const ParseRecipeOutputSchema = z.object({
     recipeName: z.string().describe('El nombre de la receta.'),
-    tasks: z.array(AiTaskSchema).describe('La lista de tareas extraídas de la receta, con duraciones estimadas.'),
-    dependencies: z
-    .array(DependencySchema)
-    .optional()
-    .describe('Una lista de objetos de dependencia, donde cada objeto vincula una tarea con sus predecesoras.'),
+    tasks: z.array(AiTaskSchema).describe('La lista de tareas extraídas de la receta, con duraciones estimadas, dependencias y si son de ensamblaje.'),
 });
 export type ParseRecipeOutput = z
   .infer<typeof ParseRecipeOutputSchema>;
