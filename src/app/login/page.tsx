@@ -13,11 +13,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
 import { useFirebase, initiateEmailSignUp, initiateEmailSignIn, initiateGoogleSignIn, useUser } from '@/firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Logo from '@/components/logo';
+import { useToast } from '@/hooks/use-toast';
+import { FirebaseError } from 'firebase/auth';
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -37,6 +38,7 @@ export default function LoginPage() {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false);
   const router = useRouter();
+  const { toast } = useToast();
 
   const { auth } = useFirebase();
   const { user, isUserLoading } = useUser();
@@ -57,8 +59,22 @@ export default function LoginPage() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSigningIn(true);
-    initiateEmailSignIn(auth, email, password);
-     // Non-blocking, auth state listener will redirect
+    initiateEmailSignIn(auth, email, password, (error) => {
+        setIsSigningIn(false);
+        if (error.code === 'auth/invalid-credential') {
+            toast({
+                title: 'Error de inicio de sesión',
+                description: 'Credenciales incorrectas. Revisa tu correo y contraseña.',
+                variant: 'destructive'
+            });
+        } else {
+             toast({
+                title: 'Error de inicio de sesión',
+                description: 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.',
+                variant: 'destructive'
+            });
+        }
+    });
   };
   
   const handleGoogleSignIn = () => {

@@ -22,9 +22,18 @@ export function initiateEmailSignUp(authInstance: Auth, email: string, password:
 }
 
 /** Initiate email/password sign-in (non-blocking). */
-export function initiateEmailSignIn(authInstance: Auth, email: string, password: string): void  {
-  signInWithEmailAndPassword(authInstance, email, password).catch(err => {
+export function initiateEmailSignIn(
+  authInstance: Auth, 
+  email: string, 
+  password: string,
+  onError?: (error: FirebaseError) => void
+): void  {
+  signInWithEmailAndPassword(authInstance, email, password).catch((err: FirebaseError) => {
+    if (onError) {
+      onError(err);
+    } else {
       console.error("Sign in failed:", err);
+    }
   });
 }
 
