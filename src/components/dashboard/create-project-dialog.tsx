@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import type { Project } from '@/lib/types';
 import { createProject } from '@/lib/data';
 import { useFirebase } from '@/firebase';
+import { useRouter } from 'next/navigation';
 
 interface CreateProjectDialogProps {
   open: boolean;
@@ -32,6 +33,7 @@ export default function CreateProjectDialog({
   const [description, setDescription] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const { firestore, user } = useFirebase();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +47,7 @@ export default function CreateProjectDialog({
       onOpenChange(false);
       setName('');
       setDescription('');
+      router.push(`/projects/${newProject.id}`);
     } catch (error) {
       console.error("Failed to create project:", error);
     } finally {
