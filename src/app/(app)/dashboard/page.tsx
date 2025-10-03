@@ -1,13 +1,41 @@
-'use client'
+'use client';
 
+import { useState, useEffect } from 'react';
 import ProjectList from '@/components/dashboard/project-list';
-import { useFirebase } from '@/firebase';
+import type { Project } from '@/lib/types';
 
 export default function DashboardPage() {
-  const { user } = useFirebase();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (!user) {
-    return <div>Loading...</div>
+  useEffect(() => {
+    const savedProjects = localStorage.getItem('projects');
+    if (savedProjects) {
+      setProjects(JSON.parse(savedProjects));
+    }
+    setLoading(false);
+  }, []);
+
+  const handleProjectCreated = (newProject: Project) => {
+    const updatedProjects = [...projects, newProject];
+    setProjects(updatedProjects);
+    localStorage.setItem('projects', JSON.stringify(updatedProjects));
+  };
+
+  const handleProjectUpdate = (updatedProject: Project) => {
+    const updatedProjects = projects.map(p => p.id === updatedProject.id ? updatedProject : p);
+    setProjects(updatedProjects);
+    localStorage.setItem('projects', JSON.stringify(updatedProjects));
+  }
+
+  const handleProjectDelete = (projectId: string) => {
+    const updatedProjects = projects.filter(p => p.id !== projectId);
+    setProjects(updatedProjects);
+    localStorage.setItem('projects', JSON.stringify(updatedProjects));
+  }
+
+  if (loading) {
+    return <div>Loading...</div>;
   }
 
   return (
@@ -15,7 +43,10 @@ export default function DashboardPage() {
       <h1 className="text-3xl font-bold tracking-tight font-headline mb-6">
         Your Cooking Projects
       </h1>
-      <ProjectList />
+      <ProjectList 
+        projects={projects} 
+        onProjectCreated={handleProjectCreated}
+      />
     </div>
   );
 }

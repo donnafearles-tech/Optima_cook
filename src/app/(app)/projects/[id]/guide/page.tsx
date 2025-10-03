@@ -8,9 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEffect, useState } from 'react';
 import type { Project } from '@/lib/types';
-import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
-import { Skeleton } from '@/components/ui/skeleton';
 
 function formatDuration(seconds: number) {
   const hours = Math.floor(seconds / 3600);
@@ -29,27 +26,25 @@ export default function GuidePage() {
   const router = useRouter();
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
-  const { firestore, user } = useFirebase();
+  const [project, setProject] = useState<Project | null>(null);
 
-  const projectRef = useMemoFirebase(() => {
-    if (!firestore || !user || !id) return null;
-    return doc(firestore, 'users', user.uid, 'projects', id);
-  }, [firestore, user, id]);
+  useEffect(() => {
+    const savedProjects = localStorage.getItem('projects');
+    if (savedProjects) {
+      const projects: Project[] = JSON.parse(savedProjects);
+      const currentProject = projects.find(p => p.id === id);
+      if (currentProject) {
+        setProject(currentProject);
+      } else {
+        notFound();
+      }
+    } else {
+      notFound();
+    }
+  }, [id]);
 
-  const { data: project, isLoading } = useDoc<Project>(projectRef);
-
-  if (isLoading) {
-    return (
-      <div>
-        <Skeleton className="h-12 w-full mb-6" />
-        <Skeleton className="h-24 w-full mb-6" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
-  }
-  
   if (!project || !project.cpmResult) {
-    notFound();
+    return <div>Loading...</div>;
   }
 
   const { totalDuration, tasks } = project.cpmResult;

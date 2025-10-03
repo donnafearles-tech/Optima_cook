@@ -1,42 +1,29 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlusCircle } from 'lucide-react';
 import type { Project } from '@/lib/types';
-import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import CreateProjectDialog from './create-project-dialog';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { collection } from 'firebase/firestore';
 
 const projectImages = PlaceHolderImages.filter(p => p.id.startsWith('project-'));
 
-export default function ProjectList() {
+interface ProjectListProps {
+  projects: Project[];
+  onProjectCreated: (project: Project) => void;
+}
+
+export default function ProjectList({ projects, onProjectCreated }: ProjectListProps) {
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
-  const { firestore, user } = useFirebase();
-
-  const projectsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, 'users', user.uid, 'projects');
-  }, [firestore, user]);
-
-  const { data: projects, isLoading } = useCollection<Project>(projectsQuery);
-
-  const handleProjectCreated = (newProject: Project) => {
-    // No need to manually add to state, useCollection will update it
-  };
-
-  if (isLoading) {
-    return <div>Loading projects...</div>;
-  }
 
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects && projects.map((project, index) => {
+        {projects.map((project, index) => {
           const image = projectImages[index % projectImages.length];
           return (
             <Card key={project.id} className="flex flex-col">
@@ -56,7 +43,7 @@ export default function ProjectList() {
                 <CardDescription>{project.description || 'No description provided.'}</CardDescription>
               </CardHeader>
               <CardContent className="flex-grow">
-                <p className="text-sm text-muted-foreground">{project.tasks?.length || 0} tasks</p>
+                <p className="text-sm text-muted-foreground">{project.tasks.length} tasks</p>
               </CardContent>
               <CardFooter>
                 <Button asChild className="w-full">
@@ -80,7 +67,7 @@ export default function ProjectList() {
       <CreateProjectDialog
         open={isCreateDialogOpen}
         onOpenChange={setCreateDialogOpen}
-        onProjectCreated={handleProjectCreated}
+        onProjectCreated={onProjectCreated}
       />
     </>
   );

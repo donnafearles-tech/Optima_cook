@@ -14,9 +14,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { Project } from '@/lib/types';
-import { createProject } from '@/lib/data';
-import { useFirebase } from '@/firebase';
-import { useRouter } from 'next/navigation';
 
 interface CreateProjectDialogProps {
   open: boolean;
@@ -32,27 +29,30 @@ export default function CreateProjectDialog({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const { firestore, user } = useFirebase();
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !firestore || !user) return;
+    if (!name) return;
 
     setIsSaving(true);
     
-    try {
-      const newProject = await createProject(firestore, user.uid, { name, description });
-      onProjectCreated(newProject);
-      setName('');
-      setDescription('');
-      onOpenChange(false);
-      router.push(`/projects/${newProject.id}`);
-    } catch (error) {
-      console.error("Failed to create project:", error);
-    } finally {
-      setIsSaving(false);
-    }
+    // Simulate network request
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const newProject: Project = {
+      id: `proj_${Date.now()}`,
+      name,
+      description,
+      ownerId: 'user_1', // Placeholder
+      recipes: [],
+      tasks: [],
+    };
+    
+    onProjectCreated(newProject);
+    setIsSaving(false);
+    setName('');
+    setDescription('');
+    onOpenChange(false);
   };
 
   return (

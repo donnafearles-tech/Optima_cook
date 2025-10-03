@@ -1,5 +1,3 @@
-import { z } from 'zod';
-
 export type TaskStatus = 'pending' | 'in_progress' | 'completed';
 
 export interface Task {
@@ -39,7 +37,8 @@ export interface CpmResult {
   tasks: Task[];
 }
 
-// AI Flow Schemas
+
+import {z} from 'zod';
 
 const AiTaskSchema = z.object({
   name: z.string().describe('The name of the task.'),

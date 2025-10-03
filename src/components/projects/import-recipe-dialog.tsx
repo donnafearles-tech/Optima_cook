@@ -11,29 +11,25 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { parseRecipe } from '@/ai/flows/parse-recipe';
-import type { Project } from '@/lib/types';
-import { saveProject } from '@/lib/data';
+import { parseRecipe, type ParseRecipeOutput } from '@/ai/flows/parse-recipe';
+import type { Project, Task } from '@/lib/types';
 import { Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useFirebase } from '@/firebase';
 
 interface ImportRecipeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   project: Project;
+  onProjectUpdate: (project: Project) => void;
 }
 
-export default function ImportRecipeDialog({ open, onOpenChange, project }: ImportRecipeDialogProps) {
+export default function ImportRecipeDialog({ open, onOpenChange, project, onProjectUpdate }: ImportRecipeDialogProps) {
   const [recipeText, setRecipeText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
-  const { firestore, user } = useFirebase();
 
   const handleImport = async () => {
-    if (!firestore || !user) return;
-
     if (!recipeText.trim()) {
       toast({
         title: 'Recipe text is empty',
@@ -44,11 +40,11 @@ export default function ImportRecipeDialog({ open, onOpenChange, project }: Impo
     }
     setIsParsing(true);
     try {
-      const result = await parseRecipe({ recipeText });
+      const result: ParseRecipeOutput = await parseRecipe({ recipeText });
       
       const newRecipeId = `rec_${Date.now()}`;
       
-      const newTasks = result.tasks.map(t => ({
+      const newTasks: Task[] = result.tasks.map(t => ({
         id: `task_${Date.now()}_${Math.random()}`,
         name: t.name,
         duration: t.duration,
@@ -62,13 +58,13 @@ export default function ImportRecipeDialog({ open, onOpenChange, project }: Impo
         name: result.recipeName,
       };
 
-      const updatedProject = {
+      const updatedProject: Project = {
         ...project,
-        recipes: [...(project.recipes || []), newRecipe],
-        tasks: [...(project.tasks || []), ...newTasks],
+        recipes: [...project.recipes, newRecipe],
+        tasks: [...project.tasks, ...newTasks],
       };
       
-      await saveProject(firestore, user.uid, updatedProject);
+      onProjectUpdate(updatedProject);
 
       toast({
         title: 'Recipe Imported!',
