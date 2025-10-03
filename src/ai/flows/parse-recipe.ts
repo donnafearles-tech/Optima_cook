@@ -31,7 +31,7 @@ const parseRecipePrompt = ai.definePrompt({
               4.  "Colocar tapa de pan" -> Cierre final.
       4.  **Integra Pasos Explícitos**: Si se provee el texto de la receta, úsalo como guía principal, pero enriquécelo con las tareas de preparación y ensamblaje que hayas deducido.
       5.  **Estima Duraciones**: Asigna una duración razonable en **segundos** para cada tarea.
-      6.  **Genera Dependencias**: Crea un mapa de dependencias lógicas. La tarea "Colocar jamón" depende de "Untar mayonesa". Una cocción depende de tener los ingredientes picados.
+      6.  **Genera Dependencias**: Crea una lista de objetos de dependencia. Cada objeto debe tener una propiedad "task" (el nombre de la tarea) y "predecessors" (un array con los nombres de las tareas que deben completarse antes). La tarea "Colocar jamón" depende de "Untar mayonesa". Una cocción depende de tener los ingredientes picados.
       
       **Entrada:**
       {{#if recipeText}}
@@ -45,7 +45,7 @@ const parseRecipePrompt = ai.definePrompt({
       {{/if}}
 
       **Salida Requerida:**
-      Responde **ÚNICAMENTE** con un objeto JSON válido que contenga "recipeName", "tasks" (con "name" y "duration" en segundos), y "dependencies" (un objeto donde la clave es el nombre de la tarea y el valor es un array de sus predecesoras).
+      Responde **ÚNICAMENTE** con un objeto JSON válido que contenga "recipeName", "tasks" (con "name" y "duration" en segundos), y "dependencies" (un array de objetos, donde cada objeto tiene "task" y "predecessors").
       `,
 });
 

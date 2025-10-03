@@ -64,8 +64,13 @@ export default function ImportRecipeDialog({ open, onOpenChange, project, onProj
 
       // Mapear dependencias si existen
       if (result.dependencies) {
+        const dependenciesMap = new Map<string, string[]>();
+        result.dependencies.forEach(dep => {
+            dependenciesMap.set(dep.task, dep.predecessors);
+        });
+
         newTasks.forEach(task => {
-          const predNames = result.dependencies[task.name] || [];
+          const predNames = dependenciesMap.get(task.name) || [];
           task.predecessorIds = predNames
             .map(name => taskNameMap.get(name))
             .filter((id): id is string => !!id);
