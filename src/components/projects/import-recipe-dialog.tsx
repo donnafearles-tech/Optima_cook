@@ -12,7 +12,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { parseRecipe } from '@/ai/flows/parse-recipe';
-import type { Project, Task, ParseRecipeOutput } from '@/lib/types';
+import type { ParseRecipeOutput } from '@/lib/types';
 import { Sparkles, Upload } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '../ui/input';
@@ -24,22 +24,23 @@ import { collection, writeBatch, doc } from 'firebase/firestore';
 interface ImportRecipeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  project: Project;
+  projectId: string;
+  userId: string;
 }
 
-export default function ImportRecipeDialog({ open, onOpenChange, project }: ImportRecipeDialogProps) {
+export default function ImportRecipeDialog({ open, onOpenChange, projectId, userId }: ImportRecipeDialogProps) {
   const [recipeText, setRecipeText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [fileName, setFileName] = useState('');
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { firestore, user } = useFirebase();
+  const { firestore } = useFirebase();
 
   const handleParse = async (textToParse: string) => {
-     if (!textToParse.trim() || !user) {
+     if (!textToParse.trim()) {
       toast({
         title: 'Faltan datos',
-        description: 'Por favor, pega o sube una receta y asegúrate de haber iniciado sesión.',
+        description: 'Por favor, pega o sube una receta.',
         variant: 'destructive',
       });
       return;
@@ -49,7 +50,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, project }: Impo
       const result: ParseRecipeOutput = await parseRecipe({ recipeText: textToParse });
       
       const batch = writeBatch(firestore);
-      const projectRef = doc(firestore, 'users', user.uid, 'projects', project.id);
+      const projectRef = doc(firestore, 'users', userId, 'projects', projectId);
 
       // 1. Create Recipe document in the subcollection
       const recipesCol = collection(projectRef, 'recipes');
