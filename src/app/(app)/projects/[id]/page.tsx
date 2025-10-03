@@ -23,7 +23,8 @@ export default function ProjectPage() {
 
   const { data: project, isLoading } = useDoc<Project>(projectRef);
 
-  if (isLoading) {
+  // Show loading state while the user is being authenticated or the project data is being fetched.
+  if (isLoading || !user) {
     return (
       <div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -40,7 +41,7 @@ export default function ProjectPage() {
     );
   }
 
-  // After the initial load, if the project is still not found, then it's a true 404.
+  // After loading, if the project is still not found, then it's a true 404.
   if (!project) {
     notFound();
   }
