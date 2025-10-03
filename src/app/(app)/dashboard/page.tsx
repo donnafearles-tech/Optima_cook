@@ -40,12 +40,17 @@ export default function DashboardPage() {
     return <div>Error al cargar proyectos. Revisa la consola para más detalles.</div>
   }
 
+  // NOTE: We pass an empty array for tasks for now to avoid rendering issues.
+  // A more robust solution would be to fetch task counts separately if needed.
+  const projectsWithTaskPlaceholder = projects?.map(p => ({ ...p, tasks: [] })) || [];
+
+
   return (
     <div className="container mx-auto">
       <h1 className="text-3xl font-bold tracking-tight font-headline mb-6">
         Tus Proyectos de Cocina
       </h1>
-      <ProjectList projects={projects || []} />
+      <ProjectList projects={projectsWithTaskPlaceholder} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { useRouter, notFound } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Wand2, FileUp } from 'lucide-react';
 import type { Project, Task, Recipe } from '@/lib/types';
@@ -32,7 +32,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   }, [firestore, userId, projectId]);
 
   // Fetch the project document
-  const { data: project, isLoading: isLoadingProject } = useDoc<Project>(projectRef);
+  const { data: project, isLoading: isLoadingProject, error: projectError } = useDoc<Project>(projectRef);
 
   // Query for the recipes subcollection within the project
   const recipesQuery = useMemoFirebase(() => {
@@ -128,9 +128,15 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   if (isLoadingProject || isLoadingRecipes || isLoadingTasks) {
     return <div>Cargando proyecto...</div>;
   }
+  
+  if (projectError) {
+      return <div>Error al cargar el proyecto. Es posible que no exista o que no tengas permisos para verlo.</div>
+  }
 
   if (!project) {
-    return notFound();
+    // This case will be hit if isLoading is false but project is still null,
+    // which can happen if the document doesn't exist.
+    return <div>Proyecto no encontrado.</div>;
   }
 
   const fullProject: Project = {
