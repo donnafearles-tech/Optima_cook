@@ -25,7 +25,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
-import { useFirebase, useUser as useFirebaseAuth, initiateSignOut } from '@/firebase/auth';
+import { useFirebase, useUser as useFirebaseAuth, auth } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -41,7 +41,7 @@ function UserNav() {
   const { auth } = useFirebase();
 
   const handleSignOut = () => {
-    initiateSignOut(auth);
+    auth.initiateSignOut(auth);
   };
   
   if (!user) {
@@ -88,9 +88,7 @@ function MainSidebar() {
   return (
     <Sidebar>
       <SidebarHeader>
-        <Link href="/dashboard">
-          <Logo />
-        </Link>
+        <Logo href="/dashboard" />
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
