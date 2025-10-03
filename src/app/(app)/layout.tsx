@@ -44,7 +44,7 @@ function MainSidebar() {
             </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <Link href="#" passHref>
+            <Link href="/dashboard" passHref>
               <SidebarMenuButton asChild>
                 <span>
                   <Book />
