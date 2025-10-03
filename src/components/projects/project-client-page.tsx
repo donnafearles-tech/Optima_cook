@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Wand2, FileUp, Plus } from 'lucide-react';
@@ -42,7 +43,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const { data: resources, isLoading: isLoadingResources } = useCollection<UserResource>(resourcesQuery);
 
 
-  const handleOpenEditTask = (task: Task | 'new', recipeId: string) => {
+  const handleOpenEditTask = (task: Task | 'new') => {
     setEditingTask(task);
   };
   
@@ -155,7 +156,16 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     if (!tasks) return;
     const cpmResult = calculateCPM(tasks);
     updateDocumentNonBlocking(projectRef, { cpmResult });
-    router.push(`/projects/${projectId}/guide`);
+    
+    toast({
+      title: "¡Ruta Óptima Calculada!",
+      description: "Tu guía de cocina está lista para ser consultada.",
+      action: (
+        <Button asChild>
+          <Link href={`/projects/${projectId}/guide`}>Ver Guía</Link>
+        </Button>
+      )
+    });
   };
 
   if (isLoadingProject || isLoadingRecipes || isLoadingTasks || isLoadingResources) {
@@ -217,8 +227,8 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
                     allResources={allResources}
                     onEditRecipe={() => setEditingRecipe(recipe)}
                     onDeleteRecipe={() => handleRecipeDelete(recipe.id)}
-                    onAddTask={() => handleOpenEditTask('new', recipe.id)}
-                    onEditTask={(task) => handleOpenEditTask(task, recipe.id)}
+                    onAddTask={() => handleOpenEditTask('new')}
+                    onEditTask={(task) => handleOpenEditTask(task)}
                     onDeleteTask={handleTaskDelete}
                 />
             ))}

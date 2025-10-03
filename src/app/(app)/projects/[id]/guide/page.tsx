@@ -1,9 +1,10 @@
 'use client';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CheckCircle, Clock, List, GanttChartSquare } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, List, GanttChartSquare, AlertTriangle } from 'lucide-react';
 import GanttChart from '@/components/projects/gantt-chart';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEffect, useState } from 'react';
@@ -35,14 +36,38 @@ export default function GuidePage() {
     return doc(firestore, 'users', user.uid, 'projects', id);
   }, [firestore, user, id]);
 
-  const { data: project, isLoading } = useDoc<Project>(projectRef);
+  const { data: project, isLoading, error } = useDoc<Project>(projectRef);
   
   if (isLoading) {
-    return <div>Cargando...</div>;
+    return <div>Cargando guía...</div>;
   }
   
-  if (!project || !project.cpmResult) {
+  if (error || !project) {
     return notFound();
+  }
+
+  if (!project.cpmResult) {
+    return (
+        <div>
+            <div className="flex items-center gap-4 mb-6">
+                <Button variant="outline" size="icon" onClick={() => router.back()}>
+                <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                <h1 className="text-3xl font-bold tracking-tight font-headline">
+                    {project.name}: Guía de Cocina
+                </h1>
+                </div>
+            </div>
+             <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Guía no disponible</AlertTitle>
+              <AlertDescription>
+                La guía de ruta óptima aún no ha sido generada o no se encontró. Por favor, vuelve a la página del proyecto y haz clic en "Calcular Ruta Óptima".
+              </AlertDescription>
+            </Alert>
+        </div>
+    )
   }
 
   const { totalDuration, tasks } = project.cpmResult;
