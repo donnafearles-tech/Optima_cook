@@ -5,7 +5,7 @@ export function calculateCPM(tasks: Task[]): CpmResult {
     return { totalDuration: 0, criticalPath: [], tasks: [] };
   }
 
-  const taskMap = new Map<string, Task>(tasks.map(t => [t.id, { ...t }]));
+  const taskMap = new Map<string, Task>(tasks.map(t => [t.id, { ...t, es: 0, ef: 0, ls: 0, lf: 0, float: 0, isCritical: false }]));
   const adj: Record<string, string[]> = {};
   const revAdj: Record<string, string[]> = {};
   const inDegree: Record<string, number> = {};
@@ -28,62 +28,59 @@ export function calculateCPM(tasks: Task[]): CpmResult {
     }
   }
 
-  // Forward pass
-  const queue = tasks.filter(t => inDegree[t.id] === 0);
-  for (const task of queue) {
-    task.es = 0;
-    task.ef = task.duration;
-    taskMap.set(task.id, task);
+  // Forward pass using Kahn's algorithm for topological sort
+  const queue: string[] = [];
+  for (const task of tasks) {
+      if (inDegree[task.id] === 0) {
+          queue.push(task.id);
+      }
   }
 
-  let head = 0;
-  while(head < queue.length) {
-    const uId = queue[head++].id;
-    const u = taskMap.get(uId)!;
+  const topologicalOrder: string[] = [];
+  while (queue.length > 0) {
+      const uId = queue.shift()!;
+      topologicalOrder.push(uId);
+      const u = taskMap.get(uId)!;
 
-    for (const vId of adj[uId] || []) {
-        const v = taskMap.get(vId)!;
-        v.es = Math.max(v.es ?? 0, u.ef ?? 0);
-        v.ef = v.es + v.duration;
-        taskMap.set(vId, v);
-        
-        inDegree[vId]--;
-        if (inDegree[vId] === 0) {
-            queue.push(v);
-        }
-    }
+      u.ef = (u.es ?? 0) + u.duration;
+      taskMap.set(uId, u);
+
+      for (const vId of adj[uId] || []) {
+          const v = taskMap.get(vId)!;
+          v.es = Math.max(v.es ?? 0, u.ef ?? 0);
+          taskMap.set(vId, v);
+          inDegree[vId]--;
+          if (inDegree[vId] === 0) {
+              queue.push(vId);
+          }
+      }
   }
+
+  if (topologicalOrder.length !== tasks.length) {
+    throw new Error("El proyecto contiene un ciclo de dependencias y no se puede calcular la ruta crítica.");
+  }
+
 
   const projectFinishTime = Math.max(...Array.from(taskMap.values()).map(t => t.ef ?? 0));
   
   // Backward pass
-  const endTasks = tasks.filter(t => (adj[t.id] || []).length === 0);
-  const visited = new Set<string>();
-  const backQueue = [...endTasks];
-  
   for(const task of Array.from(taskMap.values())) {
       task.lf = projectFinishTime;
       task.ls = task.lf - task.duration;
   }
 
-  for(const task of endTasks) {
-    task.lf = projectFinishTime;
-    task.ls = task.lf - task.duration;
-    taskMap.set(task.id, task);
-  }
-
-  const topologicalOrder = queue.map(t => t.id);
-  
   for (let i = topologicalOrder.length - 1; i >= 0; i--) {
     const uId = topologicalOrder[i];
     const u = taskMap.get(uId)!;
     
-    for (const vId of adj[uId] || []) {
-      const v = taskMap.get(vId)!;
-      u.lf = Math.min(u.lf ?? projectFinishTime, v.ls ?? projectFinishTime);
-      u.ls = u.lf - u.duration;
-      taskMap.set(uId, u);
+    if ((adj[uId] || []).length === 0) { // It's a leaf node in the graph
+        u.lf = projectFinishTime;
+    } else {
+        const successorLfs = (adj[uId] || []).map(vId => taskMap.get(vId)!.ls ?? projectFinishTime);
+        u.lf = Math.min(...successorLfs);
     }
+    u.ls = u.lf - u.duration;
+    taskMap.set(uId, u);
   }
 
   // Calculate float and critical path
