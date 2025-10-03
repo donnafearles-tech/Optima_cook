@@ -5,16 +5,16 @@ export type TaskStatus = 'pending' | 'in_progress' | 'completed';
 export interface Task {
   id: string;
   name: string;
-  duration: number; // in seconds
+  duration: number; // en segundos
   recipeId: string;
   predecessorIds: string[];
   status: TaskStatus;
-  // CPM properties
+  // Propiedades CPM
   es?: number; // Early Start
   ef?: number; // Early Finish
   ls?: number; // Late Start
   lf?: number; // Late Finish
-  float?: number; // Slack/Float
+  float?: number; // Holgura
   isCritical?: boolean;
 }
 
@@ -27,7 +27,7 @@ export interface Project {
   id: string;
   name: string;
   description?: string;
-  ownerId: string; // Corresponds to Firebase Auth UID
+  ownerId: string; // Corresponde al UID de Firebase Auth
   recipes: Recipe[];
   tasks: Task[];
   cpmResult?: CpmResult;
@@ -41,27 +41,30 @@ export interface CpmResult {
 
 
 const AiTaskSchema = z.object({
-  name: z.string().describe('The name of the task.'),
-  duration: z.number().describe('The estimated duration of the task in seconds.'),
+  name: z.string().describe('El nombre de la tarea.'),
+  duration: z.number().describe('La duración estimada de la tarea en segundos.'),
 });
 
 export const ParseRecipeInputSchema = z.object({
-  recipeText: z.string().describe('The full text of the recipe to parse.'),
+  recipeText: z.string().describe('El texto completo de la receta para analizar.'),
+  ingredients: z.array(z.string()).optional().describe('Lista de ingredientes para deducir el ensamblaje.'),
 });
 export type ParseRecipeInput = z.infer<typeof ParseRecipeInputSchema>;
 
 export const ParseRecipeOutputSchema = z.object({
-    recipeName: z.string().describe('The name of the recipe.'),
-    tasks: z.array(AiTaskSchema).describe('The list of tasks extracted from the recipe, with estimated durations.'),
+    recipeName: z.string().describe('El nombre de la receta.'),
+    tasks: z.array(AiTaskSchema).describe('La lista de tareas extraídas de la receta, con duraciones estimadas.'),
+    dependencies: z.record(z.string(), z.array(z.string())).optional().describe('Un mapa de nombres de tareas a una lista de nombres de tareas predecesoras sugeridas.'),
 });
-export type ParseRecipeOutput = z.infer<typeof ParseRecipeOutputSchema>;
+export type ParseRecipeOutput = z
+  .infer<typeof ParseRecipeOutputSchema>;
 
 
 export const SuggestTaskDependenciesInputSchema = z.object({
-  recipeName: z.string().describe('The name of the recipe.'),
+  recipeName: z.string().describe('El nombre de la receta.'),
   taskList: z
     .array(z.string())
-    .describe('A list of task names in the recipe.'),
+    .describe('Una lista de nombres de tareas en la receta.'),
 });
 export type SuggestTaskDependenciesInput = z.infer<
   typeof SuggestTaskDependenciesInputSchema
@@ -70,7 +73,7 @@ export type SuggestTaskDependenciesInput = z.infer<
 export const SuggestTaskDependenciesOutputSchema = z.record(
   z.string(),
   z.array(z.string())
-).describe('A map of task names to a list of suggested predecessor task names.');
+).describe('Un mapa de nombres de tareas a una lista de nombres de tareas predecesoras sugeridas.');
 export type SuggestTaskDependenciesOutput = z.infer<
   typeof SuggestTaskDependenciesOutputSchema
 >;
@@ -79,7 +82,7 @@ export const ExtractTextFromFileInputSchema = z.object({
   fileDataUri: z
     .string()
     .describe(
-      "The file content as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      "El contenido del archivo como un data URI que debe incluir un tipo MIME y usar codificación Base64. Formato esperado: 'data:<mimetype>;base64,<encoded_data>'"
     ),
 });
 export type ExtractTextFromFileInput = z.infer<
@@ -87,7 +90,7 @@ export type ExtractTextFromFileInput = z.infer<
 >;
 
 export const ExtractTextFromFileOutputSchema = z.object({
-  text: z.string().describe('The extracted text from the file.'),
+  text: z.string().describe('El texto extraído del archivo.'),
 });
 export type ExtractTextFromFileOutput = z.infer<
   typeof ExtractTextFromFileOutputSchema

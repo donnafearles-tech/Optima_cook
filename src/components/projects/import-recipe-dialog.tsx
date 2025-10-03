@@ -36,8 +36,8 @@ export default function ImportRecipeDialog({ open, onOpenChange, project, onProj
   const handleParse = async (textToParse: string) => {
      if (!textToParse.trim()) {
       toast({
-        title: 'No text to parse',
-        description: 'Please paste or upload a recipe.',
+        title: 'No hay texto para analizar',
+        description: 'Por favor, pega o sube una receta.',
         variant: 'destructive',
       });
       return;
@@ -48,14 +48,30 @@ export default function ImportRecipeDialog({ open, onOpenChange, project, onProj
       
       const newRecipeId = `rec_${Date.now()}`;
       
-      const newTasks: Task[] = result.tasks.map(t => ({
-        id: `task_${Date.now()}_${Math.random()}`,
-        name: t.name,
-        duration: t.duration,
-        recipeId: newRecipeId,
-        predecessorIds: [],
-        status: 'pending' as const,
-      }));
+      const taskNameMap = new Map<string, string>();
+      const newTasks: Task[] = result.tasks.map(t => {
+        const taskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        taskNameMap.set(t.name, taskId);
+        return {
+          id: taskId,
+          name: t.name,
+          duration: t.duration,
+          recipeId: newRecipeId,
+          predecessorIds: [],
+          status: 'pending' as const,
+        };
+      });
+
+      // Mapear dependencias si existen
+      if (result.dependencies) {
+        newTasks.forEach(task => {
+          const predNames = result.dependencies[task.name] || [];
+          task.predecessorIds = predNames
+            .map(name => taskNameMap.get(name))
+            .filter((id): id is string => !!id);
+        });
+      }
+
 
       const newRecipe = {
         id: newRecipeId,
@@ -71,8 +87,8 @@ export default function ImportRecipeDialog({ open, onOpenChange, project, onProj
       onProjectUpdate(updatedProject);
 
       toast({
-        title: 'Recipe Imported!',
-        description: `Successfully imported "${result.recipeName}" and added ${newTasks.length} tasks.`,
+        title: '¡Receta Importada!',
+        description: `Se importó "${result.recipeName}" y se añadieron ${newTasks.length} tareas.`,
       });
 
       onOpenChange(false);
@@ -80,10 +96,10 @@ export default function ImportRecipeDialog({ open, onOpenChange, project, onProj
       setFileName('');
 
     } catch (error) {
-      console.error('Failed to parse recipe', error);
+      console.error('Falló el análisis de la receta', error);
       toast({
-        title: 'Import Failed',
-        description: 'Could not parse the recipe. Please check the format or try again.',
+        title: 'Falló la Importación',
+        description: 'No se pudo analizar la receta. Por favor, revisa el formato o inténtalo de nuevo.',
         variant: 'destructive',
       });
     } finally {
@@ -105,14 +121,14 @@ export default function ImportRecipeDialog({ open, onOpenChange, project, onProj
             const { text } = await extractTextFromFile({ fileDataUri });
             setRecipeText(text);
             toast({
-              title: "File processed",
-              description: "Text has been extracted. Review and click Import."
+              title: "Archivo procesado",
+              description: "Se ha extraído el texto. Revísalo y haz clic en Importar."
             })
         } catch (error) {
-            console.error("Error extracting text from file", error);
+            console.error("Error al extraer texto del archivo", error);
             toast({
-                title: "File Read Error",
-                description: "Could not extract text from the uploaded file.",
+                title: "Error al Leer Archivo",
+                description: "No se pudo extraer el texto del archivo subido.",
                 variant: "destructive",
             });
         } finally {
@@ -120,10 +136,10 @@ export default function ImportRecipeDialog({ open, onOpenChange, project, onProj
         }
     };
     reader.onerror = () => {
-        console.error("FileReader error");
+        console.error("Error de FileReader");
         toast({
-            title: "File Read Error",
-            description: "An error occurred while reading the file.",
+            title: "Error al Leer Archivo",
+            description: "Ocurrió un error al leer el archivo.",
             variant: "destructive",
         });
         setIsParsing(false);
@@ -139,19 +155,19 @@ export default function ImportRecipeDialog({ open, onOpenChange, project, onProj
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-headline">Import Recipe</DialogTitle>
+          <DialogTitle className="font-headline">Importar Receta</DialogTitle>
           <DialogDescription>
-            Paste your recipe, or upload a file. The AI will parse it to extract the name and tasks.
+            Pega tu receta, o sube un archivo. La IA la analizará para extraer el nombre, las tareas y sus dependencias.
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="paste">
             <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="paste">Paste Text</TabsTrigger>
-                <TabsTrigger value="upload">Upload File</TabsTrigger>
+                <TabsTrigger value="paste">Pegar Texto</TabsTrigger>
+                <TabsTrigger value="upload">Subir Archivo</TabsTrigger>
             </TabsList>
             <TabsContent value="paste" className="py-4">
                 <Textarea
-                    placeholder="Paste your recipe here..."
+                    placeholder="Pega tu receta aquí..."
                     className="min-h-[250px] text-sm"
                     value={recipeText}
                     onChange={(e) => setRecipeText(e.target.value)}
@@ -162,10 +178,10 @@ export default function ImportRecipeDialog({ open, onOpenChange, project, onProj
                   <div className="flex-grow flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 text-center">
                       <Upload className="h-12 w-12 text-muted-foreground" />
                       <p className="mt-2 text-sm text-muted-foreground mb-2">
-                        {fileName ? `Selected: ${fileName}` : "Upload a .txt, .pdf, .xlsx, .docx, .png, or .jpg file"}
+                        {fileName ? `Seleccionado: ${fileName}` : "Sube un archivo .txt, .pdf, .xlsx, .docx, .png, o .jpg"}
                       </p>
                       <Button type="button" onClick={() => fileInputRef.current?.click()}>
-                          Browse Files
+                          Buscar Archivos
                       </Button>
                       <Input 
                           type="file" 
@@ -177,7 +193,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, project, onProj
                   </div>
                   {recipeText && (
                       <div className="relative">
-                          <Label>Extracted Text (preview)</Label>
+                          <Label>Texto Extraído (vista previa)</Label>
                           <Textarea
                               readOnly
                               value={recipeText}
@@ -189,14 +205,14 @@ export default function ImportRecipeDialog({ open, onOpenChange, project, onProj
             </TabsContent>
         </Tabs>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isParsing}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isParsing}>Cancelar</Button>
           <Button onClick={handleImportClick} disabled={isParsing || !recipeText.trim()}>
             {isParsing ? (
               <>
                 <Sparkles className="mr-2 h-4 w-4 animate-spin" />
-                Processing...
+                Procesando...
               </>
-            ) : 'Import Recipe'}
+            ) : 'Importar Receta'}
           </Button>
         </DialogFooter>
       </DialogContent>

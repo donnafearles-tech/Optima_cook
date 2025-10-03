@@ -32,6 +32,8 @@ interface EditTaskSheetProps {
   onSave: (task: Task) => void;
 }
 
+type TimeUnit = 'seconds' | 'minutes';
+
 export default function EditTaskSheet({
   open,
   onOpenChange,
@@ -40,31 +42,42 @@ export default function EditTaskSheet({
   onSave,
 }: EditTaskSheetProps) {
   const [name, setName] = useState('');
-  const [duration, setDuration] = useState(0);
+  const [durationValue, setDurationValue] = useState(0);
+  const [timeUnit, setTimeUnit] = useState<TimeUnit>('minutes');
   const [predecessorIds, setPredecessorIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (open && task) {
       setName(task.name);
-      setDuration(task.duration);
+      if (task.duration < 60 || task.duration % 60 !== 0) {
+        setTimeUnit('seconds');
+        setDurationValue(task.duration);
+      } else {
+        setTimeUnit('minutes');
+        setDurationValue(task.duration / 60);
+      }
       setPredecessorIds(task.predecessorIds);
     } else {
+      // Reset for new task
       setName('');
-      setDuration(0);
+      setDurationValue(5); // Default to 5 minutes
+      setTimeUnit('minutes');
       setPredecessorIds([]);
     }
   }, [task, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || duration <= 0) return;
+    if (!name || durationValue <= 0) return;
+
+    const durationInSeconds = timeUnit === 'minutes' ? durationValue * 60 : durationValue;
 
     onSave({
       id: task?.id || '',
       name,
-      duration,
+      duration: durationInSeconds,
       predecessorIds,
-      recipeId: task?.recipeId || 'rec_1', // Default for simplicity
+      recipeId: task?.recipeId || 'rec_1', // Default por simplicidad
       status: task?.status || 'pending',
     });
   };
@@ -75,15 +88,15 @@ export default function EditTaskSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-md flex flex-col">
         <SheetHeader>
-          <SheetTitle className="font-headline">{task ? 'Edit Task' : 'Add New Task'}</SheetTitle>
+          <SheetTitle className="font-headline">{task ? 'Editar Tarea' : 'Añadir Nueva Tarea'}</SheetTitle>
           <SheetDescription>
-            Fill in the details for your cooking task. Durations are in minutes.
+            Rellena los detalles de tu tarea de cocina.
           </SheetDescription>
         </SheetHeader>
         <form onSubmit={handleSubmit} className="flex-grow flex flex-col gap-4">
           <div className="space-y-4 py-4 flex-grow">
             <div>
-              <Label htmlFor="name">Task Name</Label>
+              <Label htmlFor="name">Nombre de la Tarea</Label>
               <Input
                 id="name"
                 value={name}
@@ -92,27 +105,38 @@ export default function EditTaskSheet({
                 className="mt-1"
               />
             </div>
-            <div>
-              <Label htmlFor="duration">Duration (in minutes)</Label>
-              <Input
-                id="duration"
-                type="number"
-                value={duration / 60}
-                onChange={(e) => setDuration(Number(e.target.value) * 60)}
-                required
-                min="1"
-                className="mt-1"
-              />
+            <div className='flex items-end gap-2'>
+              <div className='flex-grow'>
+                <Label htmlFor="duration">Duración</Label>
+                <Input
+                  id="duration"
+                  type="number"
+                  value={durationValue}
+                  onChange={(e) => setDurationValue(Number(e.target.value))}
+                  required
+                  min="1"
+                  className="mt-1"
+                />
+              </div>
+              <Select value={timeUnit} onValueChange={(value: TimeUnit) => setTimeUnit(value)}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="seconds">Segundos</SelectItem>
+                  <SelectItem value="minutes">Minutos</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <Label htmlFor="predecessors">Dependencies</Label>
+              <Label htmlFor="predecessors">Dependencias</Label>
               <Select onValueChange={(value) => {
                   if (value && !predecessorIds.includes(value)) {
                     setPredecessorIds(prev => [...prev, value])
                   }
                 }}>
                 <SelectTrigger id="predecessors" className="mt-1">
-                  <SelectValue placeholder="Add a predecessor task" />
+                  <SelectValue placeholder="Añadir una tarea predecesora" />
                 </SelectTrigger>
                 <SelectContent>
                   <ScrollArea className="h-48">
@@ -145,9 +169,9 @@ export default function EditTaskSheet({
           </div>
           <SheetFooter>
             <SheetClose asChild>
-                <Button type="button" variant="outline">Cancel</Button>
+                <Button type="button" variant="outline">Cancelar</Button>
             </SheetClose>
-            <Button type="submit">Save Task</Button>
+            <Button type="submit">Guardar Tarea</Button>
           </SheetFooter>
         </form>
       </SheetContent>
