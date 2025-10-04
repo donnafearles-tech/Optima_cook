@@ -31,8 +31,10 @@ interface ImportRecipeDialogProps {
 
 export default function ImportRecipeDialog({ open, onOpenChange, projectId, userId }: ImportRecipeDialogProps) {
   const [recipeText, setRecipeText] = useState('');
+  const [extractedFileText, setExtractedFileText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [fileName, setFileName] = useState('');
+  const [activeTab, setActiveTab] = useState('paste');
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { firestore } = useFirebase();
@@ -125,6 +127,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
       onOpenChange(false);
       setRecipeText('');
       setFileName('');
+      setExtractedFileText('');
 
     } catch (error) {
       console.error('Falló el análisis de la receta', error);
@@ -144,13 +147,14 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
 
     setFileName(file.name);
     setIsParsing(true);
+    setExtractedFileText('');
 
     const reader = new FileReader();
     reader.onload = async (e) => {
         const fileDataUri = e.target?.result as string;
         try {
             const { text } = await extractTextFromFile({ fileDataUri });
-            setRecipeText(text);
+            setExtractedFileText(text);
             toast({
               title: "Archivo procesado",
               description: "Se ha extraído el texto. Revísalo y haz clic en Importar."
@@ -179,8 +183,12 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
   }
 
   const handleImportClick = () => {
-    handleParse(recipeText);
+    const textToParse = activeTab === 'upload' ? extractedFileText : recipeText;
+    handleParse(textToParse);
   }
+
+  const isImportDisabled = isParsing || (activeTab === 'paste' && !recipeText.trim()) || (activeTab === 'upload' && !extractedFileText.trim());
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -191,7 +199,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
             Pega tu receta o sube un archivo. La IA la analizará para extraer tareas y asignar recursos automáticamente.
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="paste">
+        <Tabs defaultValue="paste" value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="paste">Pegar Texto</TabsTrigger>
                 <TabsTrigger value="upload">Subir Archivo</TabsTrigger>
@@ -202,6 +210,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
                     className="min-h-[250px] text-sm"
                     value={recipeText}
                     onChange={(e) => setRecipeText(e.target.value)}
+                    disabled={isParsing}
                 />
             </TabsContent>
             <TabsContent value="upload" className="py-4">
@@ -211,7 +220,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
                       <p className="mt-2 text-sm text-muted-foreground mb-2">
                         {fileName ? `Seleccionado: ${fileName}` : "Sube un archivo .txt, .pdf, .xlsx, .docx, .png, o .jpg"}
                       </p>
-                      <Button type="button" onClick={() => fileInputRef.current?.click()}>
+                      <Button type="button" onClick={() => fileInputRef.current?.click()} disabled={isParsing}>
                           Buscar Archivos
                       </Button>
                       <Input 
@@ -220,14 +229,15 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
                           className="hidden"
                           onChange={handleFileChange}
                           accept=".txt,.pdf,.xlsx,.docx,.png,.jpg,.jpeg"
+                          disabled={isParsing}
                       />
                   </div>
-                  {recipeText && (
+                  {extractedFileText && (
                       <div className="relative">
                           <Label>Texto Extraído (vista previa)</Label>
                           <Textarea
                               readOnly
-                              value={recipeText}
+                              value={extractedFileText}
                               className="mt-1 h-32 text-xs bg-muted"
                           />
                       </div>
@@ -237,7 +247,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
         </Tabs>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isParsing}>Cancelar</Button>
-          <Button onClick={handleImportClick} disabled={isParsing || !recipeText.trim()}>
+          <Button onClick={handleImportClick} disabled={isImportDisabled}>
             {isParsing ? (
               <>
                 <Sparkles className="mr-2 h-4 w-4 animate-spin" />
