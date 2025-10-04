@@ -40,6 +40,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const [isCalculatingPath, setIsCalculatingPath] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isGuideStale, setIsGuideStale] = useState(false);
+  const [showDependencyWarning, setShowDependencyWarning] = useState(false);
   const { toast } = useToast();
   const { firestore } = useFirebase();
   const router = useRouter();
@@ -271,7 +272,7 @@ const handleConsolidateTasks = async () => {
                 const duplicateTasks = group.filter(t => t.id !== masterTask.id);
 
                 const consolidatedData = {
-                    name: masterTask.name, // Keep original master name for simplicity
+                    name: masterTask.name,
                     duration: group.reduce((total, t) => total + t.duration, 0),
                     recipeIds: [...new Set(group.flatMap(t => t.recipeIds || []))],
                     resourceIds: [...new Set(group.flatMap(t => t.resourceIds || []))],
@@ -294,14 +295,12 @@ const handleConsolidateTasks = async () => {
             return;
         }
 
-        // Second pass: Re-wire dependencies for all non-deleted tasks
         const remainingTasks = tasks.filter(t => !tasksToDelete.has(t.id));
         remainingTasks.forEach(task => {
             let needsUpdate = false;
-            const originalPredecessors = new Set(task.predecessorIds);
             const newPredecessors = new Set(task.predecessorIds);
 
-            originalPredecessors.forEach(predId => {
+            task.predecessorIds.forEach(predId => {
                 if (predecessorRedirects.has(predId)) {
                     newPredecessors.delete(predId);
                     const masterId = predecessorRedirects.get(predId)!;
@@ -310,7 +309,6 @@ const handleConsolidateTasks = async () => {
                 }
             });
 
-            // CRITICAL: Ensure a task does not depend on itself
             if (newPredecessors.has(task.id)) {
                 newPredecessors.delete(task.id);
                 needsUpdate = true;
@@ -321,7 +319,6 @@ const handleConsolidateTasks = async () => {
             }
         });
         
-        // Final pass: Delete all duplicates
         tasksToDelete.forEach(id => {
             batch.delete(doc(tasksCollection, id));
         });
@@ -347,28 +344,32 @@ const handleConsolidateTasks = async () => {
     }
 };
 
-  const handleCalculatePath = async () => {
+  const handleCalculatePath = async (force = false) => {
     setIsCalculatingPath(true);
+    const currentTasks = allTasks || [];
+    if (!force) {
+        const tasksWithoutPredecessors = currentTasks.filter(t => t.predecessorIds.length === 0);
+        if (tasksWithoutPredecessors.length > 1 && currentTasks.length > 1) {
+            setShowDependencyWarning(true);
+            setIsCalculatingPath(false);
+            return;
+        }
+    }
+
     try {
-      // Forzar la limpieza de la guía ANTES de cualquier otra acción
       await updateDocumentNonBlocking(projectRef, { cpmResult: null });
-      
-      // Navegar a la página de la guía. La página mostrará "Generando..."
       router.push(`/projects/${projectId}/guide`);
 
-      // El cálculo real ocurre en segundo plano de forma asíncrona.
-      // La página de la guía detectará el resultado cuando esté listo en Firestore.
       const runCalculation = async () => {
         try {
-          // Re-obtener las tareas para asegurar que trabajamos con los datos más frescos después de cualquier posible consolidación.
           const freshTasksSnapshot = await getDocs(tasksQuery!);
-          const currentTasks = freshTasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
+          const tasksForCalc = freshTasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
           
-          if (currentTasks.length === 0) return;
+          if (tasksForCalc.length === 0) return;
 
-          const cpmResult = calculateCPM(currentTasks);
+          const cpmResult = calculateCPM(tasksForCalc);
           await updateDocumentNonBlocking(projectRef, { cpmResult });
-          setIsGuideStale(false); // La guía ahora está fresca
+          setIsGuideStale(false);
         } catch (calcError) {
            console.error("Error durante el cálculo de CPM en segundo plano:", calcError);
         }
@@ -384,7 +385,7 @@ const handleConsolidateTasks = async () => {
           description: errorMessage,
           variant: "destructive",
       });
-       setIsCalculatingPath(false); // Solo si la navegación falla
+       setIsCalculatingPath(false);
     }
   };
 
@@ -393,15 +394,12 @@ const handleConsolidateTasks = async () => {
     try {
       const batch = writeBatch(firestore);
   
-      // Delete all tasks
       const tasksSnapshot = await getDocs(tasksQuery!);
       tasksSnapshot.forEach(doc => batch.delete(doc.ref));
   
-      // Delete all recipes
       const recipesSnapshot = await getDocs(recipesQuery!);
       recipesSnapshot.forEach(doc => batch.delete(doc.ref));
   
-      // Clear the CPM result on the project
       batch.update(projectRef, { cpmResult: null });
   
       await batch.commit();
@@ -432,7 +430,6 @@ const handleConsolidateTasks = async () => {
     else if (project && project.cpmResult && project.cpmResult.tasks.length !== currentTasks.length) {
         if (!isGuideStale) setIsGuideStale(true);
     } else if (project?.cpmResult && !isGuideStale) {
-        // Additional check: verify if the tasks in cpmResult match the current tasks
         const cpmTaskIds = new Set(project.cpmResult.tasks.map(t => t.id));
         const currentTaskIds = new Set(currentTasks.map(t => t.id));
         if (cpmTaskIds.size !== currentTaskIds.size || !([...cpmTaskIds].every(id => currentTaskIds.has(id)))) {
@@ -482,8 +479,9 @@ const handleConsolidateTasks = async () => {
           <div className="flex gap-2 flex-wrap">
               <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive">
-                  <Trash2 className="mr-2 h-4 w-4" /> Borrar Proyecto
+                <Button variant="destructive" disabled={isClearing}>
+                  <Trash2 className="mr-2 h-4 w-4" /> 
+                  {isClearing ? 'Borrando...' : 'Borrar Proyecto'}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -495,8 +493,8 @@ const handleConsolidateTasks = async () => {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleClearProject} disabled={isClearing}>
-                    {isClearing ? 'Borrando...' : 'Sí, borrar todo'}
+                  <AlertDialogAction onClick={handleClearProject}>
+                    Sí, borrar todo
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -561,7 +559,7 @@ const handleConsolidateTasks = async () => {
 
        <div className="mt-8 flex justify-end gap-2">
          {isGuideStale ? (
-            <Button size="lg" variant="destructive" onClick={handleCalculatePath} disabled={isCalculatingPath}>
+            <Button size="lg" variant="destructive" onClick={() => handleCalculatePath(false)} disabled={isCalculatingPath}>
               {isCalculatingPath ? <Sparkles className="mr-2 h-4 w-4 animate-spin" /> : <AlertTriangle className="mr-2 h-4 w-4" />}
               Recalcular Guía
             </Button>
@@ -570,12 +568,33 @@ const handleConsolidateTasks = async () => {
               Ver Guía <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
          ) : (
-            <Button size="lg" onClick={handleCalculatePath} disabled={(allTasks || []).length === 0 || isCalculatingPath}>
+            <Button size="lg" onClick={() => handleCalculatePath(false)} disabled={(allTasks || []).length === 0 || isCalculatingPath}>
               {isCalculatingPath ? <Sparkles className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
               Calcular Ruta Óptima
             </Button>
          )}
       </div>
+
+       <AlertDialog open={showDependencyWarning} onOpenChange={setShowDependencyWarning}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Dependencias de Tareas Faltantes</AlertDialogTitle>
+                <AlertDialogDescription>
+                    El cálculo no puede garantizar una optimización correcta porque la mayoría de las tareas no tienen dependencias definidas. ¿Te gustaría que la IA sugiera las dependencias ahora?
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <Button variant="outline" onClick={() => { setShowDependencyWarning(false); handleCalculatePath(true); }}>
+                    Forzar Cálculo
+                </Button>
+                <AlertDialogAction onClick={() => { setShowDependencyWarning(false); handleSuggestDependencies(); }}>
+                    Sugerir Dependencias
+                </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+       </AlertDialog>
+
 
       <EditTaskSheet
         open={editingTask !== null}
