@@ -89,7 +89,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     setEditingRecipe(null);
   };
 
- const handleRecipeDelete = (recipeId: string) => {
+  const handleRecipeDelete = (recipeId: string) => {
     if (!tasks || !project) return;
 
     const batch = writeBatch(firestore);
@@ -294,21 +294,26 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const handleCalculatePath = async () => {
     if (!tasks || !project) return;
     setIsCalculatingPath(true);
+
     try {
-        // Explicitly clear the old result before calculating the new one.
-        await updateDocumentNonBlocking(projectRef, { cpmResult: null });
+      // 1. Explicitly clear the old result in Firestore to ensure a clean slate.
+      await updateDocumentNonBlocking(projectRef, { cpmResult: null });
+      
+      // 2. The guide page will show a loading state while this happens in the background.
+      router.push(`/projects/${projectId}/guide`);
 
-        const cpmResult = calculateCPM(tasks);
-        
-        await updateDocumentNonBlocking(projectRef, { cpmResult });
-        
-        setIsGuideStale(false); 
+      // 3. Perform the calculation.
+      const cpmResult = calculateCPM(tasks);
+      
+      // 4. Save the new, clean result. The guide page will update automatically via Firestore listener.
+      await updateDocumentNonBlocking(projectRef, { cpmResult });
+      
+      setIsGuideStale(false); 
 
-        toast({
-          title: "¡Ruta Óptima Calculada!",
-          description: "Tu guía de cocina está lista.",
-        });
-        router.push(`/projects/${projectId}/guide`);
+      toast({
+        title: "¡Ruta Óptima Calculada!",
+        description: "Tu guía de cocina está lista y actualizada.",
+      });
 
     } catch(error) {
         console.error(error);
@@ -468,5 +473,3 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     </>
   );
 }
-
-    

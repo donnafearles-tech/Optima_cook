@@ -98,7 +98,32 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
 
   return (
     <div ref={containerRef} className="relative w-full overflow-x-auto p-4 min-h-[500px]">
-      <div className="flex gap-16 items-start">
+      <svg className="absolute top-0 left-0 w-full h-full pointer-events-none z-0">
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" className="fill-primary" />
+          </marker>
+        </defs>
+        {nodes.map(node =>
+          node.task.predecessorIds.map(predId => {
+            const startPos = positions[predId];
+            const endPos = positions[node.id];
+            if (!startPos || !endPos) return null;
+
+            return (
+              <path
+                key={`${predId}-${node.id}`}
+                d={`M ${startPos.x},${startPos.y} C ${startPos.x + 80},${startPos.y} ${endPos.x - 80},${endPos.y} ${endPos.x},${endPos.y}`}
+                className="stroke-primary/80"
+                strokeWidth="2.5"
+                fill="none"
+                markerEnd="url(#arrowhead)"
+              />
+            );
+          })
+        )}
+      </svg>
+      <div className="flex gap-16 items-start relative z-10">
         {levels.map(level => (
           <div key={level} className="flex flex-col gap-8 items-center">
             {nodes.filter(n => n.level === level).map(node => (
@@ -106,20 +131,20 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
                 <Card 
                   className={cn("w-48 shadow-lg", 
                     node.task.isCritical 
-                    ? "bg-[#FF6600] text-white" 
+                    ? "bg-primary text-primary-foreground border-2 border-amber-300"
                     : "bg-card"
                   )}
                 >
                   <CardContent className="p-3 text-center">
                     <p className="font-bold text-sm truncate">{node.task.name}</p>
-                    <Separator className={cn("my-2", node.task.isCritical ? "bg-white/30" : "bg-border")} />
+                    <Separator className={cn("my-2", node.task.isCritical ? "bg-primary-foreground/30" : "bg-border")} />
                     <div className="grid grid-cols-2 text-xs gap-x-2 gap-y-1 text-left">
                         <div className="font-semibold">ES: {node.task.es}</div>
                         <div className="font-semibold">EF: {node.task.ef}</div>
                         <div className="font-semibold">LS: {node.task.ls}</div>
                         <div className="font-semibold">LF: {node.task.lf}</div>
                     </div>
-                     <Separator className={cn("my-2", node.task.isCritical ? "bg-white/30" : "bg-border")} />
+                     <Separator className={cn("my-2", node.task.isCritical ? "bg-primary-foreground/30" : "bg-border")} />
                      <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
                             <div className="font-semibold tracking-wider">DUR</div>
@@ -137,32 +162,6 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
           </div>
         ))}
       </div>
-
-      <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ zIndex: -1 }}>
-        <defs>
-          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="#166534" />
-          </marker>
-        </defs>
-        {nodes.map(node =>
-          node.task.predecessorIds.map(predId => {
-            const startPos = positions[predId];
-            const endPos = positions[node.id];
-            if (!startPos || !endPos) return null;
-
-            return (
-              <path
-                key={`${predId}-${node.id}`}
-                d={`M ${startPos.x},${startPos.y} C ${startPos.x + 80},${startPos.y} ${endPos.x - 80},${endPos.y} ${endPos.x},${endPos.y}`}
-                stroke="#166534"
-                strokeWidth="2.5"
-                fill="none"
-                markerEnd="url(#arrowhead)"
-              />
-            );
-          })
-        )}
-      </svg>
     </div>
   );
 }
