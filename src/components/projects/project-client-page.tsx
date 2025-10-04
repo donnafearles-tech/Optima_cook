@@ -310,11 +310,6 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
       
       setIsGuideStale(false); 
 
-      toast({
-        title: "¡Ruta Óptima Calculada!",
-        description: "Tu guía de cocina está lista y actualizada.",
-      });
-
     } catch(error) {
         console.error(error);
         const errorMessage = error instanceof Error ? error.message : "Revisa la consola para más detalles.";
