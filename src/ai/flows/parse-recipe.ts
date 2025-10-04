@@ -18,43 +18,55 @@ const parseRecipePrompt = ai.definePrompt({
   name: 'parseRecipePrompt',
   input: {schema: ParseRecipeInputSchema},
   output: {schema: ParseRecipeOutputSchema},
-  prompt: `Actúa como un Chef de alta cocina experto en optimización de procesos (Mise en Place) y simultáneamente como un Ingeniero de Procesos.
+  prompt: `Actúa como un Chef de alta cocina experto en optimización de procesos (Mise en Place), un Ingeniero de Procesos y un Desarrollador Full Stack con especialización en Procesamiento de Lenguaje Natural (PLN) para cocina.
 
-    **Objetivo Principal:**
-    Analiza la receta de cocina proporcionada y genera una estructura de datos JSON. Tu objetivo es generar una lista de tareas de alto nivel, consolidando micro-pasos. La lista final de tareas debe tener un MÁXIMO de 10 pasos.
+**Objetivo Principal:**
+Analiza la receta proporcionada y transfórmala en una Estructura de Desglose del Trabajo (EDT) ultra-detallada y optimizada. Tu output DEBE ser un objeto JSON válido.
 
-    **Instrucciones Detalladas:**
+**Fases del Proceso (Instrucciones Estrictas):**
 
-    1.  **Análisis y Agrupación (NO Desglose Atómico):**
-        *   En lugar de desglosar cada acción al mínimo, agrupa las tareas relacionadas en pasos lógicos más grandes.
-        *   Ejemplo: "Lavar tomate", "Secar tomate", "Cortar tomate en rodajas" deben agruparse en una sola tarea: "Preparar tomates".
-        *   **CRÍTICO: El número total de tareas generadas no debe exceder 10.**
+**Fase 1: Normalización Lingüística y Simplificación Atómica (Pre-procesamiento)**
+Para cada paso de la receta, ANTES de cualquier otra cosa, aplica esta limpieza:
+a. **Limpieza General:** Convierte todo a minúsculas, elimina acentos y cualquier signo de puntuación (ej. ¡, ¿, ., coma).
+b. **Simplificación de Vocabulario:** Reemplaza jerga culinaria o frases complejas con un verbo estándar y simple.
+    - "llevar a punto de ebullición" -> "hervir"
+    - "sazonar con generosidad" -> "agregar sal y pimienta"
+    - "cortar en juliana" -> "cortar"
+    - "remover constantemente" -> "remover"
+c. **Atomicidad (Acción + Ingrediente):** La descripción final de la tarea debe ser lo más atómica posible, centrada en una única acción y el ingrediente principal, eliminando palabras de relleno.
+    - "picar la cebolla finamente" -> "picar cebolla"
+    - "lavar y secar las hojas de lechuga" -> Debe ser desglosado en dos tareas: "lavar lechuga" y "secar lechuga".
 
-    2.  **Secuenciación y Dependencias:**
-        *   Identifica las dependencias lógicas entre estas tareas de alto nivel. (Ej: "Cocinar la salsa" debe venir después de "Preparar los vegetales para la salsa").
-        *   Para productos que requieren armado (sándwiches, lasañas), considera el orden de montaje al definir las tareas. (Ej: "Montar las capas de la lasaña").
+**Fase 2: Desglose Atómico (Generación de EDT)**
+Descompón cada instrucción normalizada en sus tareas elementales más pequeñas y discretas. Si un paso implica múltiples acciones (ej. "pelar y cortar patatas"), debe convertirse en tareas separadas ("pelar patatas", "cortar patatas").
 
-    3.  **Estimación de Duración:** Asigna una duración estimada y realista en **segundos** a cada tarea agrupada.
+**Fase 3: Lógica de Ensamblaje Físico (Nivel de Tornillo)**
+Si el platillo requiere armado (ej. lasaña, sándwich, pastel), analiza la estabilidad estructural. Las tareas de ensamblaje deben secuenciarse para garantizar la estabilidad física.
+- **Ejemplo Lasaña:** La tarea "agregar capa de salsa base" debe preceder a "colocar primera capa de pasta", ya que la salsa actúa como "pegamento". La tarea "cubrir con queso" debe ser una de las últimas.
+- **Deduce este orden** y úsalo para definir las dependencias en la siguiente fase.
 
-    4.  **Generación del Output (Formato JSON Estricto):**
-        *   Responde **ÚNICAMENTE** con un objeto JSON válido.
-        *   El objeto de receta debe contener 'recipeName' y 'tasks'.
-        *   Cada objeto 'task' debe tener: 'name' (string), 'duration' (number en segundos), 'predecessorIds' (array de strings con los nombres de las tareas predecesoras), y 'isAssemblyStep' (boolean).
-        *   Las tareas de preparación (p. ej., preparar ingredientes) deben tener 'isAssemblyStep: false'.
-        *   Las tareas que forman parte del cocinado o armado final del platillo (p. ej., "Hornear la lasaña") deben tener 'isAssemblyStep: true'.
-        *   Si una tarea no tiene dependencias, su 'predecessorIds' debe ser un array vacío [].
+**Fase 4: Inferencia de Dependencias y Generación del Output**
+1.  **Inferencia:** Basado en la lógica culinaria y la lógica de ensamblaje de la Fase 3, infiere TODAS las dependencias para cada tarea atómica.
+2.  **Estimación de Duración:** Asigna una duración realista en **segundos** a cada tarea atómica.
+3.  **Generación del JSON:** Construye el objeto JSON de salida.
+    *   Responde **ÚNICAMENTE** con el objeto JSON.
+    *   El objeto debe contener 'recipeName' y 'tasks'.
+    *   Cada objeto 'task' DEBE tener: 'name' (la descripción simplificada y atómica), 'duration' (número en segundos), 'predecessorIds' (array con los **NOMBRES** de las tareas predecesoras) y 'isAssemblyStep' (boolean).
+    *   Las tareas de preparación (mise en place) son 'isAssemblyStep: false'.
+    *   Las tareas que son parte del armado o cocción final del plato son 'isAssemblyStep: true'.
+    *   Si una tarea no tiene dependencias, 'predecessorIds' debe ser \`[]\`.
 
-      **Entrada de la Receta:**
-      {{#if recipeText}}
-      Texto de la Receta:
-      {{{recipeText}}}
-      {{/if}}
-      
-      {{#if ingredients}}
-      Lista de Ingredientes:
-      {{#each ingredients}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
-      {{/if}}
-      `,
+**Entrada de la Receta:**
+{{#if recipeText}}
+Texto de la Receta:
+{{{recipeText}}}
+{{/if}}
+
+{{#if ingredients}}
+Lista de Ingredientes:
+{{#each ingredients}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/if}}
+`,
 });
 
 const parseRecipeFlow = ai.defineFlow(
