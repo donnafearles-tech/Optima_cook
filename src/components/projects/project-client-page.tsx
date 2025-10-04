@@ -242,7 +242,7 @@ const handleConsolidateTasks = async () => {
             return str
                 .toLowerCase()
                 .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-                .replace(/[.,¡!]/g, '')
+                .replace(/[.,¡!¿]/g, '')
                 .replace(/\b(la|el|un|una|de|para|los|las|a|con|en)\b/g, '')
                 .trim().replace(/\s+/g, ' ');
         };
@@ -256,26 +256,30 @@ const handleConsolidateTasks = async () => {
             taskGroups.get(normalizedName)!.push(task);
         });
 
+        const batch = writeBatch(firestore);
+        const tasksCollection = collection(projectRef, 'tasks');
         const tasksToDelete = new Set<string>();
-        const tasksToUpdate = new Map<string, Partial<Task>>();
         const predecessorRedirects = new Map<string, string>();
         let consolidationHappened = false;
 
-        for (const [normalizedName, group] of taskGroups.entries()) {
+        // First pass: Identify masters, duplicates, and prepare updates
+        for (const group of taskGroups.values()) {
             if (group.length > 1) {
                 consolidationHappened = true;
-                const masterTask = group.sort((a,b) => a.name.length - b.name.length)[0];
+                const masterTask = group.reduce((a, b) => a.name.length <= b.name.length ? a : b);
+                
                 const duplicateTasks = group.filter(t => t.id !== masterTask.id);
 
-                const consolidatedData: Partial<Task> = {
-                    name: `Unificado: ${masterTask.name}`,
+                const consolidatedData = {
+                    name: masterTask.name, // Keep original master name for simplicity
                     duration: group.reduce((total, t) => total + t.duration, 0),
                     recipeIds: [...new Set(group.flatMap(t => t.recipeIds || []))],
                     resourceIds: [...new Set(group.flatMap(t => t.resourceIds || []))],
                     isAssemblyStep: group.some(t => t.isAssemblyStep),
+                    predecessorIds: [...new Set(group.flatMap(t => t.predecessorIds || []))],
                 };
                 
-                tasksToUpdate.set(masterTask.id, consolidatedData);
+                batch.update(doc(tasksCollection, masterTask.id), consolidatedData);
 
                 duplicateTasks.forEach(dup => {
                     tasksToDelete.add(dup.id);
@@ -290,37 +294,34 @@ const handleConsolidateTasks = async () => {
             return;
         }
 
-        const finalPredecessorUpdates = new Map<string, string[]>();
-        tasks.forEach(task => {
-            if (tasksToDelete.has(task.id)) return;
-
+        // Second pass: Re-wire dependencies for all non-deleted tasks
+        const remainingTasks = tasks.filter(t => !tasksToDelete.has(t.id));
+        remainingTasks.forEach(task => {
             let needsUpdate = false;
+            const originalPredecessors = new Set(task.predecessorIds);
             const newPredecessors = new Set(task.predecessorIds);
-            
-            task.predecessorIds.forEach(predId => {
+
+            originalPredecessors.forEach(predId => {
                 if (predecessorRedirects.has(predId)) {
                     newPredecessors.delete(predId);
-                    newPredecessors.add(predecessorRedirects.get(predId)!);
+                    const masterId = predecessorRedirects.get(predId)!;
+                    newPredecessors.add(masterId);
                     needsUpdate = true;
                 }
             });
 
+            // CRITICAL: Ensure a task does not depend on itself
+            if (newPredecessors.has(task.id)) {
+                newPredecessors.delete(task.id);
+                needsUpdate = true;
+            }
+
             if (needsUpdate) {
-                finalPredecessorUpdates.set(task.id, Array.from(newPredecessors));
+                batch.update(doc(tasksCollection, task.id), { predecessorIds: Array.from(newPredecessors) });
             }
         });
         
-        const batch = writeBatch(firestore);
-        const tasksCollection = collection(projectRef, 'tasks');
-
-        tasksToUpdate.forEach((data, id) => {
-            batch.update(doc(tasksCollection, id), data);
-        });
-
-        finalPredecessorUpdates.forEach((preds, id) => {
-            batch.update(doc(tasksCollection, id), { predecessorIds: preds });
-        });
-
+        // Final pass: Delete all duplicates
         tasksToDelete.forEach(id => {
             batch.delete(doc(tasksCollection, id));
         });
@@ -336,7 +337,11 @@ const handleConsolidateTasks = async () => {
 
     } catch (error) {
         console.error("Error en la unificación nativa:", error);
-        toast({ title: 'Error de Unificación', description: 'No se pudieron unificar las tareas.', variant: 'destructive' });
+        if (error instanceof Error) {
+           toast({ title: 'Error de Unificación', description: error.message, variant: 'destructive' });
+        } else {
+           toast({ title: 'Error de Unificación', description: 'No se pudieron unificar las tareas.', variant: 'destructive' });
+        }
     } finally {
         setIsConsolidating(false);
     }
@@ -591,3 +596,5 @@ const handleConsolidateTasks = async () => {
     </>
   );
 }
+
+    
