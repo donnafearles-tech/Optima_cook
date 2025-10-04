@@ -6,7 +6,7 @@ export interface Task {
   id: string;
   name: string;
   duration: number; // en segundos
-  recipeId: string;
+  recipeIds: string[];
   predecessorIds: string[];
   resourceIds: string[];
   status: TaskStatus;
@@ -138,3 +138,36 @@ export const SuggestKeywordsForResourceOutputSchema = z.object({
     keywords: z.array(z.string()).describe('Una lista de palabras clave sugeridas (verbos de acción o sinónimos) asociadas con el recurso.'),
 });
 export type SuggestKeywordsForResourceOutput = z.infer<typeof SuggestKeywordsForResourceOutputSchema>;
+
+const TaskInputSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    duration: z.number(),
+    predecessorIds: z.array(z.string()),
+    recipeIds: z.array(z.string()),
+});
+
+const RecipeInputSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+})
+
+export const ConsolidateTasksInputSchema = z.object({
+  tasks: z.array(TaskInputSchema).describe("La lista completa de tareas de todas las recetas en el proyecto."),
+  recipes: z.array(RecipeInputSchema).describe("La lista de recetas en el proyecto para mapear nombres de recetas.")
+});
+export type ConsolidateTasksInput = z.infer<typeof ConsolidateTasksInputSchema>;
+
+
+const ConsolidatedTaskSchema = z.object({
+  originalTaskIds: z.array(z.string()).describe("Los IDs de las tareas originales que fueron consolidadas en esta."),
+  consolidatedName: z.string().describe("El nuevo nombre unificado para la tarea consolidada. Por ejemplo, 'Picar cebolla (para todas las recetas)'."),
+  duration: z.number().describe("La suma de las duraciones de todas las tareas originales consolidadas."),
+  recipeIds: z.array(z.string()).describe("Un array con los IDs de todas las recetas que requieren esta tarea."),
+});
+
+export const ConsolidateTasksOutputSchema = z.object({
+    consolidatedTasks: z.array(ConsolidatedTaskSchema).describe("La lista de tareas consolidadas. Cada tarea representa un grupo de tareas originales unificadas."),
+    unconsolidatedTaskIds: z.array(z.string()).describe("Los IDs de las tareas que no pudieron ser consolidadas y deben permanecer como están.")
+});
+export type ConsolidateTasksOutput = z.infer<typeof ConsolidateTasksOutputSchema>;

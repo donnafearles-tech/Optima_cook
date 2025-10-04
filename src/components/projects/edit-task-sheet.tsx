@@ -52,7 +52,7 @@ export default function EditTaskSheet({
   const [durationValue, setDurationValue] = useState(0);
   const [timeUnit, setTimeUnit] = useState<TimeUnit>('minutes');
   const [predecessorIds, setPredecessorIds] = useState<string[]>([]);
-  const [recipeId, setRecipeId] = useState<string | null>(null);
+  const [recipeIds, setRecipeIds] = useState<string[]>([]);
   const [resourceIds, setResourceIds] = useState<string[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
   const { toast } = useToast();
@@ -69,7 +69,7 @@ export default function EditTaskSheet({
           setDurationValue(task.duration / 60);
         }
         setPredecessorIds(task.predecessorIds);
-        setRecipeId(task.recipeId);
+        setRecipeIds(task.recipeIds || (task as any).recipeId ? [(task as any).recipeId] : []);
         setResourceIds(task.resourceIds || []);
       } else {
         // Reset for new task
@@ -77,7 +77,7 @@ export default function EditTaskSheet({
         setDurationValue(5); // Default to 5 minutes
         setTimeUnit('minutes');
         setPredecessorIds([]);
-        setRecipeId(allRecipes[0]?.id || null);
+        setRecipeIds(allRecipes[0]?.id ? [allRecipes[0].id] : []);
         setResourceIds([]);
       }
     }
@@ -106,10 +106,10 @@ export default function EditTaskSheet({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || durationValue <= 0 || !recipeId) {
+    if (!name || durationValue <= 0 || recipeIds.length === 0) {
         toast({
             title: "Faltan campos",
-            description: "Asegúrate de que la tarea tenga un nombre, duración y una receta asociada.",
+            description: "Asegúrate de que la tarea tenga un nombre, duración y al menos una receta asociada.",
             variant: "destructive",
         });
         return;
@@ -122,7 +122,7 @@ export default function EditTaskSheet({
       name,
       duration: durationInSeconds,
       predecessorIds,
-      recipeId: recipeId,
+      recipeIds: recipeIds,
       resourceIds,
       status: task?.status || 'pending',
     });
@@ -142,17 +142,38 @@ export default function EditTaskSheet({
         <form onSubmit={handleSubmit} className="flex-grow flex flex-col gap-4">
           <div className="space-y-4 py-4 flex-grow">
             <div>
-                <Label htmlFor="recipeId">Receta</Label>
-                 <Select value={recipeId || ''} onValueChange={setRecipeId} required>
+                <Label htmlFor="recipeId">Receta(s)</Label>
+                <Select onValueChange={(value) => {
+                  if (value && !recipeIds.includes(value)) {
+                    setRecipeIds(prev => [...prev, value])
+                  }
+                }}>
                     <SelectTrigger id="recipeId" className="mt-1">
-                        <SelectValue placeholder="Selecciona una receta" />
+                        <SelectValue placeholder="Asignar a una receta" />
                     </SelectTrigger>
                     <SelectContent>
-                        {allRecipes.map(recipe => (
+                        {allRecipes.filter(r => !recipeIds.includes(r.id)).map(recipe => (
                             <SelectItem key={recipe.id} value={recipe.id}>{recipe.name}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
+                 <div className="mt-2 flex flex-wrap gap-1">
+                {recipeIds.map(rId => {
+                  const recipe = allRecipes.find(r => r.id === rId);
+                  return (
+                    <Badge key={rId} variant="secondary">
+                      {recipe?.name}
+                      <button
+                        type="button"
+                        className="ml-1 rounded-full p-0.5 hover:bg-destructive/20"
+                        onClick={() => setRecipeIds(prev => prev.filter(id => id !== rId))}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  );
+                })}
+              </div>
             </div>
             <div>
               <Label htmlFor="name">Nombre de la Tarea</Label>

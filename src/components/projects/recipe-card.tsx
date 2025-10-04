@@ -22,6 +22,7 @@ interface RecipeCardProps {
     recipe: Recipe;
     tasks: Task[];
     allTasks: Task[];
+    allRecipes: Recipe[];
     allResources: UserResource[];
     onEditRecipe: () => void;
     onDeleteRecipe: () => void;
@@ -41,6 +42,7 @@ export default function RecipeCard({
     recipe,
     tasks,
     allTasks,
+    allRecipes,
     allResources,
     onEditRecipe,
     onDeleteRecipe,
@@ -83,12 +85,22 @@ export default function RecipeCard({
                         (rId) => allResources.find((r) => r.id === rId)?.name
                      ).filter(Boolean);
 
+                     const recipes = (task.recipeIds || []).map(
+                        (rId) => allRecipes.find((r) => r.id === rId)?.name
+                     ).filter(Boolean);
+
                     return (
                         <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg">
                            <div className="flex-1">
                                 <p className="font-medium">{task.name}</p>
                                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-1 text-xs text-muted-foreground">
                                     <span>Duración: {formatDuration(task.duration)}</span>
+                                    {recipes.length > 1 && (
+                                         <div className="flex items-center gap-1">
+                                            <span>Recetas:</span>
+                                            {recipes.map(rName => <Badge key={rName} variant="outline">{rName}</Badge>)}
+                                        </div>
+                                    )}
                                     {predecessors.length > 0 && (
                                         <div className="flex items-center gap-1">
                                             <span>Depende de:</span>

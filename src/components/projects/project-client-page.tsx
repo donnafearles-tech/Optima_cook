@@ -2,10 +2,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, Wand2, FileUp, Plus } from 'lucide-react';
+import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine } from 'lucide-react';
 import type { Project, Task, Recipe, UserResource, CpmResult } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { suggestTaskDependencies } from '@/ai/flows/suggest-task-dependencies';
+import { consolidateTasks } from '@/ai/flows/consolidate-tasks';
 import { calculateCPM } from '@/lib/cpm';
 import EditTaskSheet from './edit-task-sheet';
 import EditRecipeDialog from './edit-recipe-dialog';
@@ -25,6 +26,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const [editingTask, setEditingTask] = useState<Task | null | 'new'>(null);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null | 'new'>(null);
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isConsolidating, setIsConsolidating] = useState(false);
   const [isCalculatingPath, setIsCalculatingPath] = useState(false);
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -63,7 +65,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
             predecessorIds: [],
             resourceIds: [],
             status: 'pending',
-            recipeId: defaultRecipeId,
+            recipeIds: [defaultRecipeId],
         };
         setEditingTask(newTaskTemplate);
     } else {
@@ -91,7 +93,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     const recipeRef = doc(projectRef, 'recipes', recipeId);
     batch.delete(recipeRef);
 
-    const tasksToDelete = tasks.filter(t => t.recipeId === recipeId);
+    const tasksToDelete = tasks.filter(t => t.recipeIds.includes(recipeId));
     tasksToDelete.forEach(t => {
         const taskRef = doc(projectRef, 'tasks', t.id);
         batch.delete(taskRef);
@@ -110,10 +112,10 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     const tasksCollection = collection(projectRef, 'tasks');
     const { id, ...dataToSave } = taskToSave;
 
-    if (!dataToSave.recipeId) {
+    if (!dataToSave.recipeIds || dataToSave.recipeIds.length === 0) {
         toast({
             title: 'Error al Guardar',
-            description: 'Toda tarea debe estar asociada a una receta.',
+            description: 'Toda tarea debe estar asociada a al menos una receta.',
             variant: 'destructive',
         });
         return;
@@ -187,6 +189,62 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
       setIsSuggesting(false);
     }
   };
+
+  const handleConsolidateTasks = async () => {
+    if (!tasks || tasks.length < 1 || !recipes) {
+        toast({ title: 'No hay suficientes datos', description: 'Necesitas tareas y recetas para consolidar.', variant: 'destructive' });
+        return;
+    }
+    setIsConsolidating(true);
+    try {
+        const aiResult = await consolidateTasks({
+            tasks: tasks.map(t => ({ id: t.id, name: t.name, duration: t.duration, recipeIds: t.recipeIds, predecessorIds: t.predecessorIds })),
+            recipes: recipes.map(r => ({ id: r.id, name: r.name })),
+        });
+
+        const batch = writeBatch(firestore);
+        const tasksCol = collection(projectRef, 'tasks');
+
+        // 1. Delete all original tasks that are part of a consolidation
+        const tasksToDelete = new Set<string>();
+        aiResult.consolidatedTasks.forEach(group => {
+            group.originalTaskIds.forEach(id => tasksToDelete.add(id));
+        });
+        tasksToDelete.forEach(id => {
+            batch.delete(doc(tasksCol, id));
+        });
+
+        // 2. Create new consolidated tasks
+        aiResult.consolidatedTasks.forEach(group => {
+            const newDocRef = doc(tasksCol);
+            // NOTE: Predecessor and resource logic would need to be merged here as well.
+            // This is a simplified version focusing on consolidation.
+            const newTaskData = {
+                name: group.consolidatedName,
+                duration: group.duration,
+                recipeIds: group.recipeIds,
+                predecessorIds: [], // Dependencies need to be re-evaluated or merged
+                resourceIds: [], // Resources would need to be merged
+                status: 'pending',
+                isAssemblyStep: false, // This flag would need re-evaluation
+            };
+            batch.set(newDocRef, newTaskData);
+        });
+
+        await batch.commit();
+
+        toast({
+            title: '¡Tareas Consolidadas!',
+            description: `Se han unificado ${tasksToDelete.size} tareas en ${aiResult.consolidatedTasks.length} nuevas tareas optimizadas.`,
+        });
+
+    } catch (error) {
+        console.error(error);
+        toast({ title: 'Falló la Consolidación', description: 'La IA no pudo unificar las tareas.', variant: 'destructive' });
+    } finally {
+        setIsConsolidating(false);
+    }
+};
 
   const handleCalculatePath = () => {
     if (!tasks || !project) return;
@@ -265,6 +323,14 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <h2 className="text-2xl font-bold tracking-tight font-headline flex-1">Recetas</h2>
           <div className="flex gap-2">
+             <Button variant="outline" onClick={handleConsolidateTasks} disabled={isConsolidating || allTasks.length < 2}>
+              {isConsolidating ? (
+                <Combine className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Combine className="mr-2 h-4 w-4" />
+              )}
+              Unificar Tareas
+            </Button>
             <Button variant="outline" onClick={handleSuggestDependencies} disabled={isSuggesting || allTasks.length < 2}>
               {isSuggesting ? (
                 <Wand2 className="mr-2 h-4 w-4 animate-spin" />
@@ -283,9 +349,10 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
                 <RecipeCard 
                     key={recipe.id}
                     recipe={recipe}
-                    tasks={allTasks.filter(t => t.recipeId === recipe.id)}
+                    tasks={allTasks.filter(t => t.recipeIds.includes(recipe.id))}
                     allTasks={allTasks}
                     allResources={allResources}
+                    allRecipes={allRecipes}
                     onEditRecipe={() => setEditingRecipe(recipe)}
                     onDeleteRecipe={() => handleRecipeDelete(recipe.id)}
                     onAddTask={() => handleOpenEditTask('new')}

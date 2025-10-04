@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { parseRecipe } from '@/ai/flows/parse-recipe';
 import { suggestResourceForTask } from '@/ai/flows/suggest-resource-for-task';
-import type { ParseRecipeOutput, UserResource } from '@/lib/types';
+import type { ParseRecipeOutput, UserResource, Task } from '@/lib/types';
 import { Sparkles, Upload } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '../ui/input';
@@ -105,11 +105,11 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
           .map(name => taskNameMap.get(name))
           .filter((id): id is string => !!id);
 
-        const finalTaskData = {
+        const finalTaskData: Omit<Task, 'id'> = {
           name: originalTask.name,
           duration: originalTask.duration,
           isAssemblyStep: originalTask.isAssemblyStep,
-          recipeId: newRecipeRef.id,
+          recipeIds: [newRecipeRef.id],
           status: 'pending' as const,
           resourceIds: resourceIds,
           predecessorIds: mappedPredIds
