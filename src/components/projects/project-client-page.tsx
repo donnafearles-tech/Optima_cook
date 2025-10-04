@@ -48,12 +48,11 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const { data: resources, isLoading: isLoadingResources } = useCollection<UserResource>(resourcesQuery);
   
   const invalidateGuide = () => {
+    // Solo marcamos como obsoleto si ya existía una guía.
     if (project?.cpmResult) {
-      // Update local state immediately for instant UI feedback
       setProject(prev => (prev ? { ...prev, cpmResult: undefined } : null));
       setIsGuideStale(true);
-
-      // Then, update Firestore non-blockingly to persist the invalidation
+      // Actualizamos Firestore en segundo plano para persistir la invalidación
       updateDocumentNonBlocking(projectRef, { cpmResult: null });
     }
   };
@@ -102,27 +101,22 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const handleRecipeDelete = async (recipeId: string) => {
     if (!tasks || !project) return;
     
-    // Invalidate UI immediately
     invalidateGuide();
 
     try {
       const batch = writeBatch(firestore);
 
-      // 1. Mark the recipe document for deletion
       const recipeRef = doc(projectRef, 'recipes', recipeId);
       batch.delete(recipeRef);
 
-      // 2. Find all tasks associated with this recipe and mark them for deletion
       const tasksToDelete = tasks.filter(t => (t.recipeIds || []).includes(recipeId));
       tasksToDelete.forEach(t => {
           const taskRef = doc(projectRef, 'tasks', t.id);
           batch.delete(taskRef);
       });
       
-      // 3. Mark the CPM result as null to ensure guide is invalidated on the backend
       batch.update(projectRef, { cpmResult: null });
 
-      // 4. Commit all operations atomically
       await batch.commit();
 
       toast({ title: 'Receta Eliminada', description: 'La receta y sus tareas han sido eliminadas. La guía necesita recalcularse.' });
@@ -130,7 +124,6 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     } catch (e) {
         console.error("Error al eliminar la receta y sus tareas:", e);
         toast({ title: 'Error', description: 'No se pudo eliminar la receta.', variant: 'destructive' });
-        // Optionally, re-fetch data or revert UI state if deletion fails
     }
   };
 
@@ -289,19 +282,24 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     setIsCalculatingPath(true);
     try {
         const cpmResult = calculateCPM(tasks);
+        // Actualizamos Firestore, que luego actualizará el estado local a través de useDoc
         updateDocumentNonBlocking(projectRef, { cpmResult });
         
         setIsGuideStale(false); 
+        setProject(prev => (prev ? { ...prev, cpmResult } : null));
 
         toast({
           title: "¡Ruta Óptima Calculada!",
           description: "Tu guía de cocina está lista.",
         });
+        router.push(`/projects/${projectId}/guide`);
+
     } catch(error) {
         console.error(error);
+        const errorMessage = error instanceof Error ? error.message : "Revisa la consola para más detalles.";
         toast({
             title: "Error al Calcular",
-            description: "No se pudo calcular la ruta crítica. Revisa la consola para más detalles.",
+            description: errorMessage,
             variant: "destructive",
         });
     } finally {
@@ -310,12 +308,10 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   };
   
   useEffect(() => {
-    // This effect ensures the stale flag is correctly set when the project data changes from an external source.
     if (project && !project.cpmResult && (tasks?.length ?? 0) > 0) {
         setIsGuideStale(true);
     } else if (project && project.cpmResult) {
-        // If we have a result, we assume it's fresh unless an action invalidates it.
-        setIsGuideStale(false);
+        // No marcamos como no-obsoleto aquí para que la acción del usuario sea la fuente de verdad.
     }
   }, [project, tasks]);
 
@@ -417,46 +413,36 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         </div>
       </div>
 
-      <div className="mt-8 flex justify-end gap-2">
-        {!hasGuideData && (
+       <div className="mt-8 flex justify-end gap-2">
+        {!hasGuideData && !isGuideStale && (
           <Button 
-                size="lg" 
-                onClick={handleCalculatePath} 
-                disabled={allTasks.length === 0 || isCalculatingPath}
-             >
-              {isCalculatingPath ? (
-                  <>
-                  <Sparkles className="mr-2 h-4 w-4 animate-spin" />
-                  Calculando...
-                  </>
-              ) : (
-                  'Calcular Ruta Óptima'
-              )}
+            size="lg" 
+            onClick={handleCalculatePath} 
+            disabled={allTasks.length === 0 || isCalculatingPath}
+          >
+            {isCalculatingPath ? (
+              <><Sparkles className="mr-2 h-4 w-4 animate-spin" />Calculando...</>
+            ) : (
+              'Calcular Ruta Óptima'
+            )}
           </Button>
         )}
-        {hasGuideData && isGuideStale && (
-          <Button 
+        {(hasGuideData || isGuideStale) && (
+           <Button 
                 size="lg" 
-                variant="destructive"
+                variant={isGuideStale ? "destructive" : "default"}
                 onClick={handleCalculatePath} 
                 disabled={allTasks.length === 0 || isCalculatingPath}
-             >
+            >
               {isCalculatingPath ? (
-                  <>
-                  <Sparkles className="mr-2 h-4 w-4 animate-spin" />
-                  Recalculando...
-                  </>
+                <><Sparkles className="mr-2 h-4 w-4 animate-spin" />Recalculando...</>
               ) : (
-                  <>
-                    <AlertTriangle className="mr-2 h-4 w-4" />
-                    Recalcular Guía
-                  </>
+                isGuideStale ? (
+                  <><AlertTriangle className="mr-2 h-4 w-4" />Recalcular Guía</>
+                ) : (
+                  <>Ver Guía <ArrowRight className="ml-2 h-4 w-4" /></>
+                )
               )}
-          </Button>
-        )}
-        {hasGuideData && !isGuideStale && (
-           <Button size="lg" asChild>
-            <Link href={`/projects/${projectId}/guide`}>Ver Guía <ArrowRight className="ml-2 h-4 w-4" /></Link>
           </Button>
         )}
       </div>
