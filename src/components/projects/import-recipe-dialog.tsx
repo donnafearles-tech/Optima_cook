@@ -12,7 +12,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { parseRecipe } from '@/ai/flows/parse-recipe';
-import { suggestResourceForTask } from '@/ai/flows/suggest-resource-for-task';
 import type { ParseRecipeOutput, Task, UserResource } from '@/lib/types';
 import { Sparkles, Upload } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -39,10 +38,6 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { firestore } = useFirebase();
-
-  const userRef = useMemoFirebase(() => doc(firestore, 'users', userId), [firestore, userId]);
-  const resourcesQuery = useMemoFirebase(() => collection(userRef, 'resources'), [userRef]);
-  const { data: resources } = useCollection<UserResource>(resourcesQuery);
 
   const handleParse = async (textToParse: string) => {
      if (!textToParse.trim()) {
@@ -75,23 +70,10 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
         return { originalTask, taskRef };
       });
 
-      const resourceSuggestionPromises = taskRefs.map(async ({ originalTask, taskRef }) => {
+      taskRefs.forEach(({ originalTask, taskRef }) => {
         const mappedPredIds = originalTask.predecessorIds
           .map(name => taskNameMap.get(name))
           .filter((id): id is string => !!id);
-          
-        let resourceIds: string[] = [];
-        if (resources && resources.length > 0) {
-            try {
-                const resourceResult = await suggestResourceForTask({
-                    taskName: originalTask.name,
-                    userResources: resources,
-                });
-                resourceIds = resourceResult.resourceIds;
-            } catch (e) {
-                console.warn(`Could not suggest resources for task "${originalTask.name}":`, e);
-            }
-        }
 
         const finalTaskData: Omit<Task, 'id'> = {
           name: originalTask.name,
@@ -99,18 +81,17 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
           isAssemblyStep: originalTask.isAssemblyStep,
           recipeIds: [newRecipeRef.id],
           status: 'pending' as const,
-          resourceIds: resourceIds,
+          resourceIds: [], // Resources are no longer suggested automatically
           predecessorIds: mappedPredIds
         };
         batch.set(taskRef, finalTaskData);
       });
       
-      await Promise.all(resourceSuggestionPromises);
       await batch.commit();
 
       toast({
         title: '¡Receta Importada!',
-        description: `Se importó "${result.recipeName}" y se añadieron ${result.tasks.length} tareas con recursos sugeridos.`,
+        description: `Se importó "${result.recipeName}" y se añadieron ${result.tasks.length} tareas.`,
       });
 
       onOpenChange(false);

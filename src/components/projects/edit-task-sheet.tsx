@@ -20,13 +20,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { X, Check, ChevronsUpDown } from 'lucide-react';
+import { X, Check, ChevronsUpDown, Sparkles } from 'lucide-react';
 import type { Task, Recipe, UserResource } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+import { suggestResourceForTask } from '@/ai/flows/suggest-resource-for-task';
 
 
 interface EditTaskSheetProps {
@@ -113,6 +114,7 @@ export default function EditTaskSheet({
   const [predecessorIds, setPredecessorIds] = useState<string[]>([]);
   const [recipeIds, setRecipeIds] = useState<string[]>([]);
   const [resourceIds, setResourceIds] = useState<string[]>([]);
+  const [isSuggesting, setIsSuggesting] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -127,7 +129,7 @@ export default function EditTaskSheet({
           setDurationValue(task.duration / 60);
         }
         setPredecessorIds(task.predecessorIds);
-        setRecipeIds(task.recipeIds || []);
+        setRecipeIds(task.recipeIds || ((task as any).recipeId ? [(task as any).recipeId] : []));
         setResourceIds(task.resourceIds || []);
       } else {
         // Reset for new task
@@ -165,6 +167,32 @@ export default function EditTaskSheet({
       status: task?.status || 'pending',
     });
   };
+
+  const handleSuggestResources = async () => {
+    if (!name) {
+        toast({ title: "Falta el nombre", description: "Escribe un nombre para la tarea antes de pedir sugerencias.", variant: "destructive" });
+        return;
+    };
+    if (!allResources || allResources.length === 0) {
+        toast({ title: "No hay recursos", description: "No tienes recursos en tu inventario para sugerir.", variant: "destructive" });
+        return;
+    }
+    setIsSuggesting(true);
+    try {
+        const result = await suggestResourceForTask({ taskName: name, userResources: allResources });
+        if (result.resourceIds.length > 0) {
+            setResourceIds(prev => [...new Set([...prev, ...result.resourceIds])]);
+            toast({ title: 'Sugerencias Añadidas', description: 'La IA ha añadido nuevos recursos a esta tarea.' });
+        } else {
+            toast({ title: 'Sin Sugerencias', description: 'La IA no encontró recursos relevantes para esta tarea.' });
+        }
+    } catch(e) {
+        console.error(e);
+        toast({ title: 'Error de IA', description: 'No se pudieron obtener sugerencias.', variant: 'destructive' });
+    } finally {
+        setIsSuggesting(false);
+    }
+  }
 
   const availablePredecessors = useMemo(() => 
     allTasks
@@ -235,6 +263,10 @@ export default function EditTaskSheet({
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <Label>Recursos Requeridos</Label>
+                   <Button type="button" size="sm" variant="ghost" onClick={handleSuggestResources} disabled={isSuggesting || !name}>
+                    {isSuggesting ? <Sparkles className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4" />}
+                    Sugerencia IA
+                </Button>
                 </div>
                  <MultiSelectPopover 
                     title="recursos"
