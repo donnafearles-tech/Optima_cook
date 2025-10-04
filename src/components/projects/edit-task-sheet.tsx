@@ -20,11 +20,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { X, Sparkles } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { Task, Recipe, UserResource } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
-import { useFirebase } from '@/firebase';
-import { suggestResourceForTask } from '@/ai/flows/suggest-resource-for-task';
 import { useToast } from '@/hooks/use-toast';
 
 interface EditTaskSheetProps {
@@ -54,7 +52,6 @@ export default function EditTaskSheet({
   const [predecessorIds, setPredecessorIds] = useState<string[]>([]);
   const [recipeIds, setRecipeIds] = useState<string[]>([]);
   const [resourceIds, setResourceIds] = useState<string[]>([]);
-  const [isSuggesting, setIsSuggesting] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -83,26 +80,6 @@ export default function EditTaskSheet({
     }
   }, [task, open, allRecipes]);
 
-  const handleSuggestResources = async () => {
-    if (!name) return;
-    setIsSuggesting(true);
-    try {
-        const result = await suggestResourceForTask({
-            taskName: name,
-            userResources: allResources,
-        });
-        if (result.resourceIds.length > 0) {
-            setResourceIds(prev => [...new Set([...prev, ...result.resourceIds])]);
-            toast({ title: 'Recurso Sugerido', description: 'La IA ha vinculado un recurso a esta tarea.' });
-        } else {
-            toast({ title: 'Sin Sugerencias', description: 'La IA no encontró un recurso relevante para esta tarea.' });
-        }
-    } catch(e) {
-        toast({ title: 'Error de IA', description: 'No se pudieron obtener sugerencias.', variant: 'destructive' });
-    } finally {
-        setIsSuggesting(false);
-    }
-  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,10 +189,6 @@ export default function EditTaskSheet({
             <div>
               <div className="flex justify-between items-center mb-1">
                 <Label>Recursos Requeridos</Label>
-                <Button type="button" size="sm" variant="ghost" onClick={handleSuggestResources} disabled={isSuggesting || !name}>
-                    {isSuggesting ? <Sparkles className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4" />}
-                    Sugerencia IA
-                </Button>
               </div>
                <Select onValueChange={(value) => {
                   if (value && !resourceIds.includes(value)) {
