@@ -89,30 +89,29 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     setEditingRecipe(null);
   };
 
-  const handleRecipeDelete = (recipeId: string) => {
+ const handleRecipeDelete = (recipeId: string) => {
     if (!tasks || !project) return;
-    
-    const batch = writeBatch(firestore);
 
+    const batch = writeBatch(firestore);
     const recipeRef = doc(projectRef, 'recipes', recipeId);
     batch.delete(recipeRef);
 
     const tasksToDelete = tasks.filter(t => (t.recipeIds || []).includes(recipeId));
     tasksToDelete.forEach(t => {
-        const taskRef = doc(projectRef, 'tasks', t.id);
-        batch.delete(taskRef);
+      const taskRef = doc(projectRef, 'tasks', t.id);
+      batch.delete(taskRef);
     });
-    
+
     if (project.cpmResult) {
       batch.update(projectRef, { cpmResult: null });
     }
 
     batch.commit().then(() => {
-        setIsGuideStale(true);
-        toast({ title: 'Receta Eliminada', description: 'La receta y sus tareas han sido eliminadas. La guía necesita recalcularse.' });
+      setIsGuideStale(true);
+      toast({ title: 'Receta Eliminada', description: 'La receta y sus tareas han sido eliminadas. La guía necesita recalcularse.' });
     }).catch((e) => {
-        console.error("Error al eliminar la receta y sus tareas:", e);
-        toast({ title: 'Error', description: 'No se pudo eliminar la receta.', variant: 'destructive' });
+      console.error("Error al eliminar la receta y sus tareas:", e);
+      toast({ title: 'Error', description: 'No se pudo eliminar la receta.', variant: 'destructive' });
     });
   };
 
@@ -321,12 +320,9 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   };
   
   useEffect(() => {
-    // This effect detects if the guide is stale based on data changes.
-    // We only set it to true, never false. The user action of recalculating will set it to false.
     if (project && !project.cpmResult && (tasks?.length ?? 0) > 0) {
         if (!isGuideStale) setIsGuideStale(true);
     }
-    // If the cpmResult exists but the number of tasks in it doesn't match the current tasks, it's stale.
     else if (project && project.cpmResult && project.cpmResult.tasks.length !== (tasks?.length ?? 0)) {
         if (!isGuideStale) setIsGuideStale(true);
     }
@@ -432,29 +428,21 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
       </div>
 
        <div className="mt-8 flex justify-end gap-2">
-        {hasValidGuide ? (
-           <Button 
-                size="lg" 
-                onClick={() => router.push(`/projects/${projectId}/guide`)} 
-            >
+         {isGuideStale ? (
+            <Button size="lg" variant="destructive" onClick={handleCalculatePath} disabled={isCalculatingPath}>
+              {isCalculatingPath ? <Sparkles className="mr-2 h-4 w-4 animate-spin" /> : <AlertTriangle className="mr-2 h-4 w-4" />}
+              Recalcular Guía
+            </Button>
+         ) : hasValidGuide ? (
+            <Button size="lg" onClick={() => router.push(`/projects/${projectId}/guide`)}>
               Ver Guía <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        ) : (
-          <Button 
-            size="lg" 
-            variant={isGuideStale ? "destructive" : "default"}
-            onClick={handleCalculatePath} 
-            disabled={allTasks.length === 0 || isCalculatingPath}
-          >
-            {isCalculatingPath ? (
-              <><Sparkles className="mr-2 h-4 w-4 animate-spin" />Calculando...</>
-            ) : (
-               isGuideStale ? (
-                  <><AlertTriangle className="mr-2 h-4 w-4" />Recalcular Guía</>
-               ) : 'Calcular Ruta Óptima'
-            )}
-          </Button>
-        )}
+            </Button>
+         ) : (
+            <Button size="lg" onClick={handleCalculatePath} disabled={allTasks.length === 0 || isCalculatingPath}>
+              {isCalculatingPath ? <Sparkles className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              Calcular Ruta Óptima
+            </Button>
+         )}
       </div>
 
       <EditTaskSheet
