@@ -20,6 +20,7 @@ import { Label } from '../ui/label';
 import { extractTextFromFile } from '@/ai/flows/extract-text-from-file';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, writeBatch, doc } from 'firebase/firestore';
+import { suggestResourceForTask } from '@/ai/flows/suggest-resource-for-task';
 
 
 interface ImportRecipeDialogProps {
@@ -38,6 +39,12 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { firestore } = useFirebase();
+  
+  const resourcesQuery = useMemoFirebase(() => {
+    if (!userId) return null;
+    return collection(firestore, 'users', userId, 'resources');
+  }, [firestore, userId]);
+  const { data: userResources } = useCollection<UserResource>(resourcesQuery);
 
   const handleParse = async (textToParse: string) => {
      if (!textToParse.trim()) {
@@ -69,8 +76,13 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
         taskNameMap.set(originalTask.name, taskRef.id);
         return { originalTask, taskRef };
       });
+      
+      const resourceSuggestions = userResources && userResources.length > 0 ? await Promise.all(
+        result.tasks.map(t => suggestResourceForTask({ taskName: t.name, userResources }))
+      ) : result.tasks.map(() => ({ resourceIds: [] }));
 
-      taskRefs.forEach(({ originalTask, taskRef }) => {
+
+      taskRefs.forEach(({ originalTask, taskRef }, index) => {
         const mappedPredIds = originalTask.predecessorIds
           .map(name => taskNameMap.get(name))
           .filter((id): id is string => !!id);
@@ -81,7 +93,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
           isAssemblyStep: originalTask.isAssemblyStep,
           recipeIds: [newRecipeRef.id],
           status: 'pending' as const,
-          resourceIds: [], // Resources are no longer suggested automatically
+          resourceIds: resourceSuggestions[index]?.resourceIds || [],
           predecessorIds: mappedPredIds
         };
         batch.set(taskRef, finalTaskData);

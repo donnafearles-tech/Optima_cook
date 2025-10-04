@@ -263,10 +263,7 @@ export default function EditTaskSheet({
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <Label>Recursos Requeridos</Label>
-                   <Button type="button" size="sm" variant="ghost" onClick={handleSuggestResources} disabled={isSuggesting || !name}>
-                    {isSuggesting ? <Sparkles className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4" />}
-                    Sugerencia IA
-                </Button>
+                   
                 </div>
                  <MultiSelectPopover 
                     title="recursos"
