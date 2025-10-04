@@ -93,7 +93,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     const recipeRef = doc(projectRef, 'recipes', recipeId);
     batch.delete(recipeRef);
 
-    const tasksToDelete = tasks.filter(t => (t.recipeIds || [(t as any).recipeId]).includes(recipeId));
+    const tasksToDelete = tasks.filter(t => (t.recipeIds || []).includes(recipeId));
     tasksToDelete.forEach(t => {
         const taskRef = doc(projectRef, 'tasks', t.id);
         batch.delete(taskRef);
@@ -198,33 +198,46 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     setIsConsolidating(true);
     try {
         const aiResult = await consolidateTasks({
-            tasks: tasks.map(t => ({ id: t.id, name: t.name, duration: t.duration, recipeIds: t.recipeIds || [(t as any).recipeId], predecessorIds: t.predecessorIds })),
+            tasks: tasks.map(t => ({ id: t.id, name: t.name, duration: t.duration, recipeIds: t.recipeIds || [], predecessorIds: t.predecessorIds })),
             recipes: recipes.map(r => ({ id: r.id, name: r.name })),
         });
 
         const batch = writeBatch(firestore);
         const tasksCol = collection(projectRef, 'tasks');
+        const originalTasksMap = new Map(tasks.map(t => [t.id, t]));
 
-        // 1. Delete all original tasks that are part of a consolidation
+        // 1. Delete all original tasks that are part of a consolidation and gather their resources
         const tasksToDelete = new Set<string>();
+        const consolidatedResources = new Map<string, string[]>();
+
         aiResult.consolidatedTasks.forEach(group => {
-            group.originalTaskIds.forEach(id => tasksToDelete.add(id));
+            const allResourceIds = new Set<string>();
+            group.originalTaskIds.forEach(id => {
+                tasksToDelete.add(id);
+                const originalTask = originalTasksMap.get(id);
+                if (originalTask && originalTask.resourceIds) {
+                    originalTask.resourceIds.forEach(resId => allResourceIds.add(resId));
+                }
+            });
+            // Store the unique, merged resource IDs for this group.
+            // We use the consolidatedName as a temporary key.
+            consolidatedResources.set(group.consolidatedName, Array.from(allResourceIds));
         });
+
         tasksToDelete.forEach(id => {
             batch.delete(doc(tasksCol, id));
         });
 
-        // 2. Create new consolidated tasks
+        // 2. Create new consolidated tasks with merged resources
         aiResult.consolidatedTasks.forEach(group => {
             const newDocRef = doc(tasksCol);
-            // NOTE: Predecessor and resource logic would need to be merged here as well.
-            // This is a simplified version focusing on consolidation.
+            const mergedResourceIds = consolidatedResources.get(group.consolidatedName) || [];
             const newTaskData = {
                 name: group.consolidatedName,
                 duration: group.duration,
                 recipeIds: group.recipeIds,
-                predecessorIds: [], // Dependencies need to be re-evaluated or merged
-                resourceIds: [], // Resources would need to be merged
+                predecessorIds: [], // Dependencies need re-evaluation after consolidation
+                resourceIds: mergedResourceIds,
                 status: 'pending',
                 isAssemblyStep: false, // This flag would need re-evaluation
             };
@@ -235,7 +248,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
 
         toast({
             title: '¡Tareas Consolidadas!',
-            description: `Se han unificado ${tasksToDelete.size} tareas en ${aiResult.consolidatedTasks.length} nuevas tareas optimizadas.`,
+            description: `Se han unificado ${tasksToDelete.size} tareas en ${aiResult.consolidatedTasks.length} nuevas tareas optimizadas, fusionando sus recursos.`,
         });
 
     } catch (error) {
@@ -349,7 +362,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
                 <RecipeCard 
                     key={recipe.id}
                     recipe={recipe}
-                    tasks={allTasks.filter(t => (t.recipeIds || [(t as any).recipeId]).includes(recipe.id))}
+                    tasks={allTasks.filter(t => (t.recipeIds || []).includes(recipe.id))}
                     allTasks={allTasks}
                     allResources={allResources}
                     allRecipes={allRecipes}
