@@ -87,21 +87,33 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   };
 
   const handleRecipeDelete = async (recipeId: string) => {
-    if (!tasks) return;
+    if (!tasks || !project) return;
     const batch = writeBatch(firestore);
-    
+
+    // 1. Delete the recipe itself
     const recipeRef = doc(projectRef, 'recipes', recipeId);
     batch.delete(recipeRef);
 
+    // 2. Delete all associated tasks
     const tasksToDelete = tasks.filter(t => (t.recipeIds || []).includes(recipeId));
     tasksToDelete.forEach(t => {
         const taskRef = doc(projectRef, 'tasks', t.id);
         batch.delete(taskRef);
     });
+    
+    // 3. Reset the CPM result on the project to force recalculation
+    batch.update(projectRef, { cpmResult: null });
+
 
     try {
         await batch.commit();
-        toast({ title: 'Receta Eliminada', description: 'La receta y todas sus tareas han sido eliminadas.' });
+        toast({ title: 'Receta Eliminada', description: 'La receta y sus tareas han sido eliminadas. La guía necesita recalcularse.' });
+        
+        // Optimistically update local state to reflect the change
+        if (setProject) {
+          setProject({ ...project, cpmResult: undefined });
+        }
+
     } catch (e) {
         console.error("Error al eliminar la receta y sus tareas:", e);
         toast({ title: 'Error', description: 'No se pudo eliminar la receta.', variant: 'destructive' });
@@ -134,9 +146,15 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     const taskDoc = doc(projectRef, 'tasks', taskId);
     deleteDocumentNonBlocking(taskDoc);
     
+    // Also reset the CPM result
+    updateDocumentNonBlocking(projectRef, { cpmResult: null });
+    if (project && setProject) {
+        setProject({ ...project, cpmResult: undefined });
+    }
+
     toast({
         title: 'Tarea Eliminada',
-        description: 'Recuerda revisar las dependencias de otras tareas.',
+        description: 'Recuerda revisar las dependencias y recalcular la guía.',
     });
   };
   
@@ -206,17 +224,18 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         const tasksCol = collection(projectRef, 'tasks');
         const originalTasksMap = new Map(tasks.map(t => [t.id, t]));
 
-        // 1. Delete all original tasks that are part of a consolidation
-        const tasksToDelete = new Set<string>();
+        // Create a set of all task IDs that are part of a consolidation
+        const tasksToDeleteIds = new Set<string>();
         aiResult.consolidatedTasks.forEach(group => {
-            group.originalTaskIds.forEach(id => tasksToDelete.add(id));
+            group.originalTaskIds.forEach(id => tasksToDeleteIds.add(id));
         });
 
-        tasksToDelete.forEach(id => {
+        // Delete all original tasks that were consolidated
+        tasksToDeleteIds.forEach(id => {
             batch.delete(doc(tasksCol, id));
         });
-
-        // 2. Create new consolidated tasks with merged resources
+        
+        // For each new consolidated task, create it and merge resources
         aiResult.consolidatedTasks.forEach(group => {
             const newDocRef = doc(tasksCol);
             
@@ -235,8 +254,8 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
                 recipeIds: group.recipeIds,
                 predecessorIds: [], // Dependencies need re-evaluation after consolidation
                 resourceIds: Array.from(mergedResourceIds),
-                status: 'pending',
-                isAssemblyStep: false, // This flag would need re-evaluation
+                status: 'pending' as const,
+                isAssemblyStep: group.originalTaskIds.some(id => originalTasksMap.get(id)?.isAssemblyStep),
             };
             batch.set(newDocRef, newTaskData);
         });
@@ -245,7 +264,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
 
         toast({
             title: '¡Tareas Consolidadas!',
-            description: `Se han unificado ${tasksToDelete.size} tareas en ${aiResult.consolidatedTasks.length} nuevas tareas optimizadas, fusionando sus recursos.`,
+            description: `Se han unificado ${tasksToDeleteIds.size} tareas en ${aiResult.consolidatedTasks.length} nuevas tareas optimizadas.`,
         });
 
     } catch (error) {
@@ -419,5 +438,3 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     </>
   );
 }
-
-    

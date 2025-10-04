@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,10 +20,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { X } from 'lucide-react';
+import { X, Check, ChevronsUpDown } from 'lucide-react';
 import type { Task, Recipe, UserResource } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
+
 
 interface EditTaskSheetProps {
   open: boolean;
@@ -36,6 +40,63 @@ interface EditTaskSheetProps {
 }
 
 type TimeUnit = 'seconds' | 'minutes';
+
+function MultiSelectPopover({ title, options, selected, onSelectedChange }: { title: string, options: { value: string, label: string }[], selected: string[], onSelectedChange: (selected: string[]) => void }) {
+  const [open, setOpen] = useState(false);
+
+  const handleSelect = (currentValue: string) => {
+    const newSelected = selected.includes(currentValue)
+      ? selected.filter((value) => value !== currentValue)
+      : [...selected, currentValue];
+    onSelectedChange(newSelected);
+  };
+  
+  const selectedLabels = selected.map(value => options.find(opt => opt.value === value)?.label).filter(Boolean);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between"
+        >
+           <span className="truncate">
+            {selectedLabels.length > 0 ? selectedLabels.join(', ') : `Seleccionar ${title}...`}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0">
+        <Command>
+          <CommandInput placeholder={`Buscar ${title}...`} />
+          <CommandList>
+            <CommandEmpty>No se encontraron resultados.</CommandEmpty>
+            <CommandGroup>
+              {options.map((option) => (
+                <CommandItem
+                  key={option.value}
+                  value={option.label}
+                  onSelect={() => handleSelect(option.value)}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      selected.includes(option.value) ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {option.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 
 export default function EditTaskSheet({
   open,
@@ -66,7 +127,7 @@ export default function EditTaskSheet({
           setDurationValue(task.duration / 60);
         }
         setPredecessorIds(task.predecessorIds);
-        setRecipeIds(task.recipeIds || ((task as any).recipeId ? [(task as any).recipeId] : []));
+        setRecipeIds(task.recipeIds || []);
         setResourceIds(task.resourceIds || []);
       } else {
         // Reset for new task
@@ -105,7 +166,16 @@ export default function EditTaskSheet({
     });
   };
 
-  const availablePredecessors = allTasks.filter(t => t.id !== task?.id);
+  const availablePredecessors = useMemo(() => 
+    allTasks
+        .filter(t => t.id !== task?.id)
+        .map(t => ({ value: t.id, label: t.name })), 
+    [allTasks, task]
+  );
+  
+  const availableRecipes = useMemo(() => allRecipes.map(r => ({ value: r.id, label: r.name })), [allRecipes]);
+  const availableResources = useMemo(() => allResources.map(r => ({ value: r.id, label: r.name })), [allResources]);
+
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -116,163 +186,82 @@ export default function EditTaskSheet({
             Rellena los detalles de tu tarea de cocina.
           </SheetDescription>
         </SheetHeader>
-        <form onSubmit={handleSubmit} className="flex-grow flex flex-col gap-4">
-          <div className="space-y-4 py-4 flex-grow">
-            <div>
-                <Label htmlFor="recipeId">Receta(s)</Label>
-                <Select onValueChange={(value) => {
-                  if (value && !recipeIds.includes(value)) {
-                    setRecipeIds(prev => [...prev, value])
-                  }
-                }}>
-                    <SelectTrigger id="recipeId" className="mt-1">
-                        <SelectValue placeholder="Asignar a una receta" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {allRecipes.filter(r => !recipeIds.includes(r.id)).map(recipe => (
-                            <SelectItem key={recipe.id} value={recipe.id}>{recipe.name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                 <div className="mt-2 flex flex-wrap gap-1">
-                {recipeIds.map(rId => {
-                  const recipe = allRecipes.find(r => r.id === rId);
-                  return (
-                    <Badge key={rId} variant="secondary">
-                      {recipe?.name}
-                      <button
-                        type="button"
-                        className="ml-1 rounded-full p-0.5 hover:bg-destructive/20"
-                        onClick={() => setRecipeIds(prev => prev.filter(id => id !== rId))}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  );
-                })}
+        <ScrollArea className="flex-grow">
+          <form onSubmit={handleSubmit} className="flex-grow flex flex-col gap-4 px-1 py-4">
+            <div className="space-y-4">
+              <div>
+                  <Label htmlFor="recipeId">Receta(s)</Label>
+                  <MultiSelectPopover 
+                    title="recetas"
+                    options={availableRecipes}
+                    selected={recipeIds}
+                    onSelectedChange={setRecipeIds}
+                  />
               </div>
-            </div>
-            <div>
-              <Label htmlFor="name">Nombre de la Tarea</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="mt-1"
-              />
-            </div>
-            <div className='flex items-end gap-2'>
-              <div className='flex-grow'>
-                <Label htmlFor="duration">Duración</Label>
+              <div>
+                <Label htmlFor="name">Nombre de la Tarea</Label>
                 <Input
-                  id="duration"
-                  type="number"
-                  value={durationValue}
-                  onChange={(e) => setDurationValue(Number(e.target.value))}
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   required
-                  min="1"
                   className="mt-1"
                 />
               </div>
-              <Select value={timeUnit} onValueChange={(value: TimeUnit) => setTimeUnit(value)}>
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="seconds">Segundos</SelectItem>
-                  <SelectItem value="minutes">Minutos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <Label>Recursos Requeridos</Label>
+              <div className='flex items-end gap-2'>
+                <div className='flex-grow'>
+                  <Label htmlFor="duration">Duración</Label>
+                  <Input
+                    id="duration"
+                    type="number"
+                    value={durationValue}
+                    onChange={(e) => setDurationValue(Number(e.target.value))}
+                    required
+                    min="1"
+                    className="mt-1"
+                  />
+                </div>
+                <Select value={timeUnit} onValueChange={(value: TimeUnit) => setTimeUnit(value)}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="seconds">Segundos</SelectItem>
+                    <SelectItem value="minutes">Minutos</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-               <Select onValueChange={(value) => {
-                  if (value && !resourceIds.includes(value)) {
-                    setResourceIds(prev => [...prev, value])
-                  }
-                }}>
-                <SelectTrigger id="resources" >
-                  <SelectValue placeholder="Añadir un recurso" />
-                </SelectTrigger>
-                <SelectContent>
-                  <ScrollArea className="h-48">
-                    {allResources.filter(r => !resourceIds.includes(r.id)).map(res => (
-                      <SelectItem key={res.id} value={res.id}>
-                        {res.name}
-                      </SelectItem>
-                    ))}
-                  </ScrollArea>
-                </SelectContent>
-              </Select>
-              <div className="mt-2 flex flex-wrap gap-1">
-                {resourceIds.map(rId => {
-                  const resource = allResources.find(r => r.id === rId);
-                  return (
-                    <Badge key={rId} variant="secondary">
-                      {resource?.name}
-                      <button
-                        type="button"
-                        className="ml-1 rounded-full p-0.5 hover:bg-destructive/20"
-                        onClick={() => setResourceIds(prev => prev.filter(id => id !== rId))}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  );
-                })}
+              
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <Label>Recursos Requeridos</Label>
+                </div>
+                 <MultiSelectPopover 
+                    title="recursos"
+                    options={availableResources}
+                    selected={resourceIds}
+                    onSelectedChange={setResourceIds}
+                  />
               </div>
-            </div>
 
-            <div>
-              <Label>Dependencias (Predecesores)</Label>
-              <Select onValueChange={(value) => {
-                  if (value && !predecessorIds.includes(value)) {
-                    setPredecessorIds(prev => [...prev, value])
-                  }
-                }}>
-                <SelectTrigger id="predecessors" className="mt-1">
-                  <SelectValue placeholder="Añadir una tarea predecesora" />
-                </SelectTrigger>
-                <SelectContent>
-                  <ScrollArea className="h-48">
-                    {availablePredecessors.filter(p => !predecessorIds.includes(p.id)).map(pTask => (
-                      <SelectItem key={pTask.id} value={pTask.id}>
-                        {pTask.name}
-                      </SelectItem>
-                    ))}
-                  </ScrollArea>
-                </SelectContent>
-              </Select>
-              <div className="mt-2 flex flex-wrap gap-1">
-                {predecessorIds.map(pId => {
-                  const pTask = allTasks.find(t => t.id === pId);
-                  return (
-                    <Badge key={pId} variant="secondary">
-                      {pTask?.name}
-                      <button
-                        type="button"
-                        className="ml-1 rounded-full p-0.5 hover:bg-destructive/20"
-                        onClick={() => setPredecessorIds(prev => prev.filter(id => id !== pId))}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  );
-                })}
+              <div>
+                <Label>Dependencias (Predecesores)</Label>
+                <MultiSelectPopover
+                    title="predecesores"
+                    options={availablePredecessors}
+                    selected={predecessorIds}
+                    onSelectedChange={setPredecessorIds}
+                />
               </div>
             </div>
-          </div>
-          <SheetFooter>
-            <SheetClose asChild>
-                <Button type="button" variant="outline">Cancelar</Button>
-            </SheetClose>
-            <Button type="submit">Guardar Tarea</Button>
-          </SheetFooter>
-        </form>
+          </form>
+        </ScrollArea>
+        <SheetFooter>
+          <SheetClose asChild>
+              <Button type="button" variant="outline">Cancelar</Button>
+          </SheetClose>
+          <Button type="submit" onClick={handleSubmit}>Guardar Tarea</Button>
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   );
