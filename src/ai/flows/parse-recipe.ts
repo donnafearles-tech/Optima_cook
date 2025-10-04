@@ -18,10 +18,7 @@ const parseRecipePrompt = ai.definePrompt({
   name: 'parseRecipePrompt',
   input: {schema: ParseRecipeInputSchema},
   output: {schema: ParseRecipeOutputSchema},
-  prompt: `Actúa como un Chef de alta cocina experto en optimización de procesos (Mise en Place), un Ingeniero de Procesos y un Desarrollador Full Stack con especialización en Procesamiento de Lenguaje Natural (PLN) para cocina.
-
-**Objetivo Principal:**
-Analiza la receta proporcionada y transfórmala en una Estructura de Desglose del Trabajo (EDT) ultra-detallada y optimizada. Tu output DEBE ser un objeto JSON válido.
+  prompt: `Actúa como un Chef Ejecutivo experto en optimización de procesos (Mise en Place), un Ingeniero de Procesos Culinarios y un Desarrollador Full Stack con especialización en PLN para cocina. Tu objetivo es generar una Estructura de Desglose del Trabajo (EDT) ultra-detallada y estructuralmente sólida para un platillo multicomponente.
 
 {{#if knowledgeBaseText}}
 **Base de Conocimiento (Manual Culinario - Fuente de Verdad):**
@@ -31,39 +28,26 @@ Utiliza el siguiente manual como la fuente de conocimiento principal y autorizad
 </conocimiento>
 {{/if}}
 
+**Fase 1: Normalización y Desglose Atómico (Mise en Place)**
+1.  **Limpieza Lingüística:** Para cada paso de la receta, normaliza el texto: conviértelo a minúsculas, elimina acentos, puntuación y palabras de relleno ("el", "la", "un", "de"). Simplifica la jerga ("llevar a ebullición" -> "hervir").
+2.  **Desglose Atómico:** Descompón cada instrucción en sus tareas elementales más pequeñas. "Lavar y picar cebolla" se convierte en dos tareas: "lavar cebolla" y "picar cebolla". Estas son tareas de preparación ('isAssemblyStep: false').
 
-**Fases del Proceso (Instrucciones Estrictas):**
+**Fase 2: Lógica de Ensamblaje Estructural (Nivel de Tornillo) - PRIORIDAD MÁXIMA**
+Para cualquier platillo que requiera armado (sándwich, lasaña, pastel), analiza la lista de ingredientes y la receta para generar la secuencia de ensamblaje final. Aplica rigurosamente las siguientes reglas de estabilidad física:
 
-**Fase 1: Normalización Lingüística y Simplificación Atómica (Pre-procesamiento)**
-Para cada paso de la receta, ANTES de cualquier otra cosa, aplica esta limpieza:
-a. **Limpieza General:** Convierte todo a minúsculas, elimina acentos y cualquier signo de puntuación (ej. ¡, ¿, ., coma).
-b. **Simplificación de Vocabulario:** Reemplaza jerga culinaria o frases complejas con un verbo estándar y simple.
-    - "llevar a punto de ebullición" -> "hervir"
-    - "sazonar con generosidad" -> "agregar sal y pimienta"
-    - "cortar en juliana" -> "cortar"
-    - "remover constantemente" -> "remover"
-c. **Atomicidad (Acción + Ingrediente):** La descripción final de la tarea debe ser lo más atómica posible, centrada en una única acción y el ingrediente principal, eliminando palabras de relleno.
-    - "picar la cebolla finamente" -> "picar cebolla"
-    - "lavar y secar las hojas de lechuga" -> Debe ser desglosado en dos tareas: "lavar lechuga" y "secar lechuga".
+1.  **Ley de la Adhesión Progresiva:** La secuencia DEBE comenzar con una superficie de soporte (pan, tortilla). Inmediatamente después, se debe aplicar una capa Adhesiva (mayonesa, crema, mostaza) para actuar como "pegamento".
+2.  **Regla de la Barrera de Humedad (CRÍTICA):** Ingredientes con alto contenido de humedad (jitomate, pepinillos) NUNCA deben tocar directamente el pan. DEBEN ser precedidos por una capa de barrera no porosa (queso, una proteína cocida, o una capa adhesiva densa). Infiere esta necesidad aunque la receta no lo mencione explícitamente.
+3.  **Estabilidad de Base:** Después de la capa adhesiva, coloca los ingredientes más Planos y Estables (lonchas de queso, jamón, filetes de proteína) para crear una plataforma sólida.
+4.  **Estructura Interna:** En sándwiches calientes, las Proteínas Calientes deben ir debajo de los Vegetales Firmes para evitar el colapso.
+5.  **Contención Final:** Los ingredientes más inestables o voluminosos (lechuga, brotes, aros de cebolla) DEBEN ir en las capas superiores, justo antes de la tapa de pan, para que queden contenidos.
 
-**Fase 2: Desglose Atómico (Generación de EDT)**
-Descompón cada instrucción normalizada en sus tareas elementales más pequeñas y discretas. Si un paso implica múltiples acciones (ej. "pelar y cortar patatas"), debe convertirse en tareas separadas ("pelar patatas", "cortar patatas").
-
-**Fase 3: Lógica de Ensamblaje Físico (Nivel de Tornillo)**
-Si el platillo requiere armado (ej. lasaña, sándwich, pastel), analiza la estabilidad estructural. Las tareas de ensamblaje deben secuenciarse para garantizar la estabilidad física, basándote en la base de conocimiento si está disponible.
-- **Ejemplo Lasaña:** La tarea "agregar capa de salsa base" debe preceder a "colocar primera capa de pasta", ya que la salsa actúa como "pegamento". La tarea "cubrir con queso" debe ser una de las últimas.
-- **Deduce este orden** y úsalo para definir las dependencias en la siguiente fase.
-
-**Fase 4: Inferencia de Dependencias y Generación del Output**
-1.  **Inferencia:** Basado en la lógica culinaria, la lógica de ensamblaje de la Fase 3 y, prioritariamente, la base de conocimiento, infiere TODAS las dependencias para cada tarea atómica.
-2.  **Estimación de Duración:** Asigna una duración realista en **segundos** a cada tarea atómica.
-3.  **Generación del JSON:** Construye el objeto JSON de salida.
-    *   Responde **ÚNICAMENTE** con el objeto JSON.
-    *   El objeto debe contener 'recipeName' y 'tasks'.
-    *   Cada objeto 'task' DEBE tener: 'name' (la descripción simplificada y atómica), 'duration' (número en segundos), 'predecessorIds' (array con los **NOMBRES** de las tareas predecesoras) y 'isAssemblyStep' (boolean).
-    *   Las tareas de preparación (mise en place) son 'isAssemblyStep: false'.
-    *   Las tareas que son parte del armado o cocción final del plato son 'isAssemblyStep: true'.
-    *   Si una tarea no tiene dependencias, 'predecessorIds' debe ser \`[]\`.
+**Fase 3: Generación del JSON de Salida**
+Construye el objeto JSON de salida. Responde **ÚNICAMENTE** con el objeto JSON.
+*   El objeto debe contener 'recipeName' y 'tasks'.
+*   Cada objeto 'task' DEBE tener: 'name' (la descripción simplificada), 'duration' (número en segundos), 'predecessorIds' (array con los **NOMBRES** de las tareas predecesoras) y 'isAssemblyStep' (boolean).
+*   Las tareas de preparación (mise en place) son 'isAssemblyStep: false'.
+*   Las tareas que son parte del armado o cocción final del plato (basado en la Fase 2) son 'isAssemblyStep: true'.
+*   Si una tarea no tiene dependencias, 'predecessorIds' debe ser \`[]\`.
 
 **Entrada de la Receta:**
 {{#if recipeText}}
