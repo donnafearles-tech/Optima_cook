@@ -93,8 +93,8 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     if (!tasks || !project) return;
 
     const batch = writeBatch(firestore);
-    const recipeRef = doc(projectRef, 'recipes', recipeId);
-    batch.delete(recipeRef);
+    const recipeRefDoc = doc(projectRef, 'recipes', recipeId);
+    batch.delete(recipeRefDoc);
 
     const tasksToDelete = tasks.filter(t => (t.recipeIds || []).includes(recipeId));
     tasksToDelete.forEach(t => {
@@ -291,12 +291,16 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     }
 };
 
-  const handleCalculatePath = () => {
+  const handleCalculatePath = async () => {
     if (!tasks || !project) return;
     setIsCalculatingPath(true);
     try {
+        // Explicitly clear the old result before calculating the new one.
+        await updateDocumentNonBlocking(projectRef, { cpmResult: null });
+
         const cpmResult = calculateCPM(tasks);
-        updateDocumentNonBlocking(projectRef, { cpmResult });
+        
+        await updateDocumentNonBlocking(projectRef, { cpmResult });
         
         setIsGuideStale(false); 
 
@@ -464,3 +468,5 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     </>
   );
 }
+
+    
