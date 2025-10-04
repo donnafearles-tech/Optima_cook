@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Edit, Trash2, Plus, HardHat } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, Plus } from 'lucide-react';
 import type { Recipe, Task, UserResource } from '@/lib/types';
 import {
   DropdownMenu,
@@ -109,7 +109,6 @@ export default function RecipeCard({
                                     )}
                                     {resources.length > 0 && (
                                         <div className="flex items-center gap-1">
-                                            <HardHat className="h-3 w-3" />
                                             {resources.map(rName => <Badge key={rName} variant="outline">{rName}</Badge>)}
                                         </div>
                                     )}
