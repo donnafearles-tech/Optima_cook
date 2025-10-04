@@ -93,7 +93,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     const recipeRef = doc(projectRef, 'recipes', recipeId);
     batch.delete(recipeRef);
 
-    const tasksToDelete = tasks.filter(t => t.recipeIds.includes(recipeId));
+    const tasksToDelete = tasks.filter(t => (t.recipeIds || [(t as any).recipeId]).includes(recipeId));
     tasksToDelete.forEach(t => {
         const taskRef = doc(projectRef, 'tasks', t.id);
         batch.delete(taskRef);
@@ -198,7 +198,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     setIsConsolidating(true);
     try {
         const aiResult = await consolidateTasks({
-            tasks: tasks.map(t => ({ id: t.id, name: t.name, duration: t.duration, recipeIds: t.recipeIds, predecessorIds: t.predecessorIds })),
+            tasks: tasks.map(t => ({ id: t.id, name: t.name, duration: t.duration, recipeIds: t.recipeIds || [(t as any).recipeId], predecessorIds: t.predecessorIds })),
             recipes: recipes.map(r => ({ id: r.id, name: r.name })),
         });
 
@@ -349,7 +349,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
                 <RecipeCard 
                     key={recipe.id}
                     recipe={recipe}
-                    tasks={allTasks.filter(t => t.recipeIds.includes(recipe.id))}
+                    tasks={allTasks.filter(t => (t.recipeIds || [(t as any).recipeId]).includes(recipe.id))}
                     allTasks={allTasks}
                     allResources={allResources}
                     allRecipes={allRecipes}

@@ -69,7 +69,7 @@ export default function EditTaskSheet({
           setDurationValue(task.duration / 60);
         }
         setPredecessorIds(task.predecessorIds);
-        setRecipeIds(task.recipeIds || (task as any).recipeId ? [(task as any).recipeId] : []);
+        setRecipeIds(task.recipeIds || ((task as any).recipeId ? [(task as any).recipeId] : []));
         setResourceIds(task.resourceIds || []);
       } else {
         // Reset for new task

@@ -85,7 +85,7 @@ export default function RecipeCard({
                         (rId) => allResources.find((r) => r.id === rId)?.name
                      ).filter(Boolean);
 
-                     const recipes = (task.recipeIds || []).map(
+                     const recipes = (task.recipeIds || ((task as any).recipeId ? [(task as any).recipeId] : [])).map(
                         (rId) => allRecipes.find((r) => r.id === rId)?.name
                      ).filter(Boolean);
 
