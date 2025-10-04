@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine, AlertTriangle } from 'lucide-react';
+import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine, AlertTriangle, Trash2 } from 'lucide-react';
 import type { Project, Task, Recipe, UserResource, CpmResult } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { suggestTaskDependencies } from '@/ai/flows/suggest-task-dependencies';
@@ -12,9 +12,20 @@ import EditTaskSheet from './edit-task-sheet';
 import EditRecipeDialog from './edit-recipe-dialog';
 import RecipeCard from './recipe-card';
 import { useFirebase, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, doc, writeBatch } from 'firebase/firestore';
+import { collection, doc, writeBatch, getDocs } from 'firebase/firestore';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { notFound, useRouter } from 'next/navigation';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface ProjectClientPageProps {
   projectId: string;
@@ -28,6 +39,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [isConsolidating, setIsConsolidating] = useState(false);
   const [isCalculatingPath, setIsCalculatingPath] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const [isGuideStale, setIsGuideStale] = useState(false);
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -300,34 +312,65 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     setIsCalculatingPath(true);
   
     try {
-      // 1. Explicitly clear the old result in Firestore to ensure a clean slate.
-      // This also ensures the guide page will show its loading state.
       await updateDocumentNonBlocking(projectRef, { cpmResult: null });
   
-      // 2. Navigate immediately. The guide page will handle showing a loading state.
       router.push(`/projects/${projectId}/guide`);
   
-      // 3. Perform the calculation in the background.
-      const cpmResult = calculateCPM(currentTasks);
-      
-      // 4. Save the new, clean result. The guide page will update automatically via Firestore listener.
-      await updateDocumentNonBlocking(projectRef, { cpmResult });
-      
-      // The local state is updated via Firestore's listener, but we can set this for immediate feedback if needed.
-      setIsGuideStale(false);
+      // Calculation happens in the background. The guide page will show loading.
+      const runCalculation = async () => {
+        const cpmResult = calculateCPM(currentTasks);
+        await updateDocumentNonBlocking(projectRef, { cpmResult });
+        setIsGuideStale(false);
+      };
+  
+      runCalculation();
   
     } catch(error) {
       console.error(error);
       const errorMessage = error instanceof Error ? error.message : "Revisa la consola para más detalles.";
       toast({
-          title: "Error al Calcular",
+          title: "Error al Iniciar Cálculo",
           description: errorMessage,
           variant: "destructive",
       });
-      // If calculation fails, we might want to stay on the page or navigate back.
-      // For now, the user is already on the guide page, which will show an error or loading state.
-    } finally {
       setIsCalculatingPath(false);
+    }
+    // No finally block here, as we navigate away. The state will reset on component unmount.
+  };
+
+  const handleClearProject = async () => {
+    setIsClearing(true);
+    try {
+      const batch = writeBatch(firestore);
+  
+      // Delete all tasks
+      const tasksSnapshot = await getDocs(tasksQuery!);
+      tasksSnapshot.forEach(doc => batch.delete(doc.ref));
+  
+      // Delete all recipes
+      const recipesSnapshot = await getDocs(recipesQuery!);
+      recipesSnapshot.forEach(doc => batch.delete(doc.ref));
+  
+      // Clear the CPM result on the project
+      batch.update(projectRef, { cpmResult: null });
+  
+      await batch.commit();
+  
+      toast({
+        title: "Proyecto Limpiado",
+        description: "Todas las recetas y tareas han sido eliminadas.",
+      });
+      setIsGuideStale(false);
+  
+    } catch (error) {
+      console.error("Error al limpiar el proyecto:", error);
+      toast({
+        title: "Error de Limpieza",
+        description: "No se pudo limpiar el proyecto. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsClearing(false);
     }
   };
   
@@ -387,6 +430,28 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
             <p className="text-muted-foreground">{project.description}</p>
           </div>
           <div className="flex gap-2 flex-wrap">
+              <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                  <Trash2 className="mr-2 h-4 w-4" /> Borrar Proyecto
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Estás seguro de que quieres borrar todo?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción es irreversible. Se eliminarán todas las recetas y tareas asociadas a este proyecto.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearProject} disabled={isClearing}>
+                    {isClearing ? 'Borrando...' : 'Sí, borrar todo'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
             <Button variant="outline" onClick={onImportRecipe}>
               <FileUp className="mr-2 h-4 w-4" /> Importar Receta
             </Button>

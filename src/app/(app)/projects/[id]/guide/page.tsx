@@ -61,7 +61,7 @@ export default function GuidePage() {
         </Button>
         <div>
         <h1 className="text-3xl font-bold tracking-tight font-headline">
-            {project?.name || 'Cargando Proyecto...'}: Guía de Cocina
+            {project?.name || 'Cargando Proyecto...'}: Tu Guía de Cocina
         </h1>
         </div>
     </div>
@@ -152,7 +152,7 @@ export default function GuidePage() {
         </Button>
         <div>
           <h1 className="text-3xl font-bold tracking-tight font-headline">
-            {project.name}: Tu Guía de Cocina
+            Desayunos y cenas: Tu Guía de Cocina
           </h1>
           <p className="text-muted-foreground">La ruta óptima hacia el éxito culinario.</p>
         </div>
