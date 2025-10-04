@@ -20,7 +20,7 @@ import { Label } from '../ui/label';
 import { extractTextFromFile } from '@/ai/flows/extract-text-from-file';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, writeBatch, doc } from 'firebase/firestore';
-import { suggestResourceForTask } from '@/ai/flows/suggest-resource-for-task';
+
 
 interface ImportRecipeDialogProps {
   open: boolean;
@@ -54,13 +54,11 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
     }
     setIsParsing(true);
     try {
-      // 1. Parse recipe to get tasks
       const result: ParseRecipeOutput = await parseRecipe({ recipeText: textToParse });
       
       const batch = writeBatch(firestore);
       const projectRef = doc(firestore, 'users', userId, 'projects', projectId);
 
-      // 2. Create Recipe document
       const recipesCol = collection(projectRef, 'recipes');
       const newRecipeRef = doc(recipesCol);
       batch.set(newRecipeRef, {
@@ -69,25 +67,16 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
       
       const tasksCol = collection(projectRef, 'tasks');
       const taskNameMap = new Map<string, string>();
-      const allResources = resources || [];
-
-      // 3. First pass: Prepare tasks, get their future IDs and suggest resources in parallel
-      const taskPromises = result.tasks.map(async (originalTask) => {
+      
+      // First pass to create task refs and map names to IDs
+      const taskRefs = result.tasks.map(originalTask => {
         const taskRef = doc(tasksCol);
         taskNameMap.set(originalTask.name, taskRef.id);
-        
-        const resourceResult = await suggestResourceForTask({
-            taskName: originalTask.name,
-            userResources: allResources,
-        });
-
-        return { originalTask, taskRef, resourceIds: resourceResult.resourceIds };
+        return { originalTask, taskRef };
       });
 
-      const preparedTasks = await Promise.all(taskPromises);
-
-      // 4. Second pass: Set full task data in the batch
-      for (const { originalTask, taskRef, resourceIds } of preparedTasks) {
+      // Second pass to set full data with mapped predecessor IDs
+      for (const { originalTask, taskRef } of taskRefs) {
         const mappedPredIds = originalTask.predecessorIds
           .map(name => taskNameMap.get(name))
           .filter((id): id is string => !!id);
@@ -98,7 +87,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
           isAssemblyStep: originalTask.isAssemblyStep,
           recipeIds: [newRecipeRef.id],
           status: 'pending' as const,
-          resourceIds: resourceIds, 
+          resourceIds: [], // Resources will be assigned manually
           predecessorIds: mappedPredIds
         };
         batch.set(taskRef, finalTaskData);
@@ -108,7 +97,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
 
       toast({
         title: '¡Receta Importada!',
-        description: `Se importó "${result.recipeName}" y se añadieron ${result.tasks.length} tareas con recursos sugeridos.`,
+        description: `Se importó "${result.recipeName}" y se añadieron ${result.tasks.length} tareas.`,
       });
 
       onOpenChange(false);
@@ -183,7 +172,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
         <DialogHeader>
           <DialogTitle className="font-headline">Importar Receta</DialogTitle>
           <DialogDescription>
-            Pega tu receta o sube un archivo. La IA la analizará para extraer tareas y asignar recursos automáticamente.
+            Pega tu receta o sube un archivo. La IA la analizará para extraer las tareas. Podrás asignar recursos manualmente.
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="paste" value={activeTab} onValueChange={setActiveTab}>
