@@ -45,10 +45,10 @@ const consolidateTasksPrompt = ai.definePrompt({
 
     3.  **Consolidación y Creación del Output:**
         *   Para cada grupo de tareas equivalentes, crea un único objeto en la lista 'consolidatedTasks'.
-            *   `originalTaskIds`: Un array con los IDs de **todas** las tareas originales que se agruparon.
-            *   `consolidatedName`: Un nuevo nombre descriptivo. Si la tarea se consolida de varias recetas, añade un sufijo como "(para varias recetas)". Ejemplo: "Picar cebolla (para varias recetas)". Si no, mantén el nombre original.
-            *   `duration`: La **suma** de las duraciones de todas las tareas originales en el grupo.
-            *   `recipeIds`: Un array con los IDs de todas las recetas únicas a las que pertenecían las tareas originales.
+            *   originalTaskIds: Un array con los IDs de **todas** las tareas originales que se agruparon.
+            *   consolidatedName: Un nuevo nombre descriptivo. Si la tarea se consolida de varias recetas, añade un sufijo como "(para varias recetas)". Ejemplo: "Picar cebolla (para varias recetas)". Si no, mantén el nombre original.
+            *   duration: La **suma** de las duraciones de todas las tareas originales en el grupo.
+            *   recipeIds: Un array con los IDs de todas las recetas únicas a las que pertenecían las tareas originales.
         *   Las tareas que no se pudieron agrupar con ninguna otra (son únicas) deben ser incluidas en la lista 'unconsolidatedTaskIds'. Devuelve sus IDs originales en este campo.
 
     **Input de Datos:**
@@ -57,7 +57,7 @@ const consolidateTasksPrompt = ai.definePrompt({
 
     **Restricciones:**
     - No fusiones tareas que sean claramente diferentes después de la normalización (ej. "picar cebolla" y "picar tomate").
-    - Responde **ÚNICAMENTE** con un objeto JSON válido que se ajuste al `ConsolidateTasksOutputSchema`. No incluyas explicaciones.
+    - Responde **ÚNICAMENTE** con un objeto JSON válido que se ajuste al ConsolidateTasksOutputSchema. No incluyas explicaciones.
     `,
 });
 
