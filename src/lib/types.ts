@@ -164,7 +164,7 @@ const ConsolidatedTaskSchema = z.object({
   originalTaskIds: z.array(z.string()).describe("Los IDs de las tareas originales que fueron consolidadas en esta."),
   consolidatedName: z.string().describe("El nuevo nombre unificado para la tarea consolidada. Por ejemplo, 'Picar cebolla (para todas las recetas)'."),
   duration: z.number().describe("La suma de las duraciones de todas las tareas originales consolidadas."),
-  recipeIds: z.array(zstring()).describe("Un array con los IDs de todas las recetas que requieren esta tarea."),
+  recipeIds: z.array(z.string()).describe("Un array con los IDs de todas las recetas que requieren esta tarea."),
 });
 
 export const ConsolidateTasksOutputSchema = z.object({
