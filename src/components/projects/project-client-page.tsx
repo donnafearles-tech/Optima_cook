@@ -36,7 +36,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const userRef = useMemoFirebase(() => doc(firestore, 'users', userId), [firestore, userId]);
   const projectRef = useMemoFirebase(() => doc(userRef, 'projects', projectId), [userRef, projectId]);
 
-  const { data: project, isLoading: isLoadingProject, error: projectError, setData: setProject } = useDoc<Project>(projectRef);
+  const { data: project, isLoading: isLoadingProject, error: projectError } = useDoc<Project>(projectRef);
   
   const recipesQuery = useMemoFirebase(() => collection(projectRef, 'recipes'), [projectRef]);
   const { data: recipes, isLoading: isLoadingRecipes } = useCollection<Recipe>(recipesQuery);
@@ -46,17 +46,6 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   
   const resourcesQuery = useMemoFirebase(() => collection(userRef, 'resources'), [userRef]);
   const { data: resources, isLoading: isLoadingResources } = useCollection<UserResource>(resourcesQuery);
-  
-  const invalidateGuide = () => {
-    // Solo marcamos como obsoleto si ya existía una guía.
-    if (project?.cpmResult) {
-      setProject(prev => (prev ? { ...prev, cpmResult: undefined } : null));
-      setIsGuideStale(true);
-      // Actualizamos Firestore en segundo plano para persistir la invalidación
-      updateDocumentNonBlocking(projectRef, { cpmResult: null });
-    }
-  };
-
 
   const handleOpenEditTask = (task: Task | 'new') => {
     if (task === 'new') {
@@ -86,10 +75,12 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   
   const handleRecipeSave = (recipeToSave: Pick<Recipe, 'id' | 'name'>) => {
     const recipesCollection = collection(projectRef, 'recipes');
-    invalidateGuide();
+    if (project?.cpmResult) {
+      updateDocumentNonBlocking(projectRef, { cpmResult: null });
+      setIsGuideStale(true);
+    }
     if (recipeToSave.id) {
-        const recipeDoc = doc(recipesCollection, recipeToSave.id);
-        updateDocumentNonBlocking(recipeDoc, { name: recipeToSave.name });
+        updateDocumentNonBlocking(doc(recipesCollection, recipeToSave.id), { name: recipeToSave.name });
         toast({ title: 'Receta Actualizada', description: `Se ha cambiado el nombre a "${recipeToSave.name}".` });
     } else {
         addDocumentNonBlocking(recipesCollection, { name: recipeToSave.name });
@@ -101,8 +92,6 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const handleRecipeDelete = async (recipeId: string) => {
     if (!tasks || !project) return;
     
-    invalidateGuide();
-
     try {
       const batch = writeBatch(firestore);
 
@@ -115,9 +104,13 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
           batch.delete(taskRef);
       });
       
-      batch.update(projectRef, { cpmResult: null });
+      if (project.cpmResult) {
+        batch.update(projectRef, { cpmResult: null });
+      }
 
       await batch.commit();
+      
+      setIsGuideStale(true);
 
       toast({ title: 'Receta Eliminada', description: 'La receta y sus tareas han sido eliminadas. La guía necesita recalcularse.' });
     
@@ -140,11 +133,13 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         return;
     }
     
-    invalidateGuide();
+    if (project?.cpmResult) {
+      updateDocumentNonBlocking(projectRef, { cpmResult: null });
+      setIsGuideStale(true);
+    }
 
     if (id) {
-        const taskDoc = doc(tasksCollection, id);
-        updateDocumentNonBlocking(taskDoc, dataToSave);
+        updateDocumentNonBlocking(doc(tasksCollection, id), dataToSave);
     } else {
         addDocumentNonBlocking(tasksCollection, dataToSave);
     }
@@ -153,9 +148,14 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   };
 
   const handleTaskDelete = (taskId: string) => {
-    invalidateGuide();
     const taskDoc = doc(projectRef, 'tasks', taskId);
     deleteDocumentNonBlocking(taskDoc);
+
+    if (project?.cpmResult) {
+      updateDocumentNonBlocking(projectRef, { cpmResult: null });
+    }
+    setIsGuideStale(true);
+
     toast({
         title: 'Tarea Eliminada',
         description: 'Recuerda recalcular la guía para ver los cambios.',
@@ -180,6 +180,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
       const batch = writeBatch(firestore);
       const tasksCollection = collection(projectRef, 'tasks');
       
+      let changed = false;
       result.dependencies.forEach(depPair => {
         const taskId = taskNameMap.get(depPair.taskName);
         if (taskId) {
@@ -189,12 +190,19 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
             
             const taskRef = doc(tasksCollection, taskId);
             batch.update(taskRef, { predecessorIds });
+            changed = true;
         }
       });
 
+      if (project?.cpmResult) {
+        batch.update(projectRef, { cpmResult: null });
+      }
 
       await batch.commit();
-      invalidateGuide();
+
+      if (changed) {
+        setIsGuideStale(true);
+      }
 
       toast({
         title: '¡Dependencias Sugeridas!',
@@ -234,6 +242,12 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
             group.originalTaskIds.forEach(id => tasksToDeleteIds.add(id));
         });
 
+        if(tasksToDeleteIds.size === 0 && aiResult.unconsolidatedTaskIds.length === tasks.length) {
+            toast({ title: 'Sin cambios', description: 'No se encontraron tareas para consolidar.' });
+            setIsConsolidating(false);
+            return;
+        }
+
         tasksToDeleteIds.forEach(id => {
             batch.delete(doc(tasksCol, id));
         });
@@ -261,8 +275,13 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
             batch.set(newDocRef, newTaskData);
         });
 
+        if (project?.cpmResult) {
+          batch.update(projectRef, { cpmResult: null });
+        }
+
         await batch.commit();
-        invalidateGuide();
+
+        setIsGuideStale(true);
 
         toast({
             title: '¡Tareas Consolidadas!',
@@ -282,11 +301,9 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     setIsCalculatingPath(true);
     try {
         const cpmResult = calculateCPM(tasks);
-        // Actualizamos Firestore, que luego actualizará el estado local a través de useDoc
         updateDocumentNonBlocking(projectRef, { cpmResult });
         
         setIsGuideStale(false); 
-        setProject(prev => (prev ? { ...prev, cpmResult } : null));
 
         toast({
           title: "¡Ruta Óptima Calculada!",
@@ -308,12 +325,17 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   };
   
   useEffect(() => {
+    // This effect detects if the guide is stale based on data changes.
+    // We only set it to true, never false. The user action of recalculating will set it to false.
     if (project && !project.cpmResult && (tasks?.length ?? 0) > 0) {
-        setIsGuideStale(true);
-    } else if (project && project.cpmResult) {
-        // No marcamos como no-obsoleto aquí para que la acción del usuario sea la fuente de verdad.
+        if (!isGuideStale) setIsGuideStale(true);
     }
-  }, [project, tasks]);
+    // If the cpmResult exists but the number of tasks in it doesn't match the current tasks, it's stale.
+    else if (project && project.cpmResult && project.cpmResult.tasks.length !== (tasks?.length ?? 0)) {
+        if (!isGuideStale) setIsGuideStale(true);
+    }
+
+  }, [project, tasks, isGuideStale]);
 
   if (isLoadingProject || isLoadingRecipes || isLoadingTasks || isLoadingResources) {
     return <div>Cargando proyecto...</div>;
@@ -345,7 +367,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const allRecipes = recipes || [];
   const allResources = resources || [];
   
-  const hasGuideData = !!project.cpmResult;
+  const hasValidGuide = project.cpmResult && !isGuideStale;
 
   return (
     <>
@@ -414,35 +436,27 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
       </div>
 
        <div className="mt-8 flex justify-end gap-2">
-        {!hasGuideData && !isGuideStale && (
+        {!hasValidGuide ? (
           <Button 
             size="lg" 
+            variant={isGuideStale ? "destructive" : "default"}
             onClick={handleCalculatePath} 
             disabled={allTasks.length === 0 || isCalculatingPath}
           >
             {isCalculatingPath ? (
               <><Sparkles className="mr-2 h-4 w-4 animate-spin" />Calculando...</>
             ) : (
-              'Calcular Ruta Óptima'
+               isGuideStale ? (
+                  <><AlertTriangle className="mr-2 h-4 w-4" />Recalcular Guía</>
+               ) : 'Calcular Ruta Óptima'
             )}
           </Button>
-        )}
-        {(hasGuideData || isGuideStale) && (
+        ) : (
            <Button 
                 size="lg" 
-                variant={isGuideStale ? "destructive" : "default"}
-                onClick={handleCalculatePath} 
-                disabled={allTasks.length === 0 || isCalculatingPath}
+                onClick={() => router.push(`/projects/${projectId}/guide`)} 
             >
-              {isCalculatingPath ? (
-                <><Sparkles className="mr-2 h-4 w-4 animate-spin" />Recalculando...</>
-              ) : (
-                isGuideStale ? (
-                  <><AlertTriangle className="mr-2 h-4 w-4" />Recalcular Guía</>
-                ) : (
-                  <>Ver Guía <ArrowRight className="ml-2 h-4 w-4" /></>
-                )
-              )}
+              Ver Guía <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         )}
       </div>
@@ -459,7 +473,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
       
       <EditRecipeDialog
           open={editingRecipe !== null}
-          onOpenChange={(isOpen) => !isOpen && setEditingRecipe(null)}
+          onOpenchaNge={(isOpen) => !isOpen && setEditingRecipe(null)}
           recipe={editingRecipe === 'new' ? null : editingRecipe}
           onSave={handleRecipeSave}
       />
