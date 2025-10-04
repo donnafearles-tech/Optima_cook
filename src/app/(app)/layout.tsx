@@ -85,6 +85,7 @@ function UserNav() {
 
 function MainSidebar() {
   const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
 
   return (
     <Sidebar>
@@ -95,7 +96,7 @@ function MainSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <Link href="/dashboard" passHref>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard')}>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard')} onClick={() => setOpenMobile(false)}>
                 <span>
                   <Home />
                   <span>Dashboard</span>
@@ -105,7 +106,7 @@ function MainSidebar() {
           </SidebarMenuItem>
            <SidebarMenuItem>
             <Link href="/resources" passHref>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/resources')}>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/resources')} onClick={() => setOpenMobile(false)}>
                 <span>
                   <HardDrive />
                   <span>Mis Recursos</span>
@@ -115,7 +116,7 @@ function MainSidebar() {
           </SidebarMenuItem>
           <SidebarMenuItem>
             <Link href="/dashboard" passHref>
-              <SidebarMenuButton asChild>
+              <SidebarMenuButton asChild onClick={() => setOpenMobile(false)}>
                 <span>
                   <Book />
                   <span>Todos los Proyectos</span>
