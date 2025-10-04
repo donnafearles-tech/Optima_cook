@@ -206,22 +206,10 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         const tasksCol = collection(projectRef, 'tasks');
         const originalTasksMap = new Map(tasks.map(t => [t.id, t]));
 
-        // 1. Delete all original tasks that are part of a consolidation and gather their resources
+        // 1. Delete all original tasks that are part of a consolidation
         const tasksToDelete = new Set<string>();
-        const consolidatedResources = new Map<string, string[]>();
-
         aiResult.consolidatedTasks.forEach(group => {
-            const allResourceIds = new Set<string>();
-            group.originalTaskIds.forEach(id => {
-                tasksToDelete.add(id);
-                const originalTask = originalTasksMap.get(id);
-                if (originalTask && originalTask.resourceIds) {
-                    originalTask.resourceIds.forEach(resId => allResourceIds.add(resId));
-                }
-            });
-            // Store the unique, merged resource IDs for this group.
-            // We use the consolidatedName as a temporary key.
-            consolidatedResources.set(group.consolidatedName, Array.from(allResourceIds));
+            group.originalTaskIds.forEach(id => tasksToDelete.add(id));
         });
 
         tasksToDelete.forEach(id => {
@@ -231,13 +219,22 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         // 2. Create new consolidated tasks with merged resources
         aiResult.consolidatedTasks.forEach(group => {
             const newDocRef = doc(tasksCol);
-            const mergedResourceIds = consolidatedResources.get(group.consolidatedName) || [];
+            
+            // Gather unique resource IDs from all original tasks in the group
+            const mergedResourceIds = new Set<string>();
+            group.originalTaskIds.forEach(originalTaskId => {
+                const originalTask = originalTasksMap.get(originalTaskId);
+                if (originalTask?.resourceIds) {
+                    originalTask.resourceIds.forEach(resId => mergedResourceIds.add(resId));
+                }
+            });
+
             const newTaskData = {
                 name: group.consolidatedName,
                 duration: group.duration,
                 recipeIds: group.recipeIds,
                 predecessorIds: [], // Dependencies need re-evaluation after consolidation
-                resourceIds: mergedResourceIds,
+                resourceIds: Array.from(mergedResourceIds),
                 status: 'pending',
                 isAssemblyStep: false, // This flag would need re-evaluation
             };
@@ -422,3 +419,5 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     </>
   );
 }
+
+    
