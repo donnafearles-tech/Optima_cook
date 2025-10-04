@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'images.unsplash.com',
         port: '',
-        pathname: '/**',
+pathname: '/**',
       },
       {
         protocol: 'https',
@@ -35,6 +35,9 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+  },
+  serverActions: {
+    maxDuration: 300, // 5 minutes
   },
 };
 
