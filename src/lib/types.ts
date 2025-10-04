@@ -58,6 +58,7 @@ const AiTaskSchema = z.object({
 export const ParseRecipeInputSchema = z.object({
   recipeText: z.string().optional().describe('El texto completo de la receta para analizar.'),
   ingredients: z.array(z.string()).optional().describe('Lista de ingredientes para deducir el ensamblaje.'),
+  knowledgeBaseText: z.string().optional().describe('Texto de un manual o base de conocimiento para dar contexto adicional a la IA.'),
 });
 export type ParseRecipeInput = z.infer<typeof ParseRecipeInputSchema>;
 
@@ -163,7 +164,7 @@ const ConsolidatedTaskSchema = z.object({
   originalTaskIds: z.array(z.string()).describe("Los IDs de las tareas originales que fueron consolidadas en esta."),
   consolidatedName: z.string().describe("El nuevo nombre unificado para la tarea consolidada. Por ejemplo, 'Picar cebolla (para todas las recetas)'."),
   duration: z.number().describe("La suma de las duraciones de todas las tareas originales consolidadas."),
-  recipeIds: z.array(z.string()).describe("Un array con los IDs de todas las recetas que requieren esta tarea."),
+  recipeIds: z.array(zstring()).describe("Un array con los IDs de todas las recetas que requieren esta tarea."),
 });
 
 export const ConsolidateTasksOutputSchema = z.object({

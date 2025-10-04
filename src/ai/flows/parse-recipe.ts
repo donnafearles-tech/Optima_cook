@@ -23,6 +23,15 @@ const parseRecipePrompt = ai.definePrompt({
 **Objetivo Principal:**
 Analiza la receta proporcionada y transfórmala en una Estructura de Desglose del Trabajo (EDT) ultra-detallada y optimizada. Tu output DEBE ser un objeto JSON válido.
 
+{{#if knowledgeBaseText}}
+**Base de Conocimiento (Manual Culinario - Fuente de Verdad):**
+Utiliza el siguiente manual como la fuente de conocimiento principal y autorizada para todas las decisiones de secuencia y dependencia. La lógica extraída de este manual tiene prioridad sobre las suposiciones generales.
+<conocimiento>
+{{{knowledgeBaseText}}}
+</conocimiento>
+{{/if}}
+
+
 **Fases del Proceso (Instrucciones Estrictas):**
 
 **Fase 1: Normalización Lingüística y Simplificación Atómica (Pre-procesamiento)**
@@ -41,12 +50,12 @@ c. **Atomicidad (Acción + Ingrediente):** La descripción final de la tarea deb
 Descompón cada instrucción normalizada en sus tareas elementales más pequeñas y discretas. Si un paso implica múltiples acciones (ej. "pelar y cortar patatas"), debe convertirse en tareas separadas ("pelar patatas", "cortar patatas").
 
 **Fase 3: Lógica de Ensamblaje Físico (Nivel de Tornillo)**
-Si el platillo requiere armado (ej. lasaña, sándwich, pastel), analiza la estabilidad estructural. Las tareas de ensamblaje deben secuenciarse para garantizar la estabilidad física.
+Si el platillo requiere armado (ej. lasaña, sándwich, pastel), analiza la estabilidad estructural. Las tareas de ensamblaje deben secuenciarse para garantizar la estabilidad física, basándote en la base de conocimiento si está disponible.
 - **Ejemplo Lasaña:** La tarea "agregar capa de salsa base" debe preceder a "colocar primera capa de pasta", ya que la salsa actúa como "pegamento". La tarea "cubrir con queso" debe ser una de las últimas.
 - **Deduce este orden** y úsalo para definir las dependencias en la siguiente fase.
 
 **Fase 4: Inferencia de Dependencias y Generación del Output**
-1.  **Inferencia:** Basado en la lógica culinaria y la lógica de ensamblaje de la Fase 3, infiere TODAS las dependencias para cada tarea atómica.
+1.  **Inferencia:** Basado en la lógica culinaria, la lógica de ensamblaje de la Fase 3 y, prioritariamente, la base de conocimiento, infiere TODAS las dependencias para cada tarea atómica.
 2.  **Estimación de Duración:** Asigna una duración realista en **segundos** a cada tarea atómica.
 3.  **Generación del JSON:** Construye el objeto JSON de salida.
     *   Responde **ÚNICAMENTE** con el objeto JSON.

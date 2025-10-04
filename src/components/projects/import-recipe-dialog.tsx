@@ -12,8 +12,8 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { parseRecipe } from '@/ai/flows/parse-recipe';
-import type { ParseRecipeOutput, Task, UserResource } from '@/lib/types';
-import { Sparkles, Upload } from 'lucide-react';
+import type { ParseRecipeInput, ParseRecipeOutput, Task, UserResource } from '@/lib/types';
+import { Sparkles, Upload, FileText } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -30,14 +30,51 @@ interface ImportRecipeDialogProps {
   userId: string;
 }
 
+function FileUploader({ onFileChange, isParsing, label, description, fileType }: { onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void, isParsing: boolean, label: string, description: string, fileType: "recipe" | "manual" }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState('');
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setFileName(file.name);
+    }
+    onFileChange(event);
+  };
+  
+  return (
+    <div className="flex-grow flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-4 text-center">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        {fileType === 'recipe' ? <Upload className="h-8 w-8" /> : <FileText className="h-8 w-8" />}
+        <div>
+           <Label htmlFor={`file-upload-${fileType}`} className="font-semibold text-base">{label}</Label>
+           <p className="text-xs text-muted-foreground">{fileName ? `Seleccionado: ${fileName}` : description}</p>
+        </div>
+      </div>
+      <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => fileInputRef.current?.click()} disabled={isParsing}>
+          Buscar Archivo
+      </Button>
+      <Input 
+          id={`file-upload-${fileType}`}
+          type="file" 
+          ref={fileInputRef} 
+          className="hidden"
+          onChange={handleFileSelect}
+          accept=".txt,.pdf,.xlsx,.docx,.png,.jpg,.jpeg"
+          disabled={isParsing}
+      />
+    </div>
+  )
+}
+
 export default function ImportRecipeDialog({ open, onOpenChange, projectId, userId }: ImportRecipeDialogProps) {
   const [recipeText, setRecipeText] = useState('');
   const [extractedFileText, setExtractedFileText] = useState('');
+  const [knowledgeBaseText, setKnowledgeBaseText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
-  const [fileName, setFileName] = useState('');
   const [activeTab, setActiveTab] = useState('paste');
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const { firestore } = useFirebase();
   
   const resourcesQuery = useMemoFirebase(() => {
@@ -46,7 +83,8 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
   }, [firestore, userId]);
   const { data: userResources } = useCollection<UserResource>(resourcesQuery);
 
-  const handleParse = async (textToParse: string) => {
+  const handleParse = async () => {
+    const textToParse = activeTab === 'upload' ? extractedFileText : recipeText;
      if (!textToParse.trim()) {
       toast({
         title: 'Faltan datos',
@@ -57,7 +95,12 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
     }
     setIsParsing(true);
     try {
-      const result: ParseRecipeOutput = await parseRecipe({ recipeText: textToParse });
+      const parseInput: ParseRecipeInput = { recipeText: textToParse };
+      if (knowledgeBaseText) {
+        parseInput.knowledgeBaseText = knowledgeBaseText;
+      }
+
+      const result: ParseRecipeOutput = await parseRecipe(parseInput);
       
       const batch = writeBatch(firestore);
       const projectRef = doc(firestore, 'users', userId, 'projects', projectId);
@@ -106,10 +149,11 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
         description: `Se importó "${result.recipeName}" y se añadieron ${result.tasks.length} tareas.`,
       });
 
+      // Reset state on success
       onOpenChange(false);
       setRecipeText('');
-      setFileName('');
       setExtractedFileText('');
+      setKnowledgeBaseText('');
 
     } catch (error) {
       console.error('Falló el análisis de la receta', error);
@@ -122,27 +166,31 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
       setIsParsing(false);
     }
   };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>, fileType: "recipe" | "manual") => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setFileName(file.name);
     setIsParsing(true);
-    setExtractedFileText('');
-
+    if(fileType === 'recipe') setExtractedFileText('');
+    if(fileType === 'manual') setKnowledgeBaseText('');
+    
     const reader = new FileReader();
     reader.onload = async (e) => {
         const fileDataUri = e.target?.result as string;
         try {
             const { text } = await extractTextFromFile({ fileDataUri });
-            setExtractedFileText(text);
+            if (fileType === 'recipe') {
+              setExtractedFileText(text);
+            } else {
+              setKnowledgeBaseText(text);
+            }
             toast({
-              title: "Archivo procesado",
-              description: "Se ha extraído el texto. Revísalo y haz clic en Importar."
+              title: `Archivo de ${fileType === 'recipe' ? 'receta' : 'manual'} procesado`,
+              description: "Se ha extraído el texto. Puedes continuar."
             })
         } catch (error) {
-            console.error("Error al extraer texto del archivo", error);
+            console.error(`Error al extraer texto del archivo de ${fileType}`, error);
             toast({
                 title: "Error al Leer Archivo",
                 description: "No se pudo extraer el texto del archivo subido.",
@@ -153,7 +201,6 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
         }
     };
     reader.onerror = () => {
-        console.error("Error de FileReader");
         toast({
             title: "Error al Leer Archivo",
             description: "Ocurrió un error al leer el archivo.",
@@ -164,78 +211,75 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
     reader.readAsDataURL(file);
   }
 
-  const handleImportClick = () => {
-    const textToParse = activeTab === 'upload' ? extractedFileText : recipeText;
-    handleParse(textToParse);
-  }
-
   const isImportDisabled = isParsing || (activeTab === 'paste' && !recipeText.trim()) || (activeTab === 'upload' && !extractedFileText.trim());
-
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="font-headline">Importar Receta</DialogTitle>
+          <DialogTitle className="font-headline">Importar Receta con IA</DialogTitle>
           <DialogDescription>
-            Pega tu receta o sube un archivo. La IA la analizará para extraer tareas y sugerir recursos automáticamente.
+            Pega tu receta o sube un archivo. Opcionalmente, añade un manual para darle contexto a la IA y mejorar las sugerencias.
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="paste" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="paste">Pegar Texto</TabsTrigger>
-                <TabsTrigger value="upload">Subir Archivo</TabsTrigger>
-            </TabsList>
-            <TabsContent value="paste" className="py-4">
-                <Textarea
-                    placeholder="Pega tu receta aquí..."
-                    className="min-h-[250px] text-sm"
-                    value={recipeText}
-                    onChange={(e) => setRecipeText(e.target.value)}
-                    disabled={isParsing}
+        <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-4">
+                <Tabs defaultValue="paste" value={activeTab} onValueChange={setActiveTab}>
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="paste">Pegar Receta</TabsTrigger>
+                        <TabsTrigger value="upload">Subir Receta</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="paste" className="py-4">
+                        <Textarea
+                            placeholder="Pega el texto de tu receta aquí..."
+                            className="min-h-[250px] text-sm"
+                            value={recipeText}
+                            onChange={(e) => setRecipeText(e.target.value)}
+                            disabled={isParsing}
+                        />
+                    </TabsContent>
+                    <TabsContent value="upload" className="py-4">
+                        <FileUploader 
+                            onFileChange={(e) => handleFileChange(e, 'recipe')}
+                            isParsing={isParsing}
+                            label="Subir Receta"
+                            description="Sube un archivo de receta (.txt, .pdf, imagen, etc.)"
+                            fileType="recipe"
+                        />
+                        {extractedFileText && (
+                            <div className="relative mt-2">
+                                <Label>Texto Extraído (vista previa)</Label>
+                                <Textarea readOnly value={extractedFileText} className="mt-1 h-20 text-xs bg-muted" />
+                            </div>
+                        )}
+                    </TabsContent>
+                </Tabs>
+            </div>
+            <div className="space-y-4">
+                 <FileUploader 
+                    onFileChange={(e) => handleFileChange(e, 'manual')}
+                    isParsing={isParsing}
+                    label="Manual de Contexto (Opcional)"
+                    description="Sube un manual de cocina para mejorar la IA."
+                    fileType="manual"
                 />
-            </TabsContent>
-            <TabsContent value="upload" className="py-4">
-                <div className="min-h-[250px] flex flex-col gap-4">
-                  <div className="flex-grow flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 text-center">
-                      <Upload className="h-12 w-12 text-muted-foreground" />
-                      <p className="mt-2 text-sm text-muted-foreground mb-2">
-                        {fileName ? `Seleccionado: ${fileName}` : "Sube un archivo .txt, .pdf, .xlsx, .docx, .png, o .jpg"}
-                      </p>
-                      <Button type="button" onClick={() => fileInputRef.current?.click()} disabled={isParsing}>
-                          Buscar Archivos
-                      </Button>
-                      <Input 
-                          type="file" 
-                          ref={fileInputRef} 
-                          className="hidden"
-                          onChange={handleFileChange}
-                          accept=".txt,.pdf,.xlsx,.docx,.png,.jpg,.jpeg"
-                          disabled={isParsing}
-                      />
-                  </div>
-                  {extractedFileText && (
-                      <div className="relative">
-                          <Label>Texto Extraído (vista previa)</Label>
-                          <Textarea
-                              readOnly
-                              value={extractedFileText}
-                              className="mt-1 h-32 text-xs bg-muted"
-                          />
-                      </div>
-                  )}
-                </div>
-            </TabsContent>
-        </Tabs>
+                {knowledgeBaseText && (
+                    <div className="relative mt-2">
+                        <Label>Contexto Extraído (vista previa)</Label>
+                        <Textarea readOnly value={knowledgeBaseText} className="mt-1 h-32 text-xs bg-muted" />
+                    </div>
+                )}
+            </div>
+        </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isParsing}>Cancelar</Button>
-          <Button onClick={handleImportClick} disabled={isImportDisabled}>
+          <Button onClick={handleParse} disabled={isImportDisabled}>
             {isParsing ? (
               <>
                 <Sparkles className="mr-2 h-4 w-4 animate-spin" />
                 Procesando...
               </>
-            ) : 'Importar Receta'}
+            ) : 'Importar y Analizar'}
           </Button>
         </DialogFooter>
       </DialogContent>
