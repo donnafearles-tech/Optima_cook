@@ -39,17 +39,17 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const { data: project, isLoading: isLoadingProject, error: projectError } = useDoc<Project>(projectRef);
   
   const recipesQuery = useMemoFirebase(() => collection(projectRef, 'recipes'), [projectRef]);
-  const { data: recipes, isLoading: isLoadingRecipes } = useCollection<Recipe>(recipesQuery);
+  const { data: allRecipes, isLoading: isLoadingRecipes } = useCollection<Recipe>(recipesQuery);
 
   const tasksQuery = useMemoFirebase(() => collection(projectRef, 'tasks'), [projectRef]);
-  const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
+  const { data: allTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
   
   const resourcesQuery = useMemoFirebase(() => collection(userRef, 'resources'), [userRef]);
-  const { data: resources, isLoading: isLoadingResources } = useCollection<UserResource>(resourcesQuery);
+  const { data: allResources, isLoading: isLoadingResources } = useCollection<UserResource>(resourcesQuery);
 
   const handleOpenEditTask = (task: Task | 'new') => {
     if (task === 'new') {
-        const defaultRecipeId = recipes?.[0]?.id || null;
+        const defaultRecipeId = (allRecipes || [])[0]?.id || null;
         if (!defaultRecipeId) {
             toast({
                 title: "No hay recetas",
@@ -90,22 +90,23 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   };
 
   const handleRecipeDelete = (recipeId: string) => {
-    if (!tasks || !project) return;
-
+    const currentTasks = allTasks || [];
+    if (!project) return;
+  
     const batch = writeBatch(firestore);
     const recipeRefDoc = doc(projectRef, 'recipes', recipeId);
     batch.delete(recipeRefDoc);
-
-    const tasksToDelete = tasks.filter(t => (t.recipeIds || []).includes(recipeId));
+  
+    const tasksToDelete = currentTasks.filter(t => (t.recipeIds || []).includes(recipeId));
     tasksToDelete.forEach(t => {
       const taskRef = doc(projectRef, 'tasks', t.id);
       batch.delete(taskRef);
     });
-
+  
     if (project.cpmResult) {
       batch.update(projectRef, { cpmResult: null });
     }
-
+  
     batch.commit().then(() => {
       setIsGuideStale(true);
       toast({ title: 'Receta Eliminada', description: 'La receta y sus tareas han sido eliminadas. La guía necesita recalcularse.' });
@@ -158,7 +159,8 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   };
   
   const handleSuggestDependencies = async () => {
-    if (!tasks || tasks.length < 2) {
+    const currentTasks = allTasks || [];
+    if (currentTasks.length < 2) {
       toast({
         title: 'No hay suficientes tareas',
         description: 'Necesitas al menos dos tareas para sugerir dependencias.',
@@ -168,10 +170,10 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     }
     setIsSuggesting(true);
     try {
-      const taskList = tasks.map(t => t.name);
+      const taskList = currentTasks.map(t => t.name);
       const result = await suggestTaskDependencies({ recipeName: project?.name || 'Receta', taskList });
       
-      const taskNameMap = new Map(tasks.map(t => [t.name, t.id]));
+      const taskNameMap = new Map(currentTasks.map(t => [t.name, t.id]));
       const batch = writeBatch(firestore);
       const tasksCollection = collection(projectRef, 'tasks');
       
@@ -217,16 +219,18 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   };
 
   const handleConsolidateTasks = async () => {
-    if (!tasks || tasks.length < 1 || !recipes) {
+    const currentTasks = allTasks || [];
+    const currentRecipes = allRecipes || [];
+    if (currentTasks.length < 1 || currentRecipes.length < 1) {
         toast({ title: 'No hay suficientes datos', description: 'Necesitas tareas y recetas para consolidar.', variant: 'destructive' });
         return;
     }
     setIsConsolidating(true);
     try {
-        const originalTasksMap = new Map(tasks.map(t => [t.id, t]));
+        const originalTasksMap = new Map(currentTasks.map(t => [t.id, t]));
         const aiResult = await consolidateTasks({
-            tasks: tasks.map(t => ({ id: t.id, name: t.name, duration: t.duration, recipeIds: t.recipeIds || [], predecessorIds: t.predecessorIds })),
-            recipes: recipes.map(r => ({ id: r.id, name: r.name })),
+            tasks: currentTasks.map(t => ({ id: t.id, name: t.name, duration: t.duration, recipeIds: t.recipeIds || [], predecessorIds: t.predecessorIds })),
+            recipes: currentRecipes.map(r => ({ id: r.id, name: r.name })),
         });
 
         const batch = writeBatch(firestore);
@@ -237,7 +241,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
             group.originalTaskIds.forEach(id => tasksToDeleteIds.add(id));
         });
 
-        if(tasksToDeleteIds.size === 0 && aiResult.unconsolidatedTaskIds.length === tasks.length) {
+        if(tasksToDeleteIds.size === 0 && aiResult.unconsolidatedTaskIds.length === currentTasks.length) {
             toast({ title: 'Sin cambios', description: 'No se encontraron tareas para consolidar.' });
             setIsConsolidating(false);
             return;
@@ -292,48 +296,62 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
 };
 
   const handleCalculatePath = async () => {
-    if (!tasks || !project) return;
+    const currentTasks = allTasks || [];
+    if (!project || currentTasks.length === 0) return;
     setIsCalculatingPath(true);
-
+  
     try {
       // 1. Explicitly clear the old result in Firestore to ensure a clean slate.
+      // This also ensures the guide page will show its loading state.
       await updateDocumentNonBlocking(projectRef, { cpmResult: null });
-      
-      // 2. The guide page will show a loading state while this happens in the background.
+  
+      // 2. Navigate immediately. The guide page will handle showing a loading state.
       router.push(`/projects/${projectId}/guide`);
-
-      // 3. Perform the calculation.
-      const cpmResult = calculateCPM(tasks);
+  
+      // 3. Perform the calculation in the background.
+      const cpmResult = calculateCPM(currentTasks);
       
       // 4. Save the new, clean result. The guide page will update automatically via Firestore listener.
       await updateDocumentNonBlocking(projectRef, { cpmResult });
       
-      setIsGuideStale(false); 
-
+      // The local state is updated via Firestore's listener, but we can set this for immediate feedback if needed.
+      setIsGuideStale(false);
+  
     } catch(error) {
-        console.error(error);
-        const errorMessage = error instanceof Error ? error.message : "Revisa la consola para más detalles.";
-        toast({
-            title: "Error al Calcular",
-            description: errorMessage,
-            variant: "destructive",
-        });
+      console.error(error);
+      const errorMessage = error instanceof Error ? error.message : "Revisa la consola para más detalles.";
+      toast({
+          title: "Error al Calcular",
+          description: errorMessage,
+          variant: "destructive",
+      });
+      // If calculation fails, we might want to stay on the page or navigate back.
+      // For now, the user is already on the guide page, which will show an error or loading state.
     } finally {
-        setIsCalculatingPath(false);
+      setIsCalculatingPath(false);
     }
   };
   
   useEffect(() => {
-    if (project && !project.cpmResult && (tasks?.length ?? 0) > 0) {
+    const currentTasks = allTasks || [];
+    if (project && !project.cpmResult && currentTasks.length > 0) {
         if (!isGuideStale) setIsGuideStale(true);
     }
-    else if (project && project.cpmResult && project.cpmResult.tasks.length !== (tasks?.length ?? 0)) {
+    else if (project && project.cpmResult && project.cpmResult.tasks.length !== currentTasks.length) {
         if (!isGuideStale) setIsGuideStale(true);
+    } else if (project?.cpmResult && !isGuideStale) {
+        // Additional check: verify if the tasks in cpmResult match the current tasks
+        const cpmTaskIds = new Set(project.cpmResult.tasks.map(t => t.id));
+        const currentTaskIds = new Set(currentTasks.map(t => t.id));
+        if (cpmTaskIds.size !== currentTaskIds.size || !([...cpmTaskIds].every(id => currentTaskIds.has(id)))) {
+           if (!isGuideStale) setIsGuideStale(true);
+        }
     }
+  }, [project, allTasks, isGuideStale]);
 
-  }, [project, tasks, isGuideStale]);
+  const isLoading = isLoadingProject || isLoadingRecipes || isLoadingTasks || isLoadingResources;
 
-  if (isLoadingProject || isLoadingRecipes || isLoadingTasks || isLoadingResources) {
+  if (isLoading) {
     return <div>Cargando proyecto...</div>;
   }
   
@@ -358,12 +376,12 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         </Alert>
     );
   }
-
-  const allTasks = tasks || [];
-  const allRecipes = recipes || [];
-  const allResources = resources || [];
   
   const hasValidGuide = project.cpmResult && !isGuideStale;
+  const currentRecipes = allRecipes || [];
+  const currentTasks = allTasks || [];
+  const currentResources = allResources || [];
+
 
   return (
     <>
@@ -385,7 +403,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <h2 className="text-2xl font-bold tracking-tight font-headline flex-1">Recetas</h2>
           <div className="flex gap-2">
-             <Button variant="outline" onClick={handleConsolidateTasks} disabled={isConsolidating || allTasks.length < 2}>
+             <Button variant="outline" onClick={handleConsolidateTasks} disabled={isConsolidating || currentTasks.length < 2}>
               {isConsolidating ? (
                 <Combine className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -393,7 +411,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
               )}
               Unificar Tareas
             </Button>
-            <Button variant="outline" onClick={handleSuggestDependencies} disabled={isSuggesting || allTasks.length < 2}>
+            <Button variant="outline" onClick={handleSuggestDependencies} disabled={isSuggesting || currentTasks.length < 2}>
               {isSuggesting ? (
                 <Wand2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -407,14 +425,14 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
           </div>
         </div>
         <div className="space-y-6">
-            {allRecipes.map(recipe => (
+            {currentRecipes.map(recipe => (
                 <RecipeCard 
                     key={recipe.id}
                     recipe={recipe}
-                    tasks={allTasks.filter(t => (t.recipeIds || []).includes(recipe.id))}
-                    allTasks={allTasks}
-                    allRecipes={allRecipes}
-                    allResources={allResources}
+                    tasks={currentTasks.filter(t => (t.recipeIds || []).includes(recipe.id))}
+                    allTasks={currentTasks}
+                    allRecipes={currentRecipes}
+                    allResources={currentResources}
                     onEditRecipe={() => setEditingRecipe(recipe)}
                     onDeleteRecipe={() => handleRecipeDelete(recipe.id)}
                     onAddTask={() => handleOpenEditTask('new')}
@@ -422,7 +440,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
                     onDeleteTask={handleTaskDelete}
                 />
             ))}
-             {allRecipes.length === 0 && (
+             {currentRecipes.length === 0 && (
               <div className="text-center text-muted-foreground border-2 border-dashed rounded-lg p-12">
                 <h3 className="text-lg font-semibold">Este proyecto está vacío</h3>
                 <p className="mt-1">Comienza por importar o añadir una receta.</p>
@@ -442,7 +460,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
               Ver Guía <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
          ) : (
-            <Button size="lg" onClick={handleCalculatePath} disabled={allTasks.length === 0 || isCalculatingPath}>
+            <Button size="lg" onClick={handleCalculatePath} disabled={currentTasks.length === 0 || isCalculatingPath}>
               {isCalculatingPath ? <Sparkles className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
               Calcular Ruta Óptima
             </Button>
@@ -453,9 +471,9 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         open={editingTask !== null}
         onOpenChange={(isOpen) => !isOpen && setEditingTask(null)}
         task={editingTask === 'new' ? null : editingTask as Task | null}
-        allTasks={allTasks}
-        allRecipes={allRecipes}
-        allResources={allResources}
+        allTasks={currentTasks}
+        allRecipes={currentRecipes}
+        allResources={currentResources}
         onSave={handleTaskSave}
       />
       
