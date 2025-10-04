@@ -6,7 +6,6 @@ import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine, AlertTriangle, Tras
 import type { Project, Task, Recipe, UserResource, CpmResult } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { suggestTaskDependencies } from '@/ai/flows/suggest-task-dependencies';
-import { consolidateTasks } from '@/ai/flows/consolidate-tasks';
 import { calculateCPM } from '@/lib/cpm';
 import EditTaskSheet from './edit-task-sheet';
 import EditRecipeDialog from './edit-recipe-dialog';
@@ -230,97 +229,131 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   };
 
   const handleConsolidateTasks = async () => {
-    const currentTasks = allTasks || [];
-    const currentRecipes = allRecipes || [];
-    if (currentTasks.length < 1 || currentRecipes.length < 1) {
-        toast({ title: 'No hay suficientes datos', description: 'Necesitas tareas y recetas para consolidar.', variant: 'destructive' });
+    setIsConsolidating(true);
+    const tasks = allTasks || [];
+    if (tasks.length < 1) {
+        toast({ title: 'No hay tareas', description: 'No hay tareas para unificar.', variant: 'destructive' });
+        setIsConsolidating(false);
         return;
     }
-    setIsConsolidating(true);
+
     try {
-        const originalTasksMap = new Map(currentTasks.map(t => [t.id, t]));
-        const aiResult = await consolidateTasks({
-            tasks: currentTasks.map(t => ({ id: t.id, name: t.name, duration: t.duration, recipeIds: t.recipeIds || [], predecessorIds: t.predecessorIds })),
-            recipes: currentRecipes.map(r => ({ id: r.id, name: r.name })),
+        const normalize = (str: string) => {
+            return str
+                .toLowerCase()
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Eliminar acentos
+                .replace(/[.,¡!]/g, '') // Eliminar puntuación
+                .replace(/\b(la|el|un|una|de|para|los|las|a|con|en)\b/g, '') // Eliminar palabras de relleno
+                .trim().replace(/\s+/g, ' '); // Normalizar espacios
+        };
+
+        const taskGroups = new Map<string, Task[]>();
+
+        // Paso B.1 y B.2: Normalización y Agrupación
+        tasks.forEach(task => {
+            const normalizedName = normalize(task.name);
+            if (!taskGroups.has(normalizedName)) {
+                taskGroups.set(normalizedName, []);
+            }
+            taskGroups.get(normalizedName)!.push(task);
         });
 
         const batch = writeBatch(firestore);
-        const tasksCol = collection(projectRef, 'tasks');
-        
-        const tasksToDeleteIds = new Set<string>();
-        aiResult.consolidatedTasks.forEach(group => {
-            group.originalTaskIds.forEach(id => tasksToDeleteIds.add(id));
-        });
+        const tasksCollection = collection(projectRef, 'tasks');
+        const tasksToUpdate = [...tasks];
+        let consolidationHappened = false;
 
-        if(tasksToDeleteIds.size === 0 && aiResult.unconsolidatedTaskIds.length === currentTasks.length) {
-            toast({ title: 'Sin cambios', description: 'No se encontraron tareas para consolidar.' });
+        for (const [normalizedName, group] of taskGroups.entries()) {
+            if (group.length > 1) {
+                consolidationHappened = true;
+                
+                // Paso B.2: Seleccionar Tarea Maestra y fusionar datos
+                const masterTask = { ...group[0] };
+                const duplicateTasks = group.slice(1);
+
+                masterTask.name = `Unificado: ${masterTask.name}`;
+                masterTask.duration = group.reduce((total, t) => total + t.duration, 0);
+                masterTask.recipeIds = [...new Set(group.flatMap(t => t.recipeIds || []))];
+                masterTask.resourceIds = [...new Set(group.flatMap(t => t.resourceIds || []))];
+                masterTask.isAssemblyStep = group.some(t => t.isAssemblyStep);
+
+                const duplicateIds = new Set(duplicateTasks.map(t => t.id));
+
+                // Paso B.3: Actualización Crítica de Dependencias
+                for (const task of tasksToUpdate) {
+                    if (task.id === masterTask.id) continue;
+                    
+                    const newPredecessors = new Set(task.predecessorIds);
+                    let changed = false;
+                    task.predecessorIds.forEach(predId => {
+                        if (duplicateIds.has(predId)) {
+                            newPredecessors.delete(predId);
+                            newPredecessors.add(masterTask.id);
+                            changed = true;
+                        }
+                    });
+
+                    if (changed) {
+                        task.predecessorIds = Array.from(newPredecessors);
+                        batch.update(doc(tasksCollection, task.id), { predecessorIds: task.predecessorIds });
+                    }
+                }
+                
+                // Aplicar cambios a la tarea maestra y eliminar duplicados
+                batch.update(doc(tasksCollection, masterTask.id), masterTask);
+                duplicateTasks.forEach(dup => batch.delete(doc(tasksCollection, dup.id)));
+            }
+        }
+        
+        if (!consolidationHappened) {
+            toast({ title: 'Sin Cambios', description: 'No se encontraron tareas duplicadas para unificar.' });
             setIsConsolidating(false);
             return;
         }
 
-        tasksToDeleteIds.forEach(id => {
-            batch.delete(doc(tasksCol, id));
-        });
-        
-        aiResult.consolidatedTasks.forEach(group => {
-            const newDocRef = doc(tasksCol);
-            
-            const mergedResourceIds = new Set<string>();
-            group.originalTaskIds.forEach(originalTaskId => {
-                const originalTask = originalTasksMap.get(originalTaskId);
-                if (originalTask?.resourceIds) {
-                    originalTask.resourceIds.forEach(resId => mergedResourceIds.add(resId));
-                }
-            });
-
-            const newTaskData = {
-                name: group.consolidatedName,
-                duration: group.duration,
-                recipeIds: group.recipeIds,
-                predecessorIds: [], 
-                resourceIds: Array.from(mergedResourceIds),
-                status: 'pending' as const,
-                isAssemblyStep: group.originalTaskIds.some(id => originalTasksMap.get(id)?.isAssemblyStep),
-            };
-            batch.set(newDocRef, newTaskData);
-        });
-
+        // Invalidar guía si hubo cambios
         if (project?.cpmResult) {
-          batch.update(projectRef, { cpmResult: null });
+            batch.update(projectRef, { cpmResult: null });
         }
 
         await batch.commit();
 
         setIsGuideStale(true);
-
-        toast({
-            title: '¡Tareas Consolidadas!',
-            description: `Se han unificado ${tasksToDeleteIds.size} tareas en ${aiResult.consolidatedTasks.length} nuevas tareas optimizadas.`,
-        });
+        toast({ title: '¡Tareas Unificadas!', description: 'Se han fusionado tareas duplicadas. La guía necesita recalcularse.' });
 
     } catch (error) {
-        console.error(error);
-        toast({ title: 'Falló la Consolidación', description: 'La IA no pudo unificar las tareas.', variant: 'destructive' });
+        console.error("Error en la unificación nativa:", error);
+        toast({ title: 'Error de Unificación', description: 'No se pudieron unificar las tareas.', variant: 'destructive' });
     } finally {
         setIsConsolidating(false);
     }
 };
 
   const handleCalculatePath = async () => {
-    const currentTasks = allTasks || [];
-    if (!project || currentTasks.length === 0) return;
     setIsCalculatingPath(true);
-  
     try {
+      // Forzar la limpieza de la guía ANTES de cualquier otra acción
       await updateDocumentNonBlocking(projectRef, { cpmResult: null });
-  
+      
+      // Navegar a la página de la guía. La página mostrará "Generando..."
       router.push(`/projects/${projectId}/guide`);
-  
-      // Calculation happens in the background. The guide page will show loading.
+
+      // El cálculo real ocurre en segundo plano de forma asíncrona.
+      // La página de la guía detectará el resultado cuando esté listo en Firestore.
       const runCalculation = async () => {
-        const cpmResult = calculateCPM(currentTasks);
-        await updateDocumentNonBlocking(projectRef, { cpmResult });
-        setIsGuideStale(false);
+        try {
+          // Re-obtener las tareas para asegurar que trabajamos con los datos más frescos después de cualquier posible consolidación.
+          const freshTasksSnapshot = await getDocs(tasksQuery!);
+          const currentTasks = freshTasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
+          
+          if (currentTasks.length === 0) return;
+
+          const cpmResult = calculateCPM(currentTasks);
+          await updateDocumentNonBlocking(projectRef, { cpmResult });
+          setIsGuideStale(false); // La guía ahora está fresca
+        } catch (calcError) {
+           console.error("Error durante el cálculo de CPM en segundo plano:", calcError);
+        }
       };
   
       runCalculation();
@@ -333,9 +366,8 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
           description: errorMessage,
           variant: "destructive",
       });
-      setIsCalculatingPath(false);
+       setIsCalculatingPath(false); // Solo si la navegación falla
     }
-    // No finally block here, as we navigate away. The state will reset on component unmount.
   };
 
   const handleClearProject = async () => {
