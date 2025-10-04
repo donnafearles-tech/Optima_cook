@@ -139,6 +139,13 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     } else {
         addDocumentNonBlocking(tasksCollection, dataToSave);
     }
+    
+    // Always invalidate the CPM result when a task is changed
+    updateDocumentNonBlocking(projectRef, { cpmResult: null });
+    if (project && setProject) {
+        setProject({ ...project, cpmResult: undefined });
+    }
+
     setEditingTask(null);
   };
 
@@ -438,3 +445,5 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     </>
   );
 }
+
+    
