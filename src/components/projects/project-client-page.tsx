@@ -90,14 +90,13 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   };
 
   const handleRecipeDelete = (recipeId: string) => {
-    const currentTasks = allTasks || [];
-    if (!project) return;
+    if (!project || !allTasks) return;
   
     const batch = writeBatch(firestore);
     const recipeRefDoc = doc(projectRef, 'recipes', recipeId);
     batch.delete(recipeRefDoc);
   
-    const tasksToDelete = currentTasks.filter(t => (t.recipeIds || []).includes(recipeId));
+    const tasksToDelete = allTasks.filter(t => (t.recipeIds || []).includes(recipeId));
     tasksToDelete.forEach(t => {
       const taskRef = doc(projectRef, 'tasks', t.id);
       batch.delete(taskRef);
@@ -378,10 +377,6 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   }
   
   const hasValidGuide = project.cpmResult && !isGuideStale;
-  const currentRecipes = allRecipes || [];
-  const currentTasks = allTasks || [];
-  const currentResources = allResources || [];
-
 
   return (
     <>
@@ -403,7 +398,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <h2 className="text-2xl font-bold tracking-tight font-headline flex-1">Recetas</h2>
           <div className="flex gap-2">
-             <Button variant="outline" onClick={handleConsolidateTasks} disabled={isConsolidating || currentTasks.length < 2}>
+             <Button variant="outline" onClick={handleConsolidateTasks} disabled={isConsolidating || (allTasks || []).length < 2}>
               {isConsolidating ? (
                 <Combine className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -411,7 +406,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
               )}
               Unificar Tareas
             </Button>
-            <Button variant="outline" onClick={handleSuggestDependencies} disabled={isSuggesting || currentTasks.length < 2}>
+            <Button variant="outline" onClick={handleSuggestDependencies} disabled={isSuggesting || (allTasks || []).length < 2}>
               {isSuggesting ? (
                 <Wand2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -425,14 +420,14 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
           </div>
         </div>
         <div className="space-y-6">
-            {currentRecipes.map(recipe => (
+            {(allRecipes || []).map(recipe => (
                 <RecipeCard 
                     key={recipe.id}
                     recipe={recipe}
-                    tasks={currentTasks.filter(t => (t.recipeIds || []).includes(recipe.id))}
-                    allTasks={currentTasks}
-                    allRecipes={currentRecipes}
-                    allResources={currentResources}
+                    tasks={(allTasks || []).filter(t => (t.recipeIds || []).includes(recipe.id))}
+                    allTasks={allTasks || []}
+                    allRecipes={allRecipes || []}
+                    allResources={allResources || []}
                     onEditRecipe={() => setEditingRecipe(recipe)}
                     onDeleteRecipe={() => handleRecipeDelete(recipe.id)}
                     onAddTask={() => handleOpenEditTask('new')}
@@ -440,7 +435,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
                     onDeleteTask={handleTaskDelete}
                 />
             ))}
-             {currentRecipes.length === 0 && (
+             {(allRecipes || []).length === 0 && (
               <div className="text-center text-muted-foreground border-2 border-dashed rounded-lg p-12">
                 <h3 className="text-lg font-semibold">Este proyecto está vacío</h3>
                 <p className="mt-1">Comienza por importar o añadir una receta.</p>
@@ -460,7 +455,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
               Ver Guía <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
          ) : (
-            <Button size="lg" onClick={handleCalculatePath} disabled={currentTasks.length === 0 || isCalculatingPath}>
+            <Button size="lg" onClick={handleCalculatePath} disabled={(allTasks || []).length === 0 || isCalculatingPath}>
               {isCalculatingPath ? <Sparkles className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
               Calcular Ruta Óptima
             </Button>
@@ -471,9 +466,9 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         open={editingTask !== null}
         onOpenChange={(isOpen) => !isOpen && setEditingTask(null)}
         task={editingTask === 'new' ? null : editingTask as Task | null}
-        allTasks={currentTasks}
-        allRecipes={currentRecipes}
-        allResources={currentResources}
+        allTasks={allTasks || []}
+        allRecipes={allRecipes || []}
+        allResources={allResources || []}
         onSave={handleTaskSave}
       />
       
