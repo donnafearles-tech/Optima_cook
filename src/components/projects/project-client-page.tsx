@@ -1,8 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine } from 'lucide-react';
+import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine, AlertTriangle } from 'lucide-react';
 import type { Project, Task, Recipe, UserResource, CpmResult } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { suggestTaskDependencies } from '@/ai/flows/suggest-task-dependencies';
@@ -28,6 +28,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [isConsolidating, setIsConsolidating] = useState(false);
   const [isCalculatingPath, setIsCalculatingPath] = useState(false);
+  const [isGuideStale, setIsGuideStale] = useState(false);
   const { toast } = useToast();
   const { firestore } = useFirebase();
   const router = useRouter();
@@ -35,7 +36,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const userRef = useMemoFirebase(() => doc(firestore, 'users', userId), [firestore, userId]);
   const projectRef = useMemoFirebase(() => doc(userRef, 'projects', projectId), [userRef, projectId]);
 
-  const { data: project, isLoading: isLoadingProject, error: projectError, setData: setProject } = useDoc<Project>(projectRef);
+  const { data: project, isLoading: isLoadingProject, error: projectError } = useDoc<Project>(projectRef);
   
   const recipesQuery = useMemoFirebase(() => collection(projectRef, 'recipes'), [projectRef]);
   const { data: recipes, isLoading: isLoadingRecipes } = useCollection<Recipe>(recipesQuery);
@@ -45,6 +46,13 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   
   const resourcesQuery = useMemoFirebase(() => collection(userRef, 'resources'), [userRef]);
   const { data: resources, isLoading: isLoadingResources } = useCollection<UserResource>(resourcesQuery);
+  
+  const invalidateGuide = () => {
+    if (project?.cpmResult) {
+      updateDocumentNonBlocking(projectRef, { cpmResult: null });
+      setIsGuideStale(true);
+    }
+  };
 
 
   const handleOpenEditTask = (task: Task | 'new') => {
@@ -75,6 +83,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   
   const handleRecipeSave = (recipeToSave: Pick<Recipe, 'id' | 'name'>) => {
     const recipesCollection = collection(projectRef, 'recipes');
+    invalidateGuide();
     if (recipeToSave.id) {
         const recipeDoc = doc(recipesCollection, recipeToSave.id);
         updateDocumentNonBlocking(recipeDoc, { name: recipeToSave.name });
@@ -107,13 +116,8 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
 
     try {
         await batch.commit();
+        setIsGuideStale(true);
         toast({ title: 'Receta Eliminada', description: 'La receta y sus tareas han sido eliminadas. La guía necesita recalcularse.' });
-        
-        // Optimistically update local state to reflect the change
-        if (setProject) {
-          setProject({ ...project, cpmResult: undefined });
-        }
-
     } catch (e) {
         console.error("Error al eliminar la receta y sus tareas:", e);
         toast({ title: 'Error', description: 'No se pudo eliminar la receta.', variant: 'destructive' });
@@ -132,18 +136,14 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         });
         return;
     }
+    
+    invalidateGuide();
 
     if (id) {
         const taskDoc = doc(tasksCollection, id);
         updateDocumentNonBlocking(taskDoc, dataToSave);
     } else {
         addDocumentNonBlocking(tasksCollection, dataToSave);
-    }
-    
-    // Always invalidate the CPM result when a task is changed
-    updateDocumentNonBlocking(projectRef, { cpmResult: null });
-    if (project && setProject) {
-        setProject({ ...project, cpmResult: undefined });
     }
 
     setEditingTask(null);
@@ -152,13 +152,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const handleTaskDelete = (taskId: string) => {
     const taskDoc = doc(projectRef, 'tasks', taskId);
     deleteDocumentNonBlocking(taskDoc);
-    
-    // Also reset the CPM result
-    updateDocumentNonBlocking(projectRef, { cpmResult: null });
-    if (project && setProject) {
-        setProject({ ...project, cpmResult: undefined });
-    }
-
+    invalidateGuide();
     toast({
         title: 'Tarea Eliminada',
         description: 'Recuerda revisar las dependencias y recalcular la guía.',
@@ -197,6 +191,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
 
 
       await batch.commit();
+      invalidateGuide();
 
       toast({
         title: '¡Dependencias Sugeridas!',
@@ -246,7 +241,6 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         aiResult.consolidatedTasks.forEach(group => {
             const newDocRef = doc(tasksCol);
             
-            // Gather unique resource IDs from all original tasks in the group
             const mergedResourceIds = new Set<string>();
             group.originalTaskIds.forEach(originalTaskId => {
                 const originalTask = originalTasksMap.get(originalTaskId);
@@ -259,7 +253,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
                 name: group.consolidatedName,
                 duration: group.duration,
                 recipeIds: group.recipeIds,
-                predecessorIds: [], // Dependencies need re-evaluation after consolidation
+                predecessorIds: [], 
                 resourceIds: Array.from(mergedResourceIds),
                 status: 'pending' as const,
                 isAssemblyStep: group.originalTaskIds.some(id => originalTasksMap.get(id)?.isAssemblyStep),
@@ -268,6 +262,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         });
 
         await batch.commit();
+        invalidateGuide();
 
         toast({
             title: '¡Tareas Consolidadas!',
@@ -288,10 +283,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     try {
         const cpmResult = calculateCPM(tasks);
         updateDocumentNonBlocking(projectRef, { cpmResult });
-        
-        if (setProject && project) {
-            setProject({ ...project, cpmResult });
-        }
+        setIsGuideStale(false); // The guide is now fresh
 
         toast({
           title: "¡Ruta Óptima Calculada!",
@@ -308,6 +300,15 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         setIsCalculatingPath(false);
     }
   };
+  
+  useEffect(() => {
+    // When the project data loads, check if the guide is valid
+    if (project && !project.cpmResult) {
+        setIsGuideStale(true);
+    } else {
+        setIsGuideStale(false);
+    }
+  }, [project]);
 
   if (isLoadingProject || isLoadingRecipes || isLoadingTasks || isLoadingResources) {
     return <div>Cargando proyecto...</div>;
@@ -338,6 +339,9 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const allTasks = tasks || [];
   const allRecipes = recipes || [];
   const allResources = resources || [];
+  
+  const showViewGuideButton = project.cpmResult && !isGuideStale;
+  const showRecalculateButton = project.cpmResult && isGuideStale;
 
   return (
     <>
@@ -406,24 +410,41 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
       </div>
 
       <div className="mt-8 flex justify-end gap-2">
-        {project.cpmResult && (
+        {showViewGuideButton && (
           <Button size="lg" asChild>
             <Link href={`/projects/${projectId}/guide`}>Ver Guía <ArrowRight className="ml-2 h-4 w-4" /></Link>
           </Button>
         )}
-        <Button size="lg" onClick={handleCalculatePath} disabled={allTasks.length === 0 || isCalculatingPath}>
-          {isCalculatingPath ? (
-            <>
-              <Sparkles className="mr-2 h-4 w-4 animate-spin" />
-              Calculando...
-            </>
-          ) : (
-            <>
-              Calcular Ruta Óptima
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </>
-          )}
-        </Button>
+        {showRecalculateButton && (
+             <Button size="lg" variant="destructive" onClick={handleCalculatePath} disabled={isCalculatingPath}>
+              {isCalculatingPath ? (
+                  <>
+                  <Sparkles className="mr-2 h-4 w-4 animate-spin" />
+                  Recalculando...
+                  </>
+              ) : (
+                  <>
+                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    Recalcular Guía
+                  </>
+              )}
+          </Button>
+        )}
+        {!project.cpmResult && !isGuideStale && (
+            <Button size="lg" onClick={handleCalculatePath} disabled={allTasks.length === 0 || isCalculatingPath}>
+              {isCalculatingPath ? (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4 animate-spin" />
+                  Calculando...
+                </>
+              ) : (
+                <>
+                  Calcular Ruta Óptima
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
+        )}
       </div>
 
       <EditTaskSheet
