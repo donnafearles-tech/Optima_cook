@@ -12,6 +12,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { parseRecipe } from '@/ai/flows/parse-recipe';
+import { suggestResourceForTask } from '@/ai/flows/suggest-resource-for-task';
 import type { ParseRecipeOutput, Task, UserResource } from '@/lib/types';
 import { Sparkles, Upload } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -68,18 +69,29 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
       const tasksCol = collection(projectRef, 'tasks');
       const taskNameMap = new Map<string, string>();
       
-      // First pass to create task refs and map names to IDs
       const taskRefs = result.tasks.map(originalTask => {
         const taskRef = doc(tasksCol);
         taskNameMap.set(originalTask.name, taskRef.id);
         return { originalTask, taskRef };
       });
 
-      // Second pass to set full data with mapped predecessor IDs
-      for (const { originalTask, taskRef } of taskRefs) {
+      const resourceSuggestionPromises = taskRefs.map(async ({ originalTask, taskRef }) => {
         const mappedPredIds = originalTask.predecessorIds
           .map(name => taskNameMap.get(name))
           .filter((id): id is string => !!id);
+          
+        let resourceIds: string[] = [];
+        if (resources && resources.length > 0) {
+            try {
+                const resourceResult = await suggestResourceForTask({
+                    taskName: originalTask.name,
+                    userResources: resources,
+                });
+                resourceIds = resourceResult.resourceIds;
+            } catch (e) {
+                console.warn(`Could not suggest resources for task "${originalTask.name}":`, e);
+            }
+        }
 
         const finalTaskData: Omit<Task, 'id'> = {
           name: originalTask.name,
@@ -87,17 +99,18 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
           isAssemblyStep: originalTask.isAssemblyStep,
           recipeIds: [newRecipeRef.id],
           status: 'pending' as const,
-          resourceIds: [], // Resources will be assigned manually
+          resourceIds: resourceIds,
           predecessorIds: mappedPredIds
         };
         batch.set(taskRef, finalTaskData);
-      }
+      });
       
+      await Promise.all(resourceSuggestionPromises);
       await batch.commit();
 
       toast({
         title: '¡Receta Importada!',
-        description: `Se importó "${result.recipeName}" y se añadieron ${result.tasks.length} tareas.`,
+        description: `Se importó "${result.recipeName}" y se añadieron ${result.tasks.length} tareas con recursos sugeridos.`,
       });
 
       onOpenChange(false);
@@ -172,7 +185,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
         <DialogHeader>
           <DialogTitle className="font-headline">Importar Receta</DialogTitle>
           <DialogDescription>
-            Pega tu receta o sube un archivo. La IA la analizará para extraer las tareas. Podrás asignar recursos manualmente.
+            Pega tu receta o sube un archivo. La IA la analizará para extraer tareas y sugerir recursos automáticamente.
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="paste" value={activeTab} onValueChange={setActiveTab}>

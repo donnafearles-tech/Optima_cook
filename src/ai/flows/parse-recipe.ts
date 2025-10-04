@@ -18,37 +18,30 @@ const parseRecipePrompt = ai.definePrompt({
   name: 'parseRecipePrompt',
   input: {schema: ParseRecipeInputSchema},
   output: {schema: ParseRecipeOutputSchema},
-  prompt: `Actúa como un Chef de alta cocina experto en optimización de procesos (Mise en Place) y simultáneamente como un Ingeniero de Procesos. Tu nivel de detalle es equiparable al de un manual de ensamblaje industrial.
+  prompt: `Actúa como un Chef de alta cocina experto en optimización de procesos (Mise en Place) y simultáneamente como un Ingeniero de Procesos.
 
     **Objetivo Principal:**
-    Analiza la receta de cocina proporcionada y genera una estructura de datos JSON ultra-detallada. Esta estructura debe incluir el nombre de la receta y una secuencia de pasos de preparación (tareas). El análisis de tareas debe ser exhaustivo, identificando dependencias lógicas y, de forma crítica, **dependencias físicas de ensamblaje** para productos que requieren armado.
+    Analiza la receta de cocina proporcionada y genera una estructura de datos JSON. Tu objetivo es generar una lista de tareas de alto nivel, consolidando micro-pasos. La lista final de tareas debe tener un MÁXIMO de 10 pasos.
 
     **Instrucciones Detalladas:**
 
-    1.  **Análisis y Desglose a Nivel Atómico (EDT):**
-        *   Realiza una Estructura de Desglose del Trabajo (EDT) extremadamente granular.
-        *   Descompón cada paso en sus tareas más elementales. Ejemplo: "Cortar vegetales" se desglosa en "Lavar tomate", "Secar tomate", "Cortar tomate en rodajas".
+    1.  **Análisis y Agrupación (NO Desglose Atómico):**
+        *   En lugar de desglosar cada acción al mínimo, agrupa las tareas relacionadas en pasos lógicos más grandes.
+        *   Ejemplo: "Lavar tomate", "Secar tomate", "Cortar tomate en rodajas" deben agruparse en una sola tarea: "Preparar tomates".
+        *   **CRÍTICO: El número total de tareas generadas no debe exceder 10.**
 
-    2.  **Secuenciación y Dependencias (CRÍTICO):**
-        *   **Dependencias Lógicas:** Identifica las tareas predecesoras obvias. (Ej: "Picar cebolla" debe venir después de "Pelar cebolla").
-        *   **Dependencias Físicas y de Ensamblaje (Nivel de Tornillo):** Para productos que requieren armado (sándwiches, hamburguesas, lasañas), analiza el orden de montaje para garantizar la estabilidad estructural. Piensa en la física: los ingredientes resbaladizos no deben servir de base para otros más pesados.
-            *   **Ejemplo de Lógica para un Sándwich:**
-                1.  "Untar mayonesa en pan base" (actúa como barrera de humedad y adhesivo).
-                2.  "Colocar loncha de queso sobre la mayonesa" (se adhiere bien).
-                3.  "Colocar hoja de lechuga sobre el queso".
-                4.  "Colocar loncha de jamón sobre la lechuga" (el jamón "ancla" la lechuga).
-                5.  "Colocar rodajas de tomate sobre el jamón".
-                6.  "Colocar tapa de pan".
-            *   Genera las tareas y sus dependencias siguiendo esta lógica de construcción estable. Para productos que no requieren armado (ej. una sopa), enfócate solo en las dependencias lógicas de preparación.
+    2.  **Secuenciación y Dependencias:**
+        *   Identifica las dependencias lógicas entre estas tareas de alto nivel. (Ej: "Cocinar la salsa" debe venir después de "Preparar los vegetales para la salsa").
+        *   Para productos que requieren armado (sándwiches, lasañas), considera el orden de montaje al definir las tareas. (Ej: "Montar las capas de la lasaña").
 
-    3.  **Estimación de Duración:** Asigna una duración estimada y realista en **segundos** a cada tarea atómica.
+    3.  **Estimación de Duración:** Asigna una duración estimada y realista en **segundos** a cada tarea agrupada.
 
     4.  **Generación del Output (Formato JSON Estricto):**
         *   Responde **ÚNICAMENTE** con un objeto JSON válido.
         *   El objeto de receta debe contener 'recipeName' y 'tasks'.
         *   Cada objeto 'task' debe tener: 'name' (string), 'duration' (number en segundos), 'predecessorIds' (array de strings con los nombres de las tareas predecesoras), y 'isAssemblyStep' (boolean).
-        *   Las tareas de preparación (p. ej., picar, lavar, medir) deben tener 'isAssemblyStep: false'.
-        *   Las tareas que forman parte del armado final del platillo (p. ej., "Colocar lechuga sobre el jamón") deben tener 'isAssemblyStep: true'.
+        *   Las tareas de preparación (p. ej., preparar ingredientes) deben tener 'isAssemblyStep: false'.
+        *   Las tareas que forman parte del cocinado o armado final del platillo (p. ej., "Hornear la lasaña") deben tener 'isAssemblyStep: true'.
         *   Si una tarea no tiene dependencias, su 'predecessorIds' debe ser un array vacío [].
 
       **Entrada de la Receta:**
