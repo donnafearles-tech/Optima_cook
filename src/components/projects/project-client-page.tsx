@@ -228,7 +228,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     }
   };
 
-  const handleConsolidateTasks = async () => {
+const handleConsolidateTasks = async () => {
     setIsConsolidating(true);
     const tasks = allTasks || [];
     if (tasks.length < 1) {
@@ -241,15 +241,13 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         const normalize = (str: string) => {
             return str
                 .toLowerCase()
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Eliminar acentos
-                .replace(/[.,¡!]/g, '') // Eliminar puntuación
-                .replace(/\b(la|el|un|una|de|para|los|las|a|con|en)\b/g, '') // Eliminar palabras de relleno
-                .trim().replace(/\s+/g, ' '); // Normalizar espacios
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/[.,¡!]/g, '')
+                .replace(/\b(la|el|un|una|de|para|los|las|a|con|en)\b/g, '')
+                .trim().replace(/\s+/g, ' ');
         };
 
         const taskGroups = new Map<string, Task[]>();
-
-        // Paso B.1 y B.2: Normalización y Agrupación
         tasks.forEach(task => {
             const normalizedName = normalize(task.name);
             if (!taskGroups.has(normalizedName)) {
@@ -258,50 +256,31 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
             taskGroups.get(normalizedName)!.push(task);
         });
 
-        const batch = writeBatch(firestore);
-        const tasksCollection = collection(projectRef, 'tasks');
-        const tasksToUpdate = [...tasks];
+        const tasksToDelete = new Set<string>();
+        const tasksToUpdate = new Map<string, Partial<Task>>();
+        const predecessorRedirects = new Map<string, string>();
         let consolidationHappened = false;
 
         for (const [normalizedName, group] of taskGroups.entries()) {
             if (group.length > 1) {
                 consolidationHappened = true;
+                const masterTask = group.sort((a,b) => a.name.length - b.name.length)[0];
+                const duplicateTasks = group.filter(t => t.id !== masterTask.id);
+
+                const consolidatedData: Partial<Task> = {
+                    name: `Unificado: ${masterTask.name}`,
+                    duration: group.reduce((total, t) => total + t.duration, 0),
+                    recipeIds: [...new Set(group.flatMap(t => t.recipeIds || []))],
+                    resourceIds: [...new Set(group.flatMap(t => t.resourceIds || []))],
+                    isAssemblyStep: group.some(t => t.isAssemblyStep),
+                };
                 
-                // Paso B.2: Seleccionar Tarea Maestra y fusionar datos
-                const masterTask = { ...group[0] };
-                const duplicateTasks = group.slice(1);
+                tasksToUpdate.set(masterTask.id, consolidatedData);
 
-                masterTask.name = `Unificado: ${masterTask.name}`;
-                masterTask.duration = group.reduce((total, t) => total + t.duration, 0);
-                masterTask.recipeIds = [...new Set(group.flatMap(t => t.recipeIds || []))];
-                masterTask.resourceIds = [...new Set(group.flatMap(t => t.resourceIds || []))];
-                masterTask.isAssemblyStep = group.some(t => t.isAssemblyStep);
-
-                const duplicateIds = new Set(duplicateTasks.map(t => t.id));
-
-                // Paso B.3: Actualización Crítica de Dependencias
-                for (const task of tasksToUpdate) {
-                    if (task.id === masterTask.id) continue;
-                    
-                    const newPredecessors = new Set(task.predecessorIds);
-                    let changed = false;
-                    task.predecessorIds.forEach(predId => {
-                        if (duplicateIds.has(predId)) {
-                            newPredecessors.delete(predId);
-                            newPredecessors.add(masterTask.id);
-                            changed = true;
-                        }
-                    });
-
-                    if (changed) {
-                        task.predecessorIds = Array.from(newPredecessors);
-                        batch.update(doc(tasksCollection, task.id), { predecessorIds: task.predecessorIds });
-                    }
-                }
-                
-                // Aplicar cambios a la tarea maestra y eliminar duplicados
-                batch.update(doc(tasksCollection, masterTask.id), masterTask);
-                duplicateTasks.forEach(dup => batch.delete(doc(tasksCollection, dup.id)));
+                duplicateTasks.forEach(dup => {
+                    tasksToDelete.add(dup.id);
+                    predecessorRedirects.set(dup.id, masterTask.id);
+                });
             }
         }
         
@@ -311,7 +290,41 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
             return;
         }
 
-        // Invalidar guía si hubo cambios
+        const finalPredecessorUpdates = new Map<string, string[]>();
+        tasks.forEach(task => {
+            if (tasksToDelete.has(task.id)) return;
+
+            let needsUpdate = false;
+            const newPredecessors = new Set(task.predecessorIds);
+            
+            task.predecessorIds.forEach(predId => {
+                if (predecessorRedirects.has(predId)) {
+                    newPredecessors.delete(predId);
+                    newPredecessors.add(predecessorRedirects.get(predId)!);
+                    needsUpdate = true;
+                }
+            });
+
+            if (needsUpdate) {
+                finalPredecessorUpdates.set(task.id, Array.from(newPredecessors));
+            }
+        });
+        
+        const batch = writeBatch(firestore);
+        const tasksCollection = collection(projectRef, 'tasks');
+
+        tasksToUpdate.forEach((data, id) => {
+            batch.update(doc(tasksCollection, id), data);
+        });
+
+        finalPredecessorUpdates.forEach((preds, id) => {
+            batch.update(doc(tasksCollection, id), { predecessorIds: preds });
+        });
+
+        tasksToDelete.forEach(id => {
+            batch.delete(doc(tasksCollection, id));
+        });
+
         if (project?.cpmResult) {
             batch.update(projectRef, { cpmResult: null });
         }
