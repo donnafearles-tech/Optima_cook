@@ -89,35 +89,31 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     setEditingRecipe(null);
   };
 
-  const handleRecipeDelete = async (recipeId: string) => {
+  const handleRecipeDelete = (recipeId: string) => {
     if (!tasks || !project) return;
     
-    try {
-      const batch = writeBatch(firestore);
+    const batch = writeBatch(firestore);
 
-      const recipeRef = doc(projectRef, 'recipes', recipeId);
-      batch.delete(recipeRef);
+    const recipeRef = doc(projectRef, 'recipes', recipeId);
+    batch.delete(recipeRef);
 
-      const tasksToDelete = tasks.filter(t => (t.recipeIds || []).includes(recipeId));
-      tasksToDelete.forEach(t => {
-          const taskRef = doc(projectRef, 'tasks', t.id);
-          batch.delete(taskRef);
-      });
-      
-      if (project.cpmResult) {
-        batch.update(projectRef, { cpmResult: null });
-      }
-
-      await batch.commit();
-      
-      setIsGuideStale(true);
-
-      toast({ title: 'Receta Eliminada', description: 'La receta y sus tareas han sido eliminadas. La guía necesita recalcularse.' });
+    const tasksToDelete = tasks.filter(t => (t.recipeIds || []).includes(recipeId));
+    tasksToDelete.forEach(t => {
+        const taskRef = doc(projectRef, 'tasks', t.id);
+        batch.delete(taskRef);
+    });
     
-    } catch (e) {
+    if (project.cpmResult) {
+      batch.update(projectRef, { cpmResult: null });
+    }
+
+    batch.commit().then(() => {
+        setIsGuideStale(true);
+        toast({ title: 'Receta Eliminada', description: 'La receta y sus tareas han sido eliminadas. La guía necesita recalcularse.' });
+    }).catch((e) => {
         console.error("Error al eliminar la receta y sus tareas:", e);
         toast({ title: 'Error', description: 'No se pudo eliminar la receta.', variant: 'destructive' });
-    }
+    });
   };
 
   const handleTaskSave = (taskToSave: Task) => {
@@ -436,7 +432,14 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
       </div>
 
        <div className="mt-8 flex justify-end gap-2">
-        {!hasValidGuide ? (
+        {hasValidGuide ? (
+           <Button 
+                size="lg" 
+                onClick={() => router.push(`/projects/${projectId}/guide`)} 
+            >
+              Ver Guía <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        ) : (
           <Button 
             size="lg" 
             variant={isGuideStale ? "destructive" : "default"}
@@ -450,13 +453,6 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
                   <><AlertTriangle className="mr-2 h-4 w-4" />Recalcular Guía</>
                ) : 'Calcular Ruta Óptima'
             )}
-          </Button>
-        ) : (
-           <Button 
-                size="lg" 
-                onClick={() => router.push(`/projects/${projectId}/guide`)} 
-            >
-              Ver Guía <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         )}
       </div>
@@ -473,7 +469,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
       
       <EditRecipeDialog
           open={editingRecipe !== null}
-          onOpenchaNge={(isOpen) => !isOpen && setEditingRecipe(null)}
+          onOpenChange={(isOpen) => !isOpen && setEditingRecipe(null)}
           recipe={editingRecipe === 'new' ? null : editingRecipe}
           onSave={handleRecipeSave}
       />
