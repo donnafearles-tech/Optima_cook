@@ -1,3 +1,4 @@
+
 'use client';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -7,11 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { Project, Task } from '@/lib/types';
-import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import type { Project, Recipe, Task } from '@/lib/types';
+import { useCollection, useDoc, useFirebase, useMemoFirebase } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 import { Progress } from '@/components/ui/progress';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 function formatDuration(seconds: number) {
   const hours = Math.floor(seconds / 3600);
@@ -39,7 +40,19 @@ export default function GuidePage() {
     return doc(firestore, 'users', user.uid, 'projects', id);
   }, [firestore, user, id]);
 
-  const { data: project, isLoading, error } = useDoc<Project>(projectRef);
+  const { data: project, isLoading: isLoadingProject, error } = useDoc<Project>(projectRef);
+  
+  const recipesQuery = useMemoFirebase(() => {
+      if(!projectRef) return null;
+      return collection(projectRef, 'recipes');
+  }, [projectRef])
+  const { data: recipes, isLoading: isLoadingRecipes } = useCollection<Recipe>(recipesQuery);
+
+  const recipeMap = useMemo(() => {
+    if (!recipes) return new Map();
+    return new Map(recipes.map(r => [r.id, r.name]));
+  }, [recipes]);
+
 
   useEffect(() => {
     // Only run the animation if the guide is being generated
@@ -67,7 +80,7 @@ export default function GuidePage() {
     </div>
   );
   
-  if (isLoading || !user) {
+  if (isLoadingProject || isLoadingRecipes || !user) {
     return (
         <div className="container mx-auto p-4">
              {goBackButton}
@@ -152,7 +165,7 @@ export default function GuidePage() {
         </Button>
         <div>
           <h1 className="text-3xl font-bold tracking-tight font-headline">
-            Desayunos y cenas: Tu Guía de Cocina
+            {project.name}: Tu Guía de Cocina
           </h1>
           <p className="text-muted-foreground">La ruta óptima hacia el éxito culinario.</p>
         </div>
@@ -185,15 +198,21 @@ export default function GuidePage() {
                         <CardDescription>Comienza estas tareas ahora. Se pueden hacer en paralelo.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-4 space-y-3">
-                    {groupTasks.map(task => (
-                        <div key={task.id} className="p-3 border rounded-lg flex justify-between items-center">
-                            <div>
-                                <p className="font-semibold">{task.name}</p>
-                                <p className="text-sm text-muted-foreground">Duración: {formatDuration(task.duration)}</p>
+                    {groupTasks.map(task => {
+                        const recipeName = task.recipeIds.length > 0 ? recipeMap.get(task.recipeIds[0]) : null;
+                        return (
+                            <div key={task.id} className="p-3 border rounded-lg flex justify-between items-start">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        {recipeName && <Badge variant="secondary" className="bg-green-100 text-green-800">{recipeName}</Badge>}
+                                        <p className="font-semibold">{task.name}</p>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground ml-2">Duración: {formatDuration(task.duration)}</p>
+                                </div>
+                                {task.isCritical && <Badge variant="destructive" className="ml-2 flex-shrink-0">Crítica</Badge>}
                             </div>
-                            {task.isCritical && <Badge variant="destructive">Crítica</Badge>}
-                        </div>
-                    ))}
+                        );
+                    })}
                     </CardContent>
                 </Card>
                 ))}
