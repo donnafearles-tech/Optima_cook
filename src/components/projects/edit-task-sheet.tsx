@@ -136,35 +136,28 @@ export default function EditTaskSheet({
   const { toast } = useToast();
   
   useEffect(() => {
-    if (open) {
-      if (task && task.id) { // Only run for existing tasks
+    if (open && task && task.id) {
         const allTaskIds = new Set(allTasks.map(t => t.id));
-        const validPredecessorIds = (task.predecessorIds || []).filter(id => allTaskIds.has(id));
+        const currentPredecessors = task.predecessorIds || [];
+        const validPredecessorIds = currentPredecessors.filter(id => allTaskIds.has(id));
 
-        if (validPredecessorIds.length < (task.predecessorIds || []).length) {
+        if (validPredecessorIds.length < currentPredecessors.length) {
             toast({
                 title: "Dependencias limpiadas",
-                description: "Se eliminaron algunas dependencias que apuntaban a tareas borradas.",
+                description: "Se eliminaron dependencias que apuntaban a tareas borradas.",
+                variant: 'default',
             });
+            // Directly call onSave to persist the cleanup, this will trigger a re-render
             onSave({ ...task, predecessorIds: validPredecessorIds });
         }
         
         setPredecessorIds(validPredecessorIds);
-        
-        setName(task.name);
-        if (task.duration < 60 || task.duration % 60 !== 0) {
-          setTimeUnit('seconds');
-          setDurationValue(task.duration);
-        } else {
-          setTimeUnit('minutes');
-          setDurationValue(task.duration / 60);
-        }
-        setRecipeIds(task.recipeIds || ((task as any).recipeId ? [(task as any).recipeId] : []));
-        setResourceIds(task.resourceIds || []);
+    }
 
-      } else { // Reset for new task
-        setName(task?.name || '');
-        const duration = task?.duration || 300;
+    if (open) {
+      if (task) {
+        setName(task.name || '');
+        const duration = task.duration || 300;
         if (duration < 60 || duration % 60 !== 0) {
             setTimeUnit('seconds');
             setDurationValue(duration);
@@ -172,9 +165,18 @@ export default function EditTaskSheet({
             setTimeUnit('minutes');
             setDurationValue(duration / 60);
         }
-        setPredecessorIds(task?.predecessorIds || []);
-        setRecipeIds(task?.recipeIds || (allRecipes[0]?.id ? [allRecipes[0].id] : []));
-        setResourceIds(task?.resourceIds || []);
+        // If it's an existing task, use its predecessors, otherwise use the cleaned ones.
+        setPredecessorIds(task.id ? predecessorIds : (task.predecessorIds || []));
+        setRecipeIds(task.recipeIds || ((task as any).recipeId ? [(task as any).recipeId] : allRecipes[0]?.id ? [allRecipes[0].id] : []));
+        setResourceIds(task.resourceIds || []);
+
+      } else { // Reset for new task
+        setName('');
+        setDurationValue(5);
+        setTimeUnit('minutes');
+        setPredecessorIds([]);
+        setRecipeIds(allRecipes[0]?.id ? [allRecipes[0].id] : []);
+        setResourceIds([]);
       }
     }
   }, [task, open, allRecipes, allTasks, onSave, toast]);
@@ -267,12 +269,13 @@ export default function EditTaskSheet({
         return;
     }
     
+    // crucial: filter tasks to only those within the same recipe(s) as the current task
     const relevantTasks = allTasks.filter(t => 
         t.id !== task?.id && (t.recipeIds || []).some(rId => (recipeIds || []).includes(rId))
     );
 
     if (relevantTasks.length === 0) {
-        toast({ title: "No hay otras tareas", description: "No hay otras tareas en la misma receta para establecer como dependencias." });
+        toast({ title: "No hay otras tareas en esta receta", description: "No hay otras tareas en la misma receta para establecer como dependencias." });
         return;
     }
 
@@ -319,24 +322,23 @@ export default function EditTaskSheet({
     
     // Reglas de Ensamblaje
     if (isIngredientAction(normalizedNewTaskName)) {
-        // This task is about adding an ingredient. It should depend on an adhesive or a previous layer.
-        const tasksInRecipe = allTasks.filter(t => (t.recipeIds || []).some(rId => (recipeIds || []).includes(rId)));
-
-        const adhesiveTasks = tasksInRecipe.filter(t => t.id !== task?.id && isAction(normalize(t.name), ['untar', 'esparcir']));
-        if(adhesiveTasks.length > 0) {
-            adhesiveTasks.forEach(at => newPredecessors.add(at.id));
-            foundSuggestion = true;
-        } else {
-            // If no adhesive, depend on the previous layer or the base
-            const layerTasks = tasksInRecipe.filter(t => t.id !== task?.id && isIngredientAction(normalize(t.name)));
-            const baseTasks = tasksInRecipe.filter(t => t.id !== task?.id && isAction(normalize(t.name), ['tostar']));
-            const possiblePredecessors = [...layerTasks, ...baseTasks];
-
-            if (possiblePredecessors.length > 0) {
-              possiblePredecessors.forEach(p => newPredecessors.add(p.id));
-              foundSuggestion = true;
+        relevantTaskMap.forEach(potentialPred => {
+            // Depend on adhesive tasks
+            if (isAction(potentialPred.normalizedName, ['untar', 'esparcir'])) {
+                newPredecessors.add(potentialPred.id);
+                foundSuggestion = true;
             }
-        }
+            // Depend on other layer tasks
+            if (isIngredientAction(potentialPred.normalizedName)) {
+                 newPredecessors.add(potentialPred.id);
+                 foundSuggestion = true;
+            }
+             // Depend on base tasks
+            if (isAction(potentialPred.normalizedName, ['tostar'])) {
+                newPredecessors.add(potentialPred.id);
+                foundSuggestion = true;
+            }
+        });
     }
 
 
