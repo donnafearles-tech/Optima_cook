@@ -49,7 +49,6 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const [isClearing, setIsClearing] = useState(false);
   const [isGuideStale, setIsGuideStale] = useState(false);
   const [showDependencyWarning, setShowDependencyWarning] = useState(false);
-  const [taskWithUnificationSuggestion, setTaskWithUnificationSuggestion] = useState<string | null>(null);
 
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -137,15 +136,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     });
   };
 
-  const checkForSimilarTasks = (newTask: Task, allCurrentTasks: Task[]) => {
-    const normalizedNewName = normalize(newTask.name);
-    return allCurrentTasks.some(existingTask => {
-      if (existingTask.id === newTask.id) return false;
-      return normalize(existingTask.name) === normalizedNewName;
-    });
-  };
-
-  const handleTaskSave = async (taskToSave: Task) => {
+  const handleTaskSave = (taskToSave: Task) => {
     const tasksCollection = collection(projectRef, 'tasks');
     const { id, ...dataToSave } = taskToSave;
 
@@ -166,12 +157,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     if (id) {
         updateDocumentNonBlocking(doc(tasksCollection, id), dataToSave);
     } else {
-        const newDocRef = await addDoc(tasksCollection, dataToSave);
-        const newTaskWithId = { ...taskToSave, id: newDocRef.id };
-        const hasSimilar = checkForSimilarTasks(newTaskWithId, allTasks || []);
-        if (hasSimilar) {
-            setTaskWithUnificationSuggestion(newDocRef.id);
-        }
+        addDocumentNonBlocking(tasksCollection, dataToSave);
     }
     setEditingTask(null);
   };
@@ -179,10 +165,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const handleTaskDelete = (taskId: string) => {
     const taskDoc = doc(projectRef, 'tasks', taskId);
     deleteDocumentNonBlocking(taskDoc);
-    if(taskWithUnificationSuggestion === taskId) {
-        setTaskWithUnificationSuggestion(null);
-    }
-
+    
     if (project?.cpmResult) {
       updateDocumentNonBlocking(projectRef, { cpmResult: null });
     }
@@ -254,7 +237,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     }
   };
 
-const consolidateTasksNatively = async (): Promise<boolean> => {
+  const consolidateTasksNatively = async (): Promise<boolean> => {
     const tasks = (await getDocs(tasksQuery!)).docs.map(d => ({id: d.id, ...d.data()} as Task));
     
     if (tasks.length < 1) {
@@ -338,26 +321,20 @@ const consolidateTasksNatively = async (): Promise<boolean> => {
     }
 
     await batch.commit();
-    return true;
-};
-
-  const handleManualConsolidate = async () => {
-    const consolidationHappened = await consolidateTasksNatively();
+    
     if(consolidationHappened) {
-      setIsGuideStale(true);
-      toast({ title: '¡Tareas Unificadas!', description: 'Se han fusionado tareas duplicadas.' });
-    } else {
-      toast({ title: 'Sin cambios', description: 'No se encontraron tareas para unificar.' });
+      toast({ title: '¡Tareas Unificadas!', description: 'Se han fusionado tareas duplicadas automáticamente.' });
     }
-    setTaskWithUnificationSuggestion(null);
-  }
+    
+    return consolidationHappened;
+  };
 
   const handleCalculatePath = async (force = false) => {
     setIsCalculatingPath(true);
     
     try {
+        const tasks = allTasks || [];
         if (!force) {
-            const tasks = allTasks || [];
             const tasksWithoutPredecessors = tasks.filter(t => t.predecessorIds.length === 0);
             if (tasksWithoutPredecessors.length > 1 && tasks.length > 1) {
                 setShowDependencyWarning(true);
@@ -365,6 +342,9 @@ const consolidateTasksNatively = async (): Promise<boolean> => {
                 return;
             }
         }
+
+        // Unify tasks as a mandatory pre-processing step
+        await consolidateTasksNatively();
 
         await updateDocumentNonBlocking(projectRef, { cpmResult: null });
         router.push(`/projects/${projectId}/guide`);
@@ -542,13 +522,11 @@ const consolidateTasksNatively = async (): Promise<boolean> => {
                     allTasks={allTasks || []}
                     allRecipes={allRecipes || []}
                     allResources={allResources || []}
-                    taskWithUnificationSuggestion={taskWithUnificationSuggestion}
                     onEditRecipe={() => setEditingRecipe(recipe)}
                     onDeleteRecipe={() => handleRecipeDelete(recipe.id)}
                     onAddTask={() => handleOpenEditTask('new')}
                     onEditTask={(task) => handleOpenEditTask(task)}
                     onDeleteTask={handleTaskDelete}
-                    onConsolidate={handleManualConsolidate}
                 />
             ))}
              {(allRecipes || []).length === 0 && (
@@ -618,3 +596,5 @@ const consolidateTasksNatively = async (): Promise<boolean> => {
     </>
   );
 }
+
+    
