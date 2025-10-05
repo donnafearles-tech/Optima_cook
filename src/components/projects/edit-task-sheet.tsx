@@ -37,7 +37,7 @@ const normalize = (str: string) => {
       'la', 'el', 'un', 'una', 'de', 'para', 'los', 'las', 'a', 'con', 'en', 'y', 'o',
       'olla', 'sarten', 'horno', 'bol', 'tabla', 'cuchillo', 'cazuela', 'procesador', 'batidora',
       'primera', 'segunda', 'tercera', 'cuarta',
-      'rebanada', 'loncha', 'pieza', 'trozo', 'cucharada'
+      'rebanada', 'loncha', 'pieza', 'trozo', 'cucharada', 'cucharadita'
     ];
     const regex = new RegExp(`\\b(${stopWords.join('|')})\\b`, 'g');
     
@@ -138,24 +138,6 @@ export default function EditTaskSheet({
   const { toast } = useToast();
   
   useEffect(() => {
-    if (open && task && task.id) {
-        const allTaskIds = new Set(allTasks.map(t => t.id));
-        const currentPredecessors = task.predecessorIds || [];
-        const validPredecessorIds = currentPredecessors.filter(id => allTaskIds.has(id));
-
-        if (validPredecessorIds.length < currentPredecessors.length) {
-            toast({
-                title: "Dependencias limpiadas",
-                description: "Se eliminaron dependencias que apuntaban a tareas borradas.",
-                variant: 'default',
-            });
-            // Directly call onSave to persist the cleanup, this will trigger a re-render
-            onSave({ ...task, predecessorIds: validPredecessorIds });
-        }
-        
-        setPredecessorIds(validPredecessorIds);
-    }
-
     if (open) {
       if (task) {
         setName(task.name || '');
@@ -167,12 +149,20 @@ export default function EditTaskSheet({
             setTimeUnit('minutes');
             setDurationValue(duration / 60);
         }
-        // If it's an existing task, use its predecessors from state which might have been cleaned
-        if (task.id) {
-           // The cleaned predecessors are already in the state from the effect above
-        } else {
-           setPredecessorIds(task.predecessorIds || []);
+        
+        const allTaskIds = new Set(allTasks.map(t => t.id));
+        const validPredecessorIds = (task.predecessorIds || []).filter(id => allTaskIds.has(id));
+
+        if (task.id && validPredecessorIds.length < (task.predecessorIds || []).length) {
+            toast({
+                title: "Dependencias limpiadas",
+                description: "Se eliminaron dependencias que apuntaban a tareas borradas.",
+                variant: 'default',
+            });
+            onSave({ ...task, predecessorIds: validPredecessorIds });
         }
+        setPredecessorIds(validPredecessorIds);
+
         setRecipeIds(task.recipeIds || ((task as any).recipeId ? [(task as any).recipeId] : allRecipes[0]?.id ? [allRecipes[0].id] : []));
         setResourceIds(task.resourceIds || []);
 
@@ -270,111 +260,107 @@ export default function EditTaskSheet({
   }
 
   const handleSuggestPredecessorsNatively = () => {
-    if (!name) {
-        toast({ title: "Falta el nombre", description: "Escribe un nombre para la tarea antes de pedir sugerencias.", variant: "destructive" });
-        return;
-    }
-    
-    // Crucial: filter tasks to only those within the same recipe(s) as the current task
-    const relevantTasks = allTasks.filter(t => 
-        t.id !== task?.id && (t.recipeIds || []).some(rId => (recipeIds || []).includes(rId))
-    );
-
-    if (relevantTasks.length === 0) {
-        toast({ title: "No hay otras tareas en esta receta", description: "No hay otras tareas en la misma receta para establecer como dependencias." });
-        return;
-    }
-
-    setIsSuggestingPredsNatively(true);
-    
-    const newPredecessors = new Set(predecessorIds);
-    const normalizedNewTaskName = normalize(name);
-    let foundSuggestion = false;
-
-    // The map of potential predecessors is now correctly scoped to the relevant recipe(s)
-    const relevantTaskMap = new Map(relevantTasks.map(t => [t.id, { ...t, normalizedName: normalize(t.name) }]));
-    
-    const preparationVerbs = ['picar', 'cortar', 'rebanar', 'mincar', 'juliana', 'brunoise'];
-    const primaryPrepVerbs = ['lavar', 'pelar', 'limpiar'];
-    const cookingVerbs = ['sofreir', 'freir', 'hornear', 'asar', 'hervir', 'cocinar', 'estofar', 'guisar'];
-    const seasoningVerbs = ['sazonar', 'marinar', 'adobar'];
-    const assemblyVerbs = ['colocar', 'añadir', 'poner', 'agregar', 'montar'];
-    const adhesiveVerbs = ['untar', 'esparcir', 'poner capa de'];
-
-    const isAction = (normalized: string, verbs: string[]) => verbs.some(v => normalized.startsWith(v));
-    const getIngredient = (normalized: string, verbs: string[]) => {
-        for (const verb of verbs) {
-            if (normalized.startsWith(verb)) {
-                return normalized.substring(verb.length).trim();
-            }
+        if (!name) {
+            toast({ title: "Falta el nombre", description: "Escribe un nombre para la tarea antes de pedir sugerencias.", variant: "destructive" });
+            return;
         }
-        return '';
-    };
 
-    // Rule 1 & 2: Preparation -> Cutting -> Cooking/Seasoning
-    if (isAction(normalizedNewTaskName, [...preparationVerbs, ...cookingVerbs, ...seasoningVerbs])) {
-        const ingredient = getIngredient(normalizedNewTaskName, [...preparationVerbs, ...cookingVerbs, ...seasoningVerbs]);
-        if (ingredient) {
-            relevantTaskMap.forEach(potentialPred => {
-                const predIngredient = getIngredient(potentialPred.normalizedName, [...primaryPrepVerbs, ...preparationVerbs, ...seasoningVerbs]);
-                if (predIngredient === ingredient) {
-                    // Cooking depends on Cutting or Seasoning
-                    if (isAction(normalizedNewTaskName, cookingVerbs) && (isAction(potentialPred.normalizedName, preparationVerbs) || isAction(potentialPred.normalizedName, seasoningVerbs))) {
-                        newPredecessors.add(potentialPred.id);
-                        foundSuggestion = true;
-                    }
-                    // Cutting depends on Primary Prep
-                    if (isAction(normalizedNewTaskName, preparationVerbs) && isAction(potentialPred.normalizedName, primaryPrepVerbs)) {
-                        newPredecessors.add(potentialPred.id);
-                        foundSuggestion = true;
-                    }
+        setIsSuggestingPredsNatively(true);
+
+        const relevantTasks = allTasks.filter(t => t.id !== task?.id && (t.recipeIds || []).some(rId => (recipeIds || []).includes(rId)));
+        if (relevantTasks.length === 0) {
+            toast({ title: "No hay otras tareas en esta receta", description: "No hay otras tareas en la misma receta para establecer como dependencias." });
+            setIsSuggestingPredsNatively(false);
+            return;
+        }
+
+        const verbs = {
+            primaryPrep: ['lavar', 'pelar', 'limpiar', 'desinfectar'],
+            cutting: ['picar', 'cortar', 'rebanar', 'mincar', 'juliana', 'brunoise', 'cubos', 'rodajas'],
+            seasoning: ['sazonar', 'marinar', 'adobar', 'salpimentar'],
+            cooking: ['sofreir', 'freir', 'hornear', 'asar', 'hervir', 'cocinar', 'estofar', 'guisar', 'dorar', 'sellar', 'fundir'],
+            assembly: ['colocar', 'añadir', 'poner', 'agregar', 'montar', 'incorporar'],
+            adhesive: ['untar', 'esparcir', 'poner capa de', 'aderezar'],
+            equipment: ['precalentar']
+        };
+
+        const allVerbs = Object.values(verbs).flat();
+        const getTaskParts = (normalizedName: string) => {
+            for (const verb of allVerbs) {
+                if (normalizedName.startsWith(verb)) {
+                    return { verb, noun: normalizedName.substring(verb.length).trim() };
                 }
-            });
-        }
-    }
+            }
+            return { verb: null, noun: normalizedName };
+        };
 
-    // Rule 3: Equipment Pre-heating
-    if (isAction(normalizedNewTaskName, cookingVerbs)) {
-      const equipment = isAction(normalizedNewTaskName, ['hornear']) ? 'horno' : 'sarten'; // Simplified
-      relevantTaskMap.forEach(potentialPred => {
-        if (potentialPred.normalizedName === `precalentar ${equipment}`) {
-          newPredecessors.add(potentialPred.id);
-          foundSuggestion = true;
-        }
-      });
-    }
-    
-    // Rule 4: Assembly Logic (Base -> Adhesive -> Layering)
-    if (isAction(normalizedNewTaskName, assemblyVerbs)) {
-        relevantTaskMap.forEach(potentialPred => {
-            // Layering depends on adhesives
-            if (isAction(potentialPred.normalizedName, adhesiveVerbs)) {
-                newPredecessors.add(potentialPred.id);
-                foundSuggestion = true;
+        const currentTaskParts = getTaskParts(normalize(name));
+        let scoredCandidates: { id: string; score: number }[] = [];
+
+        relevantTasks.forEach(candidate => {
+            let score = predecessorIds.includes(candidate.id) ? 100 : 0; // High score if already a predecessor
+            const candidateParts = getTaskParts(normalize(candidate.name));
+
+            // Rule: Cooking depends on Cutting/Seasoning of the same ingredient
+            if (verbs.cooking.includes(currentTaskParts.verb ?? '') && candidateParts.noun === currentTaskParts.noun) {
+                if (verbs.cutting.includes(candidateParts.verb ?? '') || verbs.seasoning.includes(candidateParts.verb ?? '')) {
+                    score += 50;
+                }
             }
-            // Layering depends on other layers (previous assembly steps)
-            if (isAction(potentialPred.normalizedName, assemblyVerbs)) {
-                 newPredecessors.add(potentialPred.id);
-                 foundSuggestion = true;
+
+            // Rule: Cutting depends on Primary Prep of the same ingredient
+            if (verbs.cutting.includes(currentTaskParts.verb ?? '') && candidateParts.noun === currentTaskParts.noun) {
+                if (verbs.primaryPrep.includes(candidateParts.verb ?? '')) {
+                    score += 50;
+                }
             }
-             // Layering depends on base preparation (e.g., toasting bread)
-            if (isAction(potentialPred.normalizedName, ['tostar'])) {
-                newPredecessors.add(potentialPred.id);
-                foundSuggestion = true;
+            
+            // Rule: Assembly (placing ingredients) depends on adhesive or other assembly steps
+            if (verbs.assembly.includes(currentTaskParts.verb ?? '')) {
+                if (verbs.adhesive.includes(candidateParts.verb ?? '')) {
+                    score += 40; // Adhesive is a strong signal
+                }
+                if (verbs.assembly.includes(candidateParts.verb ?? '')) {
+                    score += 30; // Depends on previous layers
+                }
+                if (candidate.name.includes('tostar pan')) { // Base dependency
+                    score += 20;
+                }
+            }
+
+            // Rule: Equipment pre-heating
+            if (verbs.cooking.includes(currentTaskParts.verb ?? '')) {
+                if (candidateParts.verb === 'precalentar' && currentTaskParts.noun.includes(candidateParts.noun)) {
+                    score += 60; // Strong dependency
+                }
+            }
+
+            if (score > 0) {
+                scoredCandidates.push({ id: candidate.id, score });
             }
         });
-    }
 
-    setPredecessorIds(Array.from(newPredecessors));
-    
-    if (foundSuggestion && newPredecessors.size > predecessorIds.length) {
-        toast({ title: 'Dependencias Nativas Sugeridas', description: 'Se han añadido dependencias basadas en reglas culinarias.' });
-    } else {
-        toast({ title: 'Sin Sugerencias Nuevas', description: 'No se encontraron nuevas dependencias lógicas para añadir.' });
-    }
-    
-    setIsSuggestingPredsNatively(false);
-};
+        // Filter, Rank and Trim
+        const CONFIDENCE_THRESHOLD = 20;
+        const MAX_PREDECESSORS = 5;
+
+        const finalPredecessors = scoredCandidates
+            .filter(c => c.score >= CONFIDENCE_THRESHOLD)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, MAX_PREDECESSORS)
+            .map(c => c.id);
+
+        const newPredecessors = Array.from(new Set([...predecessorIds, ...finalPredecessors]));
+
+        if (newPredecessors.length > predecessorIds.length) {
+            setPredecessorIds(newPredecessors);
+            toast({ title: 'Dependencias Nativas Sugeridas', description: 'Se han añadido dependencias basadas en reglas culinarias.' });
+        } else {
+            toast({ title: 'Sin Sugerencias Nuevas', description: 'No se encontraron nuevas dependencias lógicas para añadir.' });
+        }
+
+        setIsSuggestingPredsNatively(false);
+    };
 
 
   const availablePredecessors = useMemo(() => 
@@ -550,7 +536,3 @@ export default function EditTaskSheet({
     </Sheet>
   );
 }
-
-    
-
-    
