@@ -146,7 +146,20 @@ export default function EditTaskSheet({
           setTimeUnit('minutes');
           setDurationValue(task.duration / 60);
         }
-        setPredecessorIds(task.predecessorIds);
+
+        const allTaskIds = new Set(allTasks.map(t => t.id));
+        const validPredecessorIds = (task.predecessorIds || []).filter(id => allTaskIds.has(id));
+
+        if (validPredecessorIds.length < (task.predecessorIds || []).length) {
+            toast({
+                title: "Dependencias limpiadas",
+                description: "Se eliminaron algunas dependencias que apuntaban a tareas borradas.",
+            });
+            // Auto-save this cleanup silently in the background
+            onSave({ ...task, predecessorIds: validPredecessorIds });
+        }
+        
+        setPredecessorIds(validPredecessorIds);
         setRecipeIds(task.recipeIds || ((task as any).recipeId ? [(task as any).recipeId] : []));
         setResourceIds(task.resourceIds || []);
       } else {
@@ -159,7 +172,7 @@ export default function EditTaskSheet({
         setResourceIds([]);
       }
     }
-  }, [task, open, allRecipes]);
+}, [task, open, allRecipes, allTasks, onSave, toast]);
 
 
   const handleSubmit = (e: React.FormEvent) => {
