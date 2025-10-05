@@ -234,20 +234,6 @@ const handleTaskSave = async (taskToSave: Task) => {
             }
           });
         }
-        // Regla 4: Ensamblaje básico
-        if (mainAction === 'untar') {
-            taskMap.forEach(potentialPred => {
-                if(potentialPred.id !== task.id && potentialPred.normalizedName.startsWith('tostar pan')) {
-                    newPredecessors.add(potentialPred.id);
-                }
-            });
-        } else if (mainAction === 'añadir' || mainAction === 'agregar' || mainAction === 'poner' || mainAction === 'colocar') {
-            taskMap.forEach(potentialPred => {
-                if(potentialPred.id !== task.id && potentialPred.normalizedName.startsWith('untar')) {
-                    newPredecessors.add(potentialPred.id);
-                }
-            })
-        }
 
 
         if (newPredecessors.size > task.predecessorIds.length) {
@@ -699,5 +685,6 @@ const handleTaskSave = async (taskToSave: Task) => {
   );
 }
 
+    
     
     
