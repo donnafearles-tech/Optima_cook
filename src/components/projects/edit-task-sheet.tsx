@@ -296,7 +296,7 @@ export default function EditTaskSheet({
     }
     
     // Reglas de Ensamblaje
-    const isIngredientTask = isAction(normalizedNewTaskName, ['colocar', 'añadir', 'poner']);
+    const isIngredientTask = isAction(normalizedNewTaskName, ['colocar', 'añadir', 'poner', 'agregar']);
     if (isIngredientTask) {
         const adhesiveTasks = Array.from(taskMap.values()).filter(t => isAction(t.normalizedName, ['untar', 'esparcir']));
         if(adhesiveTasks.length > 0) {
