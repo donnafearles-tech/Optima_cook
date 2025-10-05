@@ -24,8 +24,8 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
       return '';
     }
     
-    const criticalFill = '#E63946'; // Red
-    const nonCriticalFill = '#457B9D'; // Blue
+    const criticalFill = '#b85842'; // Marrón/Rojo
+    const nonCriticalFill = '#5a8a6f'; // Verde
     const textColor = '#FFFFFF';
 
     let graph = `graph TD;\n`;
@@ -36,8 +36,7 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
         
         const nodeBgColor = task.isCritical ? criticalFill : nonCriticalFill;
 
-        // Use HTML labels for full control over styling and text wrapping
-        graph += `${taskId}("<div style='background-color:${nodeBgColor}; color:${textColor}; padding: 10px; border-radius: 5px; white-space: normal; word-wrap: break-word; text-align: center;'><strong>${taskName}</strong><br>ES: ${task.es} | EF: ${task.ef}<br>LS: ${task.ls} | LF: ${task.lf}<br>Holgura: ${task.float}</div>");\n`;
+        graph += `${taskId}("<div style='background-color:${nodeBgColor}; color:${textColor}; padding: 10px; border-radius: 5px; white-space: normal; word-wrap: break-word; text-align: center; font-family: sans-serif; font-size: 12px; line-height: 1.2;'><strong>${taskName}</strong><br>ES: ${task.es} | EF: ${task.ef}<br>LS: ${task.ls} | LF: ${task.lf}<br>Holgura: ${task.float}</div>");\n`;
         
         if (task.predecessorIds && task.predecessorIds.length > 0) {
             task.predecessorIds.forEach(predId => {
@@ -53,14 +52,22 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
   useEffect(() => {
     if (mermaidChart && containerRef.current) {
         if (containerRef.current) {
-            containerRef.current.innerHTML = '';
+            containerRef.current.innerHTML = '<div class="w-full h-full flex justify-center items-center">Cargando diagrama...</div>';
         }
         
         const renderMermaid = async () => {
             try {
-                const { svg } = await mermaid.render('mermaid-graph-svg', mermaidChart);
+                // Ensure a unique ID for each render to avoid Mermaid cache issues
+                const uniqueId = `mermaid-graph-${Date.now()}`;
+                const { svg } = await mermaid.render(uniqueId, mermaidChart);
                 if (containerRef.current) {
                     containerRef.current.innerHTML = svg;
+                    // Optional: Style the SVG element itself if needed
+                    const svgElement = containerRef.current.querySelector('svg');
+                    if (svgElement) {
+                      svgElement.style.maxWidth = '100%';
+                      svgElement.style.height = 'auto';
+                    }
                 }
             } catch (error) {
                 console.error("Error rendering Mermaid chart:", error);
@@ -94,13 +101,13 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
   }
 
   return (
-    <Card className="mt-4">
+    <Card className="mt-4 overflow-hidden">
         <CardHeader>
             <CardTitle className="font-headline">Diagrama de Red (CPM)</CardTitle>
-            <CardDescription>Visualización del flujo de trabajo. Las tareas en rojo indican la ruta crítica.</CardDescription>
+            <CardDescription>Visualización del flujo de trabajo. Las tareas críticas están resaltadas.</CardDescription>
         </CardHeader>
-        <CardContent className="min-h-[400px] overflow-auto">
-            <div ref={containerRef} className="mermaid-container w-full h-full flex justify-center items-center">
+        <CardContent>
+            <div ref={containerRef} className="min-h-[400px] w-full flex justify-center items-center">
                 {/* Mermaid will render the graph here */}
             </div>
         </CardContent>
