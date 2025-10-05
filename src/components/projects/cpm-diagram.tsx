@@ -44,8 +44,8 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
     let graph = `graph TD;\n`;
     
     // Define classes for node styling
-    graph += 'classDef critical fill:hsl(24, 40%, 30%),stroke:hsl(24, 40%, 20%),color:#fff;\n';
-    graph += 'classDef noncritical fill:hsl(145, 50%, 40%),stroke:hsl(145, 50%, 30%),color:#fff;\n';
+    graph += 'classDef critical fill:hsl(24, 40%, 30%) stroke:hsl(24, 40%, 20%) color:#fff;\n';
+    graph += 'classDef noncritical fill:hsl(145, 50%, 40%) stroke:hsl(145, 50%, 30%) color:#fff;\n';
 
     tasks.forEach(task => {
         // Sanitize task name for Mermaid ID
