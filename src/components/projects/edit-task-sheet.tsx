@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { X, Check, ChevronsUpDown, Sparkles } from 'lucide-react';
+import { X, Check, ChevronsUpDown, Sparkles, Wand2 } from 'lucide-react';
 import type { Task, Recipe, UserResource } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -29,6 +29,22 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { suggestResourceForTask } from '@/ai/flows/suggest-resource-for-task';
 import { suggestPredecessorsForTask } from '@/ai/flows/suggest-predecessors-for-task';
+
+const normalize = (str: string) => {
+    if (!str) return '';
+    const stopWords = [
+      'la', 'el', 'un', 'una', 'de', 'para', 'los', 'las', 'a', 'con', 'en',
+      'olla', 'sarten', 'horno', 'bol', 'tabla', 'cuchillo'
+    ];
+    const regex = new RegExp(`\\b(${stopWords.join('|')})\\b`, 'g');
+    
+    return str
+        .toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[.,¡!¿]/g, '')
+        .replace(regex, '')
+        .trim().replace(/\s+/g, ' ');
+};
 
 
 interface EditTaskSheetProps {
@@ -117,6 +133,7 @@ export default function EditTaskSheet({
   const [resourceIds, setResourceIds] = useState<string[]>([]);
   const [isSuggestingResources, setIsSuggestingResources] = useState(false);
   const [isSuggestingPreds, setIsSuggestingPreds] = useState(false);
+  const [isSuggestingPredsNatively, setIsSuggestingPredsNatively] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -226,6 +243,68 @@ export default function EditTaskSheet({
     }
   }
 
+  const handleSuggestPredecessorsNatively = () => {
+    if (!name) {
+        toast({ title: "Falta el nombre", description: "Escribe un nombre para la tarea antes de pedir sugerencias.", variant: "destructive" });
+        return;
+    }
+    const otherTasks = allTasks.filter(t => t.id !== task?.id);
+    if (otherTasks.length === 0) {
+        toast({ title: "No hay otras tareas", description: "No hay otras tareas para establecer como dependencias." });
+        return;
+    }
+
+    setIsSuggestingPredsNatively(true);
+    const newPredecessors = new Set(predecessorIds);
+    const taskWords = normalize(name).split(' ');
+    const mainAction = taskWords[0];
+    const ingredient = taskWords.slice(1).join(' ');
+
+    const taskMap = new Map(otherTasks.map(t => [t.id, { ...t, normalizedName: normalize(t.name) }]));
+
+    let foundSuggestion = false;
+
+    // Regla 1: Preparación Básica antes de Corte
+    if (mainAction === 'picar' || mainAction === 'cortar' || mainAction === 'rebanar') {
+      taskMap.forEach(potentialPred => {
+        if (potentialPred.normalizedName.endsWith(ingredient) && (potentialPred.normalizedName.startsWith('lavar') || potentialPred.normalizedName.startsWith('pelar'))) {
+          newPredecessors.add(potentialPred.id);
+          foundSuggestion = true;
+        }
+      });
+    }
+    // Regla 2: Procesamiento de Calor
+    else if (mainAction === 'sofreir' || mainAction === 'freir' || mainAction === 'hornear' || mainAction === 'asar' || mainAction === 'hervir') {
+       taskMap.forEach(potentialPred => {
+        if (potentialPred.normalizedName.endsWith(ingredient) && (potentialPred.normalizedName.startsWith('picar') || potentialPred.normalizedName.startsWith('cortar') || potentialPred.normalizedName.startsWith('sazonar'))) {
+          newPredecessors.add(potentialPred.id);
+          foundSuggestion = true;
+        }
+      });
+    }
+    // Regla 3: Pre-requisitos de Equipo
+    if (mainAction === 'hornear' || mainAction === 'freir' || mainAction === 'asar') {
+      const equipment = mainAction === 'hornear' ? 'horno' : 'sarten';
+      taskMap.forEach(potentialPred => {
+        if (potentialPred.normalizedName === `precalentar ${equipment}`) {
+          newPredecessors.add(potentialPred.id);
+          foundSuggestion = true;
+        }
+      });
+    }
+
+    setPredecessorIds(Array.from(newPredecessors));
+    
+    if (foundSuggestion) {
+        toast({ title: 'Dependencias Nativas Sugeridas', description: 'Se han añadido dependencias basadas en reglas culinarias.' });
+    } else {
+        toast({ title: 'Sin Sugerencias Nuevas', description: 'No se encontraron nuevas dependencias lógicas para añadir.' });
+    }
+    
+    setIsSuggestingPredsNatively(false);
+};
+
+
   const availablePredecessors = useMemo(() => 
     allTasks
         .filter(t => t.id !== task?.id)
@@ -311,10 +390,16 @@ export default function EditTaskSheet({
               <div>
                 <div className="flex justify-between items-center mb-1">
                     <Label>Dependencias (Predecesores)</Label>
-                    <Button type="button" size="sm" variant="ghost" onClick={handleSuggestPredecessors} disabled={isSuggestingPreds || !name}>
-                        {isSuggestingPreds ? <Sparkles className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4" />}
-                        Sugerencia IA
-                    </Button>
+                    <div className="flex gap-1">
+                        <Button type="button" size="sm" variant="ghost" onClick={handleSuggestPredecessorsNatively} disabled={isSuggestingPredsNatively || !name}>
+                            {isSuggestingPredsNatively ? <Wand2 className="mr-2 h-4 w-4 animate-spin"/> : <Wand2 className="mr-2 h-4 w-4" />}
+                            Nativo
+                        </Button>
+                        <Button type="button" size="sm" variant="ghost" onClick={handleSuggestPredecessors} disabled={isSuggestingPreds || !name}>
+                            {isSuggestingPreds ? <Sparkles className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4" />}
+                            IA
+                        </Button>
+                    </div>
                 </div>
                 <MultiSelectPopover
                     title="predecesores"
@@ -336,3 +421,5 @@ export default function EditTaskSheet({
     </Sheet>
   );
 }
+
+    
