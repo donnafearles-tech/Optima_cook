@@ -24,10 +24,21 @@ const suggestPredecessorsPrompt = ai.definePrompt({
 
     Tu objetivo es analizar el nombre de la **nueva tarea** y determinar cuáles de las **tareas existentes** deben completarse antes de que la nueva pueda comenzar. Debes devolver una lista de los IDs de esas tareas predecesoras.
 
-    Considera las siguientes reglas lógicas y culinarias:
-    1.  **Preparación antes de la acción:** Una tarea de preparación (ej. "picar cebolla", "lavar lechuga") debe preceder a una tarea de cocción o ensamblaje que use ese ingrediente (ej. "sofreír cebolla", "añadir lechuga al sándwich").
-    2.  **Cocciones largas primero:** Las tareas de cocción lenta (ej. "hornear pavo", "cocer caldo") suelen ser predecesoras de tareas más cortas.
-    3.  **Mise en Place:** Las tareas de "mise en place" (preparación de ingredientes) casi siempre son predecesoras de las tareas de cocción.
+    Considera las siguientes reglas lógicas y culinarias como tu fuente de verdad:
+    1.  **Secuencia de Preparación Obligatoria:**
+        *   La acción de **Lavar** o **Pelar** un ingrediente SIEMPRE precede a la acción de **Cortar** o **Picar** ese mismo ingrediente.
+        *   La acción de **Cortar** o **Picar** un ingrediente SIEMPRE precede a la acción de **Cocinarlo** (sofreír, hornear, freír).
+        *   Ejemplo: Si la nueva tarea es "Sofreír zanahorias", busca si existe una tarea como "Picar zanahorias".
+
+    2.  **Secuencia de Ensamblaje Obligatoria (Sándwiches, etc.):**
+        *   La **Base** (ej. "Tostar pan") es lo primero.
+        *   Luego viene la **Barrera/Adhesivo** (ej. "Untar mayonesa").
+        *   Luego los **Ingredientes Sólidos/Húmedos** (ej. "Añadir jamón", "Poner tomate").
+        *   Ejemplo: Si la nueva tarea es "Colocar jamón", busca si existe una tarea como "Untar mayonesa".
+
+    3.  **Reglas de Equipos:**
+        *   La tarea **"Precalentar horno"** o **"Precalentar sartén"** debe ser predecesora de cualquier tarea que use ese equipo (ej. "Hornear pavo", "Freír pollo").
+
 
     **Nueva Tarea a Analizar:**
     "{{{newTaskName}}}"
