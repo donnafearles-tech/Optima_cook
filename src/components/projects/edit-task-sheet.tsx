@@ -34,7 +34,8 @@ const normalize = (str: string) => {
     if (!str) return '';
     const stopWords = [
       'la', 'el', 'un', 'una', 'de', 'para', 'los', 'las', 'a', 'con', 'en',
-      'olla', 'sarten', 'horno', 'bol', 'tabla', 'cuchillo'
+      'olla', 'sarten', 'horno', 'bol', 'tabla', 'cuchillo', 'primera', 'segunda', 'tercera',
+      'rebanada', 'loncha', 'pieza'
     ];
     const regex = new RegExp(`\\b(${stopWords.join('|')})\\b`, 'g');
     
@@ -255,36 +256,37 @@ export default function EditTaskSheet({
     }
 
     setIsSuggestingPredsNatively(true);
+    
     const newPredecessors = new Set(predecessorIds);
-    const taskWords = normalize(name).split(' ');
-    const mainAction = taskWords[0];
-    const ingredient = taskWords.slice(1).join(' ');
-
-    const taskMap = new Map(otherTasks.map(t => [t.id, { ...t, normalizedName: normalize(t.name) }]));
-
+    const normalizedNewTaskName = normalize(name);
     let foundSuggestion = false;
 
-    // Regla 1: Preparación Básica antes de Corte
-    if (mainAction === 'picar' || mainAction === 'cortar' || mainAction === 'rebanar') {
-      taskMap.forEach(potentialPred => {
-        if (potentialPred.normalizedName.endsWith(ingredient) && (potentialPred.normalizedName.startsWith('lavar') || potentialPred.normalizedName.startsWith('pelar'))) {
-          newPredecessors.add(potentialPred.id);
-          foundSuggestion = true;
-        }
-      });
+    const taskMap = new Map(otherTasks.map(t => [t.id, { ...t, normalizedName: normalize(t.name) }]));
+    
+    const isAction = (normalized: string, verbs: string[]) => verbs.some(v => normalized.startsWith(v));
+
+    // Reglas de Preparación y Cocción
+    if (isAction(normalizedNewTaskName, ['picar', 'cortar', 'rebanar'])) {
+        const ingredient = normalizedNewTaskName.split(' ').slice(1).join(' ');
+        taskMap.forEach(potentialPred => {
+            if (potentialPred.normalizedName.endsWith(ingredient) && isAction(potentialPred.normalizedName, ['lavar', 'pelar'])) {
+                newPredecessors.add(potentialPred.id);
+                foundSuggestion = true;
+            }
+        });
+    } else if (isAction(normalizedNewTaskName, ['sofreir', 'freir', 'hornear', 'asar', 'hervir'])) {
+        const ingredient = normalizedNewTaskName.split(' ').slice(1).join(' ');
+        taskMap.forEach(potentialPred => {
+            if (potentialPred.normalizedName.endsWith(ingredient) && isAction(potentialPred.normalizedName, ['picar', 'cortar', 'sazonar'])) {
+                newPredecessors.add(potentialPred.id);
+                foundSuggestion = true;
+            }
+        });
     }
-    // Regla 2: Procesamiento de Calor
-    else if (mainAction === 'sofreir' || mainAction === 'freir' || mainAction === 'hornear' || mainAction === 'asar' || mainAction === 'hervir') {
-       taskMap.forEach(potentialPred => {
-        if (potentialPred.normalizedName.endsWith(ingredient) && (potentialPred.normalizedName.startsWith('picar') || potentialPred.normalizedName.startsWith('cortar') || potentialPred.normalizedName.startsWith('sazonar'))) {
-          newPredecessors.add(potentialPred.id);
-          foundSuggestion = true;
-        }
-      });
-    }
-    // Regla 3: Pre-requisitos de Equipo
-    if (mainAction === 'hornear' || mainAction === 'freir' || mainAction === 'asar') {
-      const equipment = mainAction === 'hornear' ? 'horno' : 'sarten';
+
+    // Reglas de Equipos
+    if (isAction(normalizedNewTaskName, ['hornear', 'freir', 'asar'])) {
+      const equipment = isAction(normalizedNewTaskName, ['hornear']) ? 'horno' : 'sarten';
       taskMap.forEach(potentialPred => {
         if (potentialPred.normalizedName === `precalentar ${equipment}`) {
           newPredecessors.add(potentialPred.id);
@@ -292,6 +294,20 @@ export default function EditTaskSheet({
         }
       });
     }
+    
+    // Reglas de Ensamblaje
+    const isIngredientTask = isAction(normalizedNewTaskName, ['colocar', 'añadir', 'poner']);
+    if (isIngredientTask) {
+        const adhesiveTasks = Array.from(taskMap.values()).filter(t => isAction(t.normalizedName, ['untar', 'esparcir']));
+        if(adhesiveTasks.length > 0) {
+            adhesiveTasks.forEach(at => newPredecessors.add(at.id));
+            foundSuggestion = true;
+        } else {
+            const baseTasks = Array.from(taskMap.values()).filter(t => isAction(t.normalizedName, ['tostar']));
+             baseTasks.forEach(bt => newPredecessors.add(bt.id));
+        }
+    }
+
 
     setPredecessorIds(Array.from(newPredecessors));
     
