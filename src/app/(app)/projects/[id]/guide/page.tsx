@@ -1,4 +1,3 @@
-
 'use client';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -8,11 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { Project, Recipe, Task } from '@/lib/types';
-import { useCollection, useDoc, useFirebase, useMemoFirebase } from '@/firebase';
+import type { Project, Recipe, Task, UserResource } from '@/lib/types';
+import { useCollection, useDoc, useFirebase, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { Progress } from '@/components/ui/progress';
 import { useState, useEffect, useMemo } from 'react';
+import EditTaskSheet from '@/components/projects/edit-task-sheet';
+import { useToast } from '@/hooks/use-toast';
 
 function formatDuration(seconds: number) {
   const hours = Math.floor(seconds / 3600);
@@ -32,9 +33,14 @@ export default function GuidePage() {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const { firestore, user } = useFirebase();
+  const { toast } = useToast();
+
   const [progress, setProgress] = useState(10);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isGuideStale, setIsGuideStale] = useState(false);
 
-
+  const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  
   const projectRef = useMemoFirebase(() => {
     if (!id || !user) return null;
     return doc(firestore, 'users', user.uid, 'projects', id);
@@ -47,6 +53,19 @@ export default function GuidePage() {
       return collection(projectRef, 'recipes');
   }, [projectRef])
   const { data: recipes, isLoading: isLoadingRecipes } = useCollection<Recipe>(recipesQuery);
+  
+  const tasksQuery = useMemoFirebase(() => {
+      if(!projectRef) return null;
+      return collection(projectRef, 'tasks');
+  }, [projectRef]);
+  const { data: allTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
+
+  const resourcesQuery = useMemoFirebase(() => {
+    if(!userRef) return null;
+    return collection(userRef, 'resources');
+  }, [userRef]);
+  const { data: allResources, isLoading: isLoadingResources } = useCollection<UserResource>(resourcesQuery);
+
 
   const recipeMap = useMemo(() => {
     if (!recipes) return new Map();
@@ -66,6 +85,36 @@ export default function GuidePage() {
         };
     }
   }, [project]);
+
+  const handleTaskSave = async (taskToSave: Task) => {
+    if (!user) return;
+    const tasksCollection = collection(firestore, 'users', user.uid, 'projects', id, 'tasks');
+    const { id: taskId, ...dataToSave } = taskToSave;
+
+    if (!dataToSave.recipeIds || dataToSave.recipeIds.length === 0) {
+        toast({
+            title: 'Error al Guardar',
+            description: 'Toda tarea debe estar asociada a al menos una receta.',
+            variant: 'destructive',
+        });
+        return;
+    }
+    
+    if (project?.cpmResult) {
+      updateDocumentNonBlocking(projectRef!, { cpmResult: null });
+      setIsGuideStale(true);
+      toast({
+        title: "Guía desactualizada",
+        description: "Los cambios en la tarea requieren que la guía sea recalculada.",
+        variant: "default",
+      })
+    }
+
+    if (taskId) {
+        updateDocumentNonBlocking(doc(tasksCollection, taskId), dataToSave);
+    } 
+    setEditingTask(null);
+};
   
   const goBackButton = (
     <div className="flex items-center gap-4 mb-6">
@@ -80,7 +129,7 @@ export default function GuidePage() {
     </div>
   );
   
-  if (isLoadingProject || isLoadingRecipes || !user) {
+  if (isLoadingProject || isLoadingRecipes || isLoadingTasks || isLoadingResources || !user) {
     return (
         <div className="container mx-auto p-4">
              {goBackButton}
@@ -129,16 +178,23 @@ export default function GuidePage() {
   }
 
   // Si el resultado de CPM no está listo, muestra un estado de carga mientras los datos llegan por Firestore.
-  if (!project.cpmResult || !project.cpmResult.tasks || project.cpmResult.tasks.some(t => t.es === undefined)) {
+  if (!project.cpmResult || !project.cpmResult.tasks || project.cpmResult.tasks.some(t => t.es === undefined) || isGuideStale) {
     return (
         <div className="container mx-auto p-4">
             {goBackButton}
              <div className="flex flex-col items-center justify-center text-center border-2 border-dashed rounded-lg p-12">
-                <h3 className="text-xl font-semibold mb-4">Generando guía de cocina...</h3>
-                <Progress value={progress} className="w-full max-w-md mb-4" />
+                <h3 className="text-xl font-semibold mb-4">{isGuideStale ? 'La guía necesita ser recalculada' : 'Generando guía de cocina...'}</h3>
+                {!isGuideStale && <Progress value={progress} className="w-full max-w-md mb-4" />}
                 <p className="mt-2 text-muted-foreground max-w-md">
-                    El cálculo está en progreso. La guía aparecerá aquí automáticamente. Esto puede tardar hasta un minuto dependiendo de la complejidad del proyecto.
+                    {isGuideStale 
+                        ? 'Has realizado cambios que afectan la ruta óptima. Vuelve a la página del proyecto para recalcular.'
+                        : 'El cálculo está en progreso. La guía aparecerá aquí automáticamente. Esto puede tardar hasta un minuto.'}
                 </p>
+                {isGuideStale && (
+                     <Button className="mt-4" onClick={() => router.push(`/projects/${id}`)}>
+                        Volver al Proyecto
+                     </Button>
+                )}
             </div>
         </div>
     )
@@ -158,6 +214,7 @@ export default function GuidePage() {
   }, {} as Record<number, typeof tasks>);
 
   return (
+    <>
     <div className="container mx-auto p-4">
       <div className="flex items-center gap-4 mb-6">
         <Button variant="outline" size="icon" onClick={() => router.back()}>
@@ -201,7 +258,7 @@ export default function GuidePage() {
                     {groupTasks.map(task => {
                         const recipeName = task.recipeIds.length > 0 ? recipeMap.get(task.recipeIds[0]) : null;
                         return (
-                            <div key={task.id} className="p-3 border rounded-lg flex justify-between items-start">
+                            <div key={task.id} className="p-3 border rounded-lg flex justify-between items-start hover:bg-accent/50 cursor-pointer" onClick={() => setEditingTask(task)}>
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
                                         {recipeName && <Badge variant="secondary" className="bg-green-100 text-green-800">{recipeName}</Badge>}
@@ -234,7 +291,16 @@ export default function GuidePage() {
             </Card>
         </TabsContent>
       </Tabs>
-
     </div>
+    <EditTaskSheet
+        open={editingTask !== null}
+        onOpenChange={(isOpen) => !isOpen && setEditingTask(null)}
+        task={editingTask}
+        allTasks={allTasks || []}
+        allRecipes={recipes || []}
+        allResources={allResources || []}
+        onSave={handleTaskSave}
+      />
+    </>
   );
 }
