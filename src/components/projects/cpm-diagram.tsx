@@ -10,7 +10,7 @@ mermaid.initialize({
     startOnLoad: false,
     theme: 'base',
     flowchart: {
-        useMaxWidth: true,
+        useMaxWidth: false, // Allow diagram to grow
         htmlLabels: true,
         curve: 'basis'
     },
@@ -24,24 +24,28 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
       return '';
     }
     
-    const criticalFill = '#b85842'; // Rojo/Marrón para la ruta crítica
-    const nonCriticalFill = '#5a8a6f'; // Verde para tareas no críticas
-    const textColor = '#FFFFFF'; // Texto blanco para contraste
-
-    let graph = `graph LR;\n`; // Cambiado de TD a LR para orientación horizontal
+    // Define CSS classes for Mermaid to use. This is more robust than inline styles.
+    let graph = `graph LR;\n`;
+    graph += `    classDef critical fill:#b85842,stroke:#000,color:#fff;\n`;
+    graph += `    classDef nonCritical fill:#5a8a6f,stroke:#000,color:#fff;\n`;
 
     tasks.forEach(task => {
         const taskId = task.id.replace(/[^a-zA-Z0-9_]/g, '_');
+        // Sanitize name for HTML display. Using quotes and letting Mermaid handle it.
         const taskName = task.name.replace(/"/g, '#quot;');
         
-        const nodeBgColor = task.isCritical ? criticalFill : nonCriticalFill;
-
-        graph += `${taskId}("<div style='background-color:${nodeBgColor}; color:${textColor}; padding: 10px; border-radius: 5px; white-space: normal; word-wrap: break-word; text-align: center; font-family: sans-serif; font-size: 12px; line-height: 1.2;'><strong>${taskName}</strong><br>ES: ${task.es} | EF: ${task.ef}<br>LS: ${task.ls} | LF: ${task.lf}<br>Holgura: ${task.float}</div>");\n`;
+        // Use the div for multiline text, Mermaid will handle wrapping.
+        const nodeLabel = `"<div style='padding: 10px; white-space: normal; word-wrap: break-word; text-align: center; font-family: sans-serif; font-size: 12px; line-height: 1.2;'><strong>${taskName}</strong><br>ES: ${task.es} | EF: ${task.ef}<br>LS: ${task.ls} | LF: ${task.lf}<br>Holgura: ${task.float}</div>"`;
         
+        graph += `    ${taskId}${nodeLabel};\n`;
+        
+        // Apply the class to the node
+        graph += `    class ${taskId} ${task.isCritical ? 'critical' : 'nonCritical'};\n`;
+
         if (task.predecessorIds && task.predecessorIds.length > 0) {
             task.predecessorIds.forEach(predId => {
                 const predecessorTaskId = predId.replace(/[^a-zA-Z0-9_]/g, '_');
-                graph += `${predecessorTaskId} --> ${taskId};\n`;
+                graph += `    ${predecessorTaskId} --> ${taskId};\n`;
             });
         }
     });
@@ -51,28 +55,27 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
 
   useEffect(() => {
     if (mermaidChart && containerRef.current) {
-        if (containerRef.current) {
-            containerRef.current.innerHTML = '<div class="w-full h-full flex justify-center items-center">Cargando diagrama...</div>';
-        }
+        const currentContainer = containerRef.current;
+        currentContainer.innerHTML = '<div class="w-full h-full flex justify-center items-center text-muted-foreground">Cargando diagrama...</div>';
         
         const renderMermaid = async () => {
             try {
                 // Ensure a unique ID for each render to avoid Mermaid cache issues
                 const uniqueId = `mermaid-graph-${Date.now()}`;
                 const { svg } = await mermaid.render(uniqueId, mermaidChart);
-                if (containerRef.current) {
-                    containerRef.current.innerHTML = svg;
-                    // Optional: Style the SVG element itself if needed
-                    const svgElement = containerRef.current.querySelector('svg');
+                 if (currentContainer) {
+                    currentContainer.innerHTML = svg;
+                    // Make SVG take up space, which allows the overflow container to scroll
+                    const svgElement = currentContainer.querySelector('svg');
                     if (svgElement) {
-                      svgElement.style.maxWidth = '100%';
-                      svgElement.style.height = 'auto';
+                      svgElement.style.minWidth = '800px'; // Set a minimum width to encourage scrolling
+                      svgElement.style.maxWidth = '2000px'; // Allow it to grow
                     }
                 }
             } catch (error) {
                 console.error("Error rendering Mermaid chart:", error);
-                 if (containerRef.current) {
-                    containerRef.current.innerHTML = `<p class="text-destructive">Error al renderizar el diagrama.</p>`;
+                 if (currentContainer) {
+                    currentContainer.innerHTML = `<div class="text-destructive p-4">Error al renderizar el diagrama. Revisa la consola.</div>`;
                 }
             }
         };
@@ -104,11 +107,14 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
     <Card className="mt-4 overflow-hidden">
         <CardHeader>
             <CardTitle className="font-headline">Diagrama de Red (CPM)</CardTitle>
-            <CardDescription>Visualización del flujo de trabajo. Las tareas críticas están resaltadas en rojo/marrón.</CardDescription>
+            <CardDescription>Visualización del flujo de trabajo. Las tareas críticas están resaltadas en rojo/marrón. Desliza para ver el diagrama completo.</CardDescription>
         </CardHeader>
         <CardContent>
-            <div ref={containerRef} className="min-h-[400px] w-full flex justify-center items-center">
-                {/* Mermaid will render the graph here */}
+            {/* This outer container enables scrolling */}
+            <div className="w-full overflow-auto p-4 bg-muted/20 rounded-lg">
+                <div ref={containerRef} className="min-h-[400px] min-w-[800px] flex justify-center items-center">
+                    {/* Mermaid will render the graph here */}
+                </div>
             </div>
         </CardContent>
     </Card>
