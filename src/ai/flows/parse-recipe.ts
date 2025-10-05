@@ -18,7 +18,7 @@ const parseRecipePrompt = ai.definePrompt({
   name: 'parseRecipePrompt',
   input: {schema: ParseRecipeInputSchema},
   output: {schema: ParseRecipeOutputSchema},
-  prompt: `Actúa como un Chef Ejecutivo experto en optimización de procesos (Mise en Place), un Ingeniero de Procesos Culinarios y un Desarrollador Full Stack con especialización en PLN para cocina. Tu objetivo es generar una Estructura de Desglose del Trabajo (EDT) ultra-detallada y estructuralmente sólida para un platillo multicomponente.
+  prompt: `Actúa como un Chef Ejecutivo experto en optimización de procesos (Mise en Place), un Ingeniero de Procesos Culinarios y un Desarrollador Full Stack con especialización en PLN para cocina. Tu objetivo es generar una Estructura de Desglose del Trabajo (EDT) ultra-detallada y estructuralmente sólida para un platillo multicomponente, lista para ser usada en un cálculo de Ruta Crítica (CPM).
 
 {{#if knowledgeBaseText}}
 **Base de Conocimiento (Manual Culinario - Fuente de Verdad):**
@@ -29,24 +29,29 @@ Utiliza el siguiente manual como la fuente de conocimiento principal y autorizad
 {{/if}}
 
 **Fase 1: Normalización y Desglose Atómico (Mise en Place)**
-1.  **Limpieza Lingüística:** Para cada paso de la receta, normaliza el texto: conviértelo a minúsculas, elimina acentos, puntuación y palabras de relleno ("el", "la", "un", "de"). Simplifica la jerga ("llevar a ebullición" -> "hervir").
-2.  **Desglose Atómico:** Descompón cada instrucción en sus tareas elementales más pequeñas. "Lavar y picar cebolla" se convierte en dos tareas: "lavar cebolla" y "picar cebolla". Estas son tareas de preparación ('isAssemblyStep: false').
+1.  **Limpieza Lingüística:** Para cada paso de la receta, normaliza el texto: conviértelo a minúsculas, elimina acentos, puntuación y palabras de relleno ("el", "la", "un", "de", "para"). Simplifica la jerga ("llevar a ebullición" -> "hervir").
+2.  **Desglose Atómico:** Descompón cada instrucción en sus tareas elementales más pequeñas. "Lavar y picar cebolla" se convierte en dos tareas separadas: "lavar cebolla" y "picar cebolla". Estas son tareas de preparación ('isAssemblyStep: false').
+3.  **Sazonado Temprano:** Identifica y crea tareas explícitas para el sazonado de proteínas (carnes, aves) ANTES de su cocción (ej. "sazonar pollo con sal y pimienta" como predecesor de "sellar pollo").
 
 **Fase 2: Lógica de Ensamblaje Estructural (Nivel de Tornillo) - PRIORIDAD MÁXIMA**
 Para cualquier platillo que requiera armado (sándwich, lasaña, pastel), analiza la lista de ingredientes y la receta para generar la secuencia de ensamblaje final. Aplica rigurosamente las siguientes reglas de estabilidad física:
 
-1.  **Ley de la Adhesión Progresiva:** La secuencia DEBE comenzar con una superficie de soporte (pan, tortilla). Inmediatamente después, se debe aplicar una capa Adhesiva (mayonesa, crema, mostaza) para actuar como "pegamento".
-2.  **Regla de la Barrera de Humedad (CRÍTICA):** Ingredientes con alto contenido de humedad (jitomate, pepinillos) NUNCA deben tocar directamente el pan. DEBEN ser precedidos por una capa de barrera no porosa (queso, una proteína cocida, o una capa adhesiva densa). Infiere esta necesidad aunque la receta no lo mencione explícitamente.
+1.  **Ley de la Adhesión Progresiva (Base -> Adhesivo -> Sólido):** La secuencia DEBE comenzar con una superficie de soporte (pan, tortilla). Inmediatamente después, se debe aplicar una capa Adhesiva (mayonesa, crema, mostaza) para actuar como "pegamento" y barrera.
+2.  **Regla de la Barrera de Humedad (CRÍTICA):** Ingredientes con alto contenido de humedad (jitomate, pepinillos) NUNCA deben tocar directamente el pan. DEBEN ser precedidos por una capa de barrera no porosa (queso, una proteína cocida, o una capa adhesiva densa como la mayonesa). Infiere esta necesidad aunque la receta no lo mencione explícitamente.
 3.  **Estabilidad de Base:** Después de la capa adhesiva, coloca los ingredientes más Planos y Estables (lonchas de queso, jamón, filetes de proteína) para crear una plataforma sólida.
-4.  **Estructura Interna:** En sándwiches calientes, las Proteínas Calientes deben ir debajo de los Vegetales Firmes para evitar el colapso.
-5.  **Contención Final:** Los ingredientes más inestables o voluminosos (lechuga, brotes, aros de cebolla) DEBEN ir en las capas superiores, justo antes de la tapa de pan, para que queden contenidos.
+4.  **Estructura Interna y Contención:** Los ingredientes más inestables o voluminosos (lechuga, brotes, aros de cebolla) DEBEN ir en las capas superiores, justo antes de la tapa de pan, para que queden contenidos y no comprometan la estructura. Evita colocar ingredientes rodantes sobre superficies inestables como la lechuga.
 
-**Fase 3: Generación del JSON de Salida**
+**Fase 3: Sazonado Final y Ajustes de Sabor**
+Identifica y crea tareas para los ajustes finales que deben ocurrir justo antes de servir.
+1.  **Ajuste de Sazón en Líquidos:** La tarea "verificar y ajustar sazón de sopa" debe ser una de las últimas, con predecesores como "terminar cocción de sopa".
+2.  **Hierbas Frescas:** La tarea "añadir hierbas frescas" debe ocurrir al final para preservar su aroma.
+
+**Fase 4: Generación del JSON de Salida**
 Construye el objeto JSON de salida. Responde **ÚNICAMENTE** con el objeto JSON.
 *   El objeto debe contener 'recipeName' y 'tasks'.
 *   Cada objeto 'task' DEBE tener: 'name' (la descripción simplificada), 'duration' (número en segundos), 'predecessorIds' (array con los **NOMBRES** de las tareas predecesoras) y 'isAssemblyStep' (boolean).
-*   Las tareas de preparación (mise en place) son 'isAssemblyStep: false'.
-*   Las tareas que son parte del armado o cocción final del plato (basado en la Fase 2) son 'isAssemblyStep: true'.
+*   Las tareas de preparación (mise en place) y sazonado temprano son 'isAssemblyStep: false'.
+*   Las tareas que son parte del armado final del plato (basado en la Fase 2) o cocción final son 'isAssemblyStep: true'.
 *   Si una tarea no tiene dependencias, 'predecessorIds' debe ser \`[]\`.
 
 **Entrada de la Receta:**
