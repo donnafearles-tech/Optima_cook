@@ -247,9 +247,14 @@ export default function EditTaskSheet({
         toast({ title: "Falta el nombre", description: "Escribe un nombre para la tarea antes de pedir sugerencias.", variant: "destructive" });
         return;
     }
-    const otherTasks = allTasks.filter(t => t.id !== task?.id);
-    if (otherTasks.length === 0) {
-        toast({ title: "No hay otras tareas", description: "No hay otras tareas para establecer como dependencias." });
+    
+    // Filter tasks to only include those from the same recipe(s) as the current task.
+    const relevantTasks = allTasks.filter(t => 
+        t.id !== task?.id && t.recipeIds.some(rId => recipeIds.includes(rId))
+    );
+
+    if (relevantTasks.length === 0) {
+        toast({ title: "No hay otras tareas", description: "No hay otras tareas en la misma receta para establecer como dependencias." });
         return;
     }
 
@@ -259,7 +264,7 @@ export default function EditTaskSheet({
     const normalizedNewTaskName = normalize(name);
     let foundSuggestion = false;
 
-    const taskMap = new Map(otherTasks.map(t => [t.id, { ...t, normalizedName: normalize(t.name) }]));
+    const taskMap = new Map(relevantTasks.map(t => [t.id, { ...t, normalizedName: normalize(t.name) }]));
     
     const isAction = (normalized: string, verbs: string[]) => verbs.some(v => normalized.startsWith(v));
 
