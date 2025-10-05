@@ -241,7 +241,7 @@ const handleTaskSave = async (taskToSave: Task) => {
                     newPredecessors.add(potentialPred.id);
                 }
             });
-        } else if (mainAction === 'añadir' || mainAction === 'agregar' || mainAction === 'poner') {
+        } else if (mainAction === 'añadir' || mainAction === 'agregar' || mainAction === 'poner' || mainAction === 'colocar') {
             taskMap.forEach(potentialPred => {
                 if(potentialPred.id !== task.id && potentialPred.normalizedName.startsWith('untar')) {
                     newPredecessors.add(potentialPred.id);
@@ -457,7 +457,7 @@ const handleTaskSave = async (taskToSave: Task) => {
         };
 
         const cpmResult = calculateCPM(tasksForCalc);
-        await updateDocumentNonBlocking(projectRef, { cpmResult });
+        updateDocumentNonBlocking(projectRef, { cpmResult });
         setIsGuideStale(false);
         router.push(`/projects/${projectId}/guide`);
   
