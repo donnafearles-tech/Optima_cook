@@ -104,12 +104,6 @@ export default function RecipeCard({
                                       Unificada
                                     </Badge>
                                   )}
-                                   {task.id === taskWithUnificationSuggestion && (
-                                    <Button size="sm" variant="secondary" onClick={() => onConsolidateTasks()}>
-                                        <Combine className="mr-2 h-4 w-4"/>
-                                        Unificar Tareas Similares
-                                    </Button>
-                                  )}
                                 </div>
                                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-1 text-xs text-muted-foreground">
                                     <span>Duración: {formatDuration(task.duration)}</span>

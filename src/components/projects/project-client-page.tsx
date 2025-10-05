@@ -51,7 +51,6 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const [isClearing, setIsClearing] = useState(false);
   const [isGuideStale, setIsGuideStale] = useState(false);
   const [showDependencyWarning, setShowDependencyWarning] = useState(false);
-  const [taskWithUnificationSuggestion, setTaskWithUnificationSuggestion] = useState<string | null>(null);
 
 
   const { toast } = useToast();
@@ -158,28 +157,12 @@ const handleTaskSave = async (taskToSave: Task) => {
       setIsGuideStale(true);
     }
 
-    let savedTaskId = id;
     if (id) {
         updateDocumentNonBlocking(doc(tasksCollection, id), dataToSave);
     } else {
-        const docRef = await addDocumentNonBlocking(tasksCollection, dataToSave);
-        savedTaskId = docRef.id;
+        addDocumentNonBlocking(tasksCollection, dataToSave);
     }
     setEditingTask(null);
-
-    // Detección de Similitud Post-Guardado
-    if (!id && savedTaskId) { // Solo para tareas nuevas
-        const tasksSnapshot = await getDocs(tasksCollection);
-        const currentTasks = tasksSnapshot.docs.map(d => ({...d.data() as Task, id: d.id}));
-        const newTask = currentTasks.find(t => t.id === savedTaskId);
-        if (newTask) {
-            const normalizedNewName = normalize(newTask.name);
-            const hasSimilar = currentTasks.some(t => t.id !== newTask.id && normalize(t.name) === normalizedNewName);
-            if (hasSimilar) {
-                setTaskWithUnificationSuggestion(savedTaskId);
-            }
-        }
-    }
 };
 
   const handleTaskDelete = (taskId: string) => {
@@ -338,7 +321,6 @@ const handleTaskSave = async (taskToSave: Task) => {
         return false;
     }
 
-    setTaskWithUnificationSuggestion(null);
     const taskGroups = new Map<string, Task[]>();
     tasks.forEach(task => {
         const normalizedName = normalize(task.name);
@@ -621,7 +603,7 @@ const handleTaskSave = async (taskToSave: Task) => {
                     onAddTask={() => handleOpenEditTask('new')}
                     onEditTask={(task) => handleOpenEditTask(task)}
                     onDeleteTask={handleTaskDelete}
-                    taskWithUnificationSuggestion={taskWithUnificationSuggestion}
+                    taskWithUnificationSuggestion={null}
                     onConsolidateTasks={consolidateTasksNatively}
                 />
             ))}
