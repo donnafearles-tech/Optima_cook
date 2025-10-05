@@ -29,6 +29,8 @@ interface RecipeCardProps {
     onAddTask: () => void;
     onEditTask: (task: Task) => void;
     onDeleteTask: (taskId: string) => void;
+    taskWithUnificationSuggestion: string | null;
+    onConsolidateTasks: () => Promise<boolean>;
 }
 
 function formatDuration(seconds: number) {
@@ -49,6 +51,8 @@ export default function RecipeCard({
     onAddTask,
     onEditTask,
     onDeleteTask,
+    taskWithUnificationSuggestion,
+    onConsolidateTasks
 }: RecipeCardProps) {
   return (
     <Card>
@@ -99,6 +103,12 @@ export default function RecipeCard({
                                       <Combine className="mr-1 h-3 w-3" />
                                       Unificada
                                     </Badge>
+                                  )}
+                                   {task.id === taskWithUnificationSuggestion && (
+                                    <Button size="sm" variant="secondary" onClick={() => onConsolidateTasks()}>
+                                        <Combine className="mr-2 h-4 w-4"/>
+                                        Unificar Tareas Similares
+                                    </Button>
                                   )}
                                 </div>
                                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-1 text-xs text-muted-foreground">
@@ -157,5 +167,3 @@ export default function RecipeCard({
     </Card>
   );
 }
-
-    

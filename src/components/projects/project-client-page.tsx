@@ -33,6 +33,7 @@ interface ProjectClientPageProps {
 }
 
 const normalize = (str: string) => {
+    if (!str) return '';
     return str
         .toLowerCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -45,10 +46,13 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const [editingTask, setEditingTask] = useState<Task | null | 'new'>(null);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null | 'new'>(null);
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isSuggestingNatively, setIsSuggestingNatively] = useState(false);
   const [isCalculatingPath, setIsCalculatingPath] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isGuideStale, setIsGuideStale] = useState(false);
   const [showDependencyWarning, setShowDependencyWarning] = useState(false);
+  const [taskWithUnificationSuggestion, setTaskWithUnificationSuggestion] = useState<string | null>(null);
+
 
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -136,7 +140,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     });
   };
 
-  const handleTaskSave = (taskToSave: Task) => {
+const handleTaskSave = async (taskToSave: Task) => {
     const tasksCollection = collection(projectRef, 'tasks');
     const { id, ...dataToSave } = taskToSave;
 
@@ -154,13 +158,29 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
       setIsGuideStale(true);
     }
 
+    let savedTaskId = id;
     if (id) {
         updateDocumentNonBlocking(doc(tasksCollection, id), dataToSave);
     } else {
-        addDocumentNonBlocking(tasksCollection, dataToSave);
+        const docRef = await addDocumentNonBlocking(tasksCollection, dataToSave);
+        savedTaskId = docRef.id;
     }
     setEditingTask(null);
-  };
+
+    // Detección de Similitud Post-Guardado
+    if (!id && savedTaskId) { // Solo para tareas nuevas
+        const tasksSnapshot = await getDocs(tasksCollection);
+        const currentTasks = tasksSnapshot.docs.map(d => ({...d.data() as Task, id: d.id}));
+        const newTask = currentTasks.find(t => t.id === savedTaskId);
+        if (newTask) {
+            const normalizedNewName = normalize(newTask.name);
+            const hasSimilar = currentTasks.some(t => t.id !== newTask.id && normalize(t.name) === normalizedNewName);
+            if (hasSimilar) {
+                setTaskWithUnificationSuggestion(savedTaskId);
+            }
+        }
+    }
+};
 
   const handleTaskDelete = (taskId: string) => {
     const taskDoc = doc(projectRef, 'tasks', taskId);
@@ -175,6 +195,80 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         title: 'Tarea Eliminada',
         description: 'Recuerda recalcular la guía para ver los cambios.',
     });
+  };
+
+  const handleSuggestDependenciesNatively = async () => {
+    const currentTasks = allTasks || [];
+    if (currentTasks.length < 2) {
+      toast({ title: 'No hay suficientes tareas', variant: 'destructive' });
+      return;
+    }
+    setIsSuggestingNatively(true);
+    try {
+      const taskMap = new Map(currentTasks.map(t => [t.id, { ...t, normalizedName: normalize(t.name) }]));
+      const batch = writeBatch(firestore);
+      const tasksCollection = collection(projectRef, 'tasks');
+      let changed = false;
+
+      taskMap.forEach(task => {
+        const newPredecessors = new Set(task.predecessorIds);
+        const taskWords = task.normalizedName.split(' ');
+        const mainAction = taskWords[0];
+        const ingredient = taskWords.slice(1).join(' ');
+
+        // Regla 1: Preparación Básica antes de Corte
+        if (mainAction === 'picar' || mainAction === 'cortar') {
+          taskMap.forEach(potentialPred => {
+            if (potentialPred.id !== task.id && potentialPred.normalizedName.endsWith(ingredient)) {
+              if (potentialPred.normalizedName.startsWith('lavar') || potentialPred.normalizedName.startsWith('pelar')) {
+                newPredecessors.add(potentialPred.id);
+              }
+            }
+          });
+        }
+        // Regla 2: Procesamiento de Calor
+        else if (mainAction === 'sofreir' || mainAction === 'freir') {
+           taskMap.forEach(potentialPred => {
+            if (potentialPred.id !== task.id && potentialPred.normalizedName.endsWith(ingredient)) {
+              if (potentialPred.normalizedName.startsWith('picar') || potentialPred.normalizedName.startsWith('cortar')) {
+                newPredecessors.add(potentialPred.id);
+              }
+            }
+          });
+        }
+        // Regla 3: Pre-requisitos de Equipo
+        else if (mainAction === 'hornear') {
+          taskMap.forEach(potentialPred => {
+            if (potentialPred.id !== task.id && potentialPred.normalizedName === 'precalentar horno') {
+              newPredecessors.add(potentialPred.id);
+            }
+          });
+        }
+
+        if (newPredecessors.size > task.predecessorIds.length) {
+          batch.update(doc(tasksCollection, task.id), { predecessorIds: Array.from(newPredecessors) });
+          changed = true;
+        }
+      });
+      
+      if (project?.cpmResult) {
+        batch.update(projectRef, { cpmResult: null });
+      }
+
+      await batch.commit();
+
+      if (changed) {
+        setIsGuideStale(true);
+        toast({ title: '¡Dependencias Nativas Sugeridas!', description: 'Se han añadido dependencias basadas en reglas culinarias.' });
+      } else {
+        toast({ title: 'Sin Sugerencias Nuevas', description: 'No se encontraron nuevas dependencias lógicas para añadir.' });
+      }
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'Error en Sugerencia Nativa', variant: 'destructive' });
+    } finally {
+      setIsSuggestingNatively(false);
+    }
   };
   
   const handleSuggestDependencies = async () => {
@@ -244,6 +338,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         return false;
     }
 
+    setTaskWithUnificationSuggestion(null);
     const taskGroups = new Map<string, Task[]>();
     tasks.forEach(task => {
         const normalizedName = normalize(task.name);
@@ -334,33 +429,31 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     
     try {
         const tasks = allTasks || [];
-        if (!force) {
+        if (!force && tasks.length > 1) {
             const tasksWithoutPredecessors = tasks.filter(t => t.predecessorIds.length === 0);
-            if (tasksWithoutPredecessors.length > 1 && tasks.length > 1) {
+            if (tasksWithoutPredecessors.length === tasks.length) {
                 setShowDependencyWarning(true);
                 setIsCalculatingPath(false);
                 return;
             }
         }
 
-        router.push(`/projects/${projectId}/guide`);
-
         // Unify tasks as a mandatory pre-processing step
         await consolidateTasksNatively();
-
-        await updateDocumentNonBlocking(projectRef, { cpmResult: null });
         
         const freshTasksSnapshot = await getDocs(tasksQuery!);
         const tasksForCalc = freshTasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
         
         if (tasksForCalc.length === 0) {
             setIsCalculatingPath(false);
+            router.push(`/projects/${projectId}/guide`);
             return;
         };
 
         const cpmResult = calculateCPM(tasksForCalc);
         await updateDocumentNonBlocking(projectRef, { cpmResult });
         setIsGuideStale(false);
+        router.push(`/projects/${projectId}/guide`);
   
     } catch(error) {
       console.error(error);
@@ -496,14 +589,18 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
       <div className="my-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <h2 className="text-2xl font-bold tracking-tight font-headline flex-1">Recetas</h2>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={handleSuggestDependenciesNatively} disabled={isSuggestingNatively || (allTasks || []).length < 2}>
+              <Wand2 className={`mr-2 h-4 w-4 ${isSuggestingNatively ? 'animate-spin' : ''}`} />
+              Sugerir Dependencias (Nativo)
+            </Button>
             <Button variant="outline" onClick={handleSuggestDependencies} disabled={isSuggesting || (allTasks || []).length < 2}>
               {isSuggesting ? (
-                <Wand2 className="mr-2 h-4 w-4 animate-spin" />
+                <Sparkles className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <Wand2 className="mr-2 h-4 w-4" />
+                <Sparkles className="mr-2 h-4 w-4" />
               )}
-              Sugerir Dependencias
+              Sugerir Dependencias (IA)
             </Button>
             <Button onClick={() => setEditingRecipe('new')}>
                 <Plus className="mr-2 h-4 w-4" /> Añadir Receta
@@ -524,6 +621,8 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
                     onAddTask={() => handleOpenEditTask('new')}
                     onEditTask={(task) => handleOpenEditTask(task)}
                     onDeleteTask={handleTaskDelete}
+                    taskWithUnificationSuggestion={taskWithUnificationSuggestion}
+                    onConsolidateTasks={consolidateTasksNatively}
                 />
             ))}
              {(allRecipes || []).length === 0 && (
@@ -558,16 +657,16 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
                 <AlertDialogHeader>
                 <AlertDialogTitle>Dependencias de Tareas Faltantes</AlertDialogTitle>
                 <AlertDialogDescription>
-                    El cálculo no puede garantizar una optimización correcta porque la mayoría de las tareas no tienen dependencias definidas. ¿Te gustaría que la IA sugiera las dependencias ahora?
+                    La mayoría de las tareas no tienen dependencias. Esto puede llevar a una guía de cocina poco realista. ¿Te gustaría usar una de las herramientas de sugerencia de dependencias ahora?
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <Button variant="outline" onClick={() => { setShowDependencyWarning(false); handleCalculatePath(true); }}>
-                    Forzar Cálculo
+                    Calcular de todos modos
                 </Button>
                 <AlertDialogAction onClick={() => { setShowDependencyWarning(false); handleSuggestDependencies(); }}>
-                    Sugerir Dependencias
+                    Sugerir con IA
                 </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
