@@ -14,6 +14,8 @@ mermaid.initialize({
         htmlLabels: true,
         curve: 'basis'
     },
+    fontFamily: '"Open Sans", sans-serif',
+    fontWeight: 'bold',
 });
 
 export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
@@ -25,7 +27,6 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
     }
     
     let graph = `graph LR;\n`;
-    // Using the new color palette
     graph += `    classDef critical fill:#F37F58,stroke:#000,color:#000;\n`;
     graph += `    classDef nonCritical fill:#D2EBCD,stroke:#000,color:#000;\n`;
 
@@ -98,17 +99,8 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
   }
 
   return (
-    <Card className="mt-4 overflow-hidden">
-        <CardHeader>
-            <CardTitle className="font-headline">Diagrama de Red (CPM)</CardTitle>
-            <CardDescription>Visualización del flujo de trabajo. Las tareas críticas están resaltadas en color coral. Desliza para ver el diagrama completo.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <div className="w-full overflow-auto p-4 bg-muted/20 rounded-lg">
-                <div ref={containerRef} className="min-h-[400px] min-w-[800px] flex justify-center items-center">
-                </div>
-            </div>
-        </CardContent>
-    </Card>
+      <div className="overflow-auto border rounded-lg">
+        <div ref={containerRef} className="min-w-[800px] min-h-[400px]" />
+      </div>
   );
 }
