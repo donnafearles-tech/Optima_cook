@@ -9,23 +9,6 @@ import mermaid from 'mermaid';
 mermaid.initialize({
     startOnLoad: false,
     theme: 'base',
-    themeVariables: {
-        primaryColor: 'hsl(11 87% 70%)',
-        primaryTextColor: '#fff',
-        primaryBorderColor: 'hsl(11 87% 60%)',
-        lineColor: 'hsl(11 87% 70%)',
-        textColor: '#333',
-        mainBkg: 'hsl(39 33% 97%)',
-        // --- Custom class colors ---
-        // Critical path
-        'critical-fill': 'hsl(24, 40%, 30%)',
-        'critical-stroke': 'hsl(24, 40%, 20%)',
-        'critical-text-color': '#fff',
-        // Non-critical path
-        'noncritical-fill': 'hsl(145, 50%, 40%)',
-        'noncritical-stroke': 'hsl(145, 50%, 30%)',
-        'noncritical-text-color': '#fff',
-    },
     flowchart: {
         useMaxWidth: true,
         htmlLabels: true,
@@ -43,24 +26,31 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
 
     let graph = `graph TD;\n`;
     
-    // Define styles via mermaid.initialize, now just apply classes
+    // Define literal colors
+    const criticalFill = '#E63946'; // Primary Red
+    const criticalStroke = '#b02a37';
+    const criticalTextColor = '#FFFFFF';
+    
+    const nonCriticalFill = '#457B9D'; // A different color for contrast
+    const nonCriticalStroke = '#37627d';
+    const nonCriticalTextColor = '#FFFFFF';
+
     tasks.forEach(task => {
         // Sanitize task name for Mermaid ID
         const taskId = task.id.replace(/[^a-zA-Z0-9_]/g, '_');
         const taskName = task.name.replace(/"/g, '#quot;');
         
-        // Define the node with its text content
-        const nodeStyle = task.isCritical ? 'critical' : 'noncritical';
-        const textColor = task.isCritical ? 'critical-text-color' : 'noncritical-text-color';
+        const nodeColor = task.isCritical ? criticalTextColor : nonCriticalTextColor;
 
-        graph += `${taskId}("<div style='color:var(--${textColor}); padding: 5px; white-space: normal; break-word: break-all; text-align: center;'>${taskName}<br>ES: ${task.es} | EF: ${task.ef}<br>LS: ${task.ls} | LF: ${task.lf}<br>Holgura: ${task.float}</div>");\n`;
+        // Define the node with its text content inside an HTML-like label
+        graph += `${taskId}("<div style='color:${nodeColor}; padding: 5px; white-space: normal; word-wrap: break-word; text-align: center;'>${taskName}<br>ES: ${task.es} | EF: ${task.ef}<br>LS: ${task.ls} | LF: ${task.lf}<br>Holgura: ${task.float}</div>");\n`;
         
-        // Apply class based on isCritical
-        graph += `class ${taskId} ${nodeStyle};\n`;
-        
-        // This is a more modern way to style, but `class` is more direct for this case.
-        // graph += `style ${taskId} fill:var(--${nodeStyle}-fill),stroke:var(--${nodeStyle}-stroke);\n`
-
+        // Apply styles directly to the node
+        if (task.isCritical) {
+            graph += `style ${taskId} fill:${criticalFill},stroke:${criticalStroke};\n`;
+        } else {
+            graph += `style ${taskId} fill:${nonCriticalFill},stroke:${nonCriticalStroke};\n`;
+        }
 
         // Define dependencies (links)
         if (task.predecessorIds && task.predecessorIds.length > 0) {
@@ -70,9 +60,6 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
             });
         }
     });
-    
-    graph += 'classDef critical fill:var(--critical-fill),stroke:var(--critical-stroke);\n';
-    graph += 'classDef noncritical fill:var(--noncritical-fill),stroke:var(--noncritical-stroke);\n';
 
     return graph;
   }, [tasks]);
@@ -126,7 +113,7 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
     <Card className="mt-4">
         <CardHeader>
             <CardTitle className="font-headline">Diagrama de Red (CPM)</CardTitle>
-            <CardDescription>Visualización del flujo de trabajo. Los nodos marrones indican la ruta crítica.</CardDescription>
+            <CardDescription>Visualización del flujo de trabajo. Las tareas en rojo indican la ruta crítica.</CardDescription>
         </CardHeader>
         <CardContent className="min-h-[400px] overflow-auto">
             <div ref={containerRef} className="mermaid-container w-full h-full flex justify-center items-center">
