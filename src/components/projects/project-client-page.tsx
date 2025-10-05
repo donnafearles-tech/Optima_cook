@@ -337,8 +337,11 @@ const handleTaskSave = async (taskToSave: Task) => {
         return false;
     }
 
+    const prepTasks = tasks.filter(t => !t.isAssemblyStep);
+    const assemblyTasks = tasks.filter(t => t.isAssemblyStep);
+
     const taskGroups = new Map<string, Task[]>();
-    tasks.forEach(task => {
+    prepTasks.forEach(task => {
         const normalizedName = normalize(task.name);
         if (!taskGroups.has(normalizedName)) {
             taskGroups.set(normalizedName, []);
@@ -362,7 +365,7 @@ const handleTaskSave = async (taskToSave: Task) => {
                 duration: Math.max(...group.map(t => t.duration)),
                 recipeIds: [...new Set(group.flatMap(t => t.recipeIds || []))],
                 resourceIds: [...new Set(group.flatMap(t => t.resourceIds || []))],
-                isAssemblyStep: group.some(t => t.isAssemblyStep),
+                isAssemblyStep: false, // Explicitly false for prep tasks
                 predecessorIds: [...new Set(group.flatMap(t => t.predecessorIds || []))],
                 isConsolidated: true, 
             };
@@ -416,7 +419,7 @@ const handleTaskSave = async (taskToSave: Task) => {
     await batch.commit();
     
     if(consolidationHappened) {
-      toast({ title: '¡Tareas Unificadas!', description: 'Se han fusionado tareas duplicadas automáticamente.' });
+      toast({ title: '¡Tareas Unificadas!', description: 'Se han fusionado tareas de preparación duplicadas automáticamente.' });
     }
     
     return consolidationHappened;
@@ -436,7 +439,6 @@ const handleTaskSave = async (taskToSave: Task) => {
             }
         }
 
-        // Unify tasks as a mandatory pre-processing step
         await consolidateTasksNatively();
         
         const freshTasksSnapshot = await getDocs(tasksQuery!);
