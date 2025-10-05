@@ -53,7 +53,7 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
         const taskName = task.name.replace(/"/g, '#quot;');
         
         // Define the node with its text content
-        graph += `${taskId}("<div style='padding: 5px; white-space: normal; break-word: break-all;'>${taskName}<br>ES: ${task.es} | EF: ${task.ef}<br>LS: ${task.ls} | LF: ${task.lf}<br>Holgura: ${task.float}</div>");\n`;
+        graph += `${taskId}("<div style='padding: 5px; white-space: normal; break-word: break-all; text-align: center;'>${taskName}<br>ES: ${task.es} | EF: ${task.ef}<br>LS: ${task.ls} | LF: ${task.lf}<br>Holgura: ${task.float}</div>");\n`;
         
         // Apply class based on isCritical
         graph += `class ${taskId} ${task.isCritical ? 'critical' : 'noncritical'};\n`;
