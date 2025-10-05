@@ -137,16 +137,7 @@ export default function EditTaskSheet({
   
   useEffect(() => {
     if (open) {
-      if (task) {
-        setName(task.name);
-        if (task.duration < 60 || task.duration % 60 !== 0) {
-          setTimeUnit('seconds');
-          setDurationValue(task.duration);
-        } else {
-          setTimeUnit('minutes');
-          setDurationValue(task.duration / 60);
-        }
-
+      if (task && task.id) { // Only run for existing tasks
         const allTaskIds = new Set(allTasks.map(t => t.id));
         const validPredecessorIds = (task.predecessorIds || []).filter(id => allTaskIds.has(id));
 
@@ -155,26 +146,41 @@ export default function EditTaskSheet({
                 title: "Dependencias limpiadas",
                 description: "Se eliminaron algunas dependencias que apuntaban a tareas borradas.",
             });
-            // Auto-save this cleanup silently in the background if the task already exists
-            if (task.id) {
-              onSave({ ...task, predecessorIds: validPredecessorIds });
-            }
+            // Auto-save this cleanup silently in the background
+            onSave({ ...task, predecessorIds: validPredecessorIds });
         }
         
         setPredecessorIds(validPredecessorIds);
+        
+        // Load other task data
+        setName(task.name);
+        if (task.duration < 60 || task.duration % 60 !== 0) {
+          setTimeUnit('seconds');
+          setDurationValue(task.duration);
+        } else {
+          setTimeUnit('minutes');
+          setDurationValue(task.duration / 60);
+        }
         setRecipeIds(task.recipeIds || ((task as any).recipeId ? [(task as any).recipeId] : []));
         setResourceIds(task.resourceIds || []);
-      } else {
-        // Reset for new task
-        setName('');
-        setDurationValue(5); // Default to 5 minutes
-        setTimeUnit('minutes');
-        setPredecessorIds([]);
-        setRecipeIds(allRecipes[0]?.id ? [allRecipes[0].id] : []);
-        setResourceIds([]);
+
+      } else { // Reset for new task
+        setName(task?.name || '');
+        const duration = task?.duration || 300;
+        if (duration < 60 || duration % 60 !== 0) {
+            setTimeUnit('seconds');
+            setDurationValue(duration);
+        } else {
+            setTimeUnit('minutes');
+            setDurationValue(duration / 60);
+        }
+        setPredecessorIds(task?.predecessorIds || []);
+        setRecipeIds(task?.recipeIds || (allRecipes[0]?.id ? [allRecipes[0].id] : []));
+        setResourceIds(task?.resourceIds || []);
       }
     }
-}, [task, open, allRecipes, allTasks, onSave, toast]);
+  }, [task, open, allRecipes, allTasks, onSave, toast]);
+
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -265,7 +271,7 @@ export default function EditTaskSheet({
     
     // Filter tasks to only include those from the same recipe(s) as the current task.
     const relevantTasks = allTasks.filter(t => 
-        t.id !== task?.id && t.recipeIds.some(rId => recipeIds.includes(rId))
+        t.id !== task?.id && (t.recipeIds || []).some(rId => (recipeIds || []).includes(rId))
     );
 
     if (relevantTasks.length === 0) {
@@ -283,6 +289,7 @@ export default function EditTaskSheet({
     const relevantTaskMap = new Map(relevantTasks.map(t => [t.id, { ...t, normalizedName: normalize(t.name) }]));
     
     const isAction = (normalized: string, verbs: string[]) => verbs.some(v => normalized.startsWith(v));
+    const isIngredientAction = (normalized: string) => isAction(normalized, ['colocar', 'añadir', 'poner', 'agregar']);
 
     // Reglas de Preparación y Cocción
     if (isAction(normalizedNewTaskName, ['picar', 'cortar', 'rebanar'])) {
@@ -315,16 +322,21 @@ export default function EditTaskSheet({
     }
     
     // Reglas de Ensamblaje
-    const isIngredientTask = isAction(normalizedNewTaskName, ['colocar', 'añadir', 'poner', 'agregar']);
-    if (isIngredientTask) {
+    if (isIngredientAction(normalizedNewTaskName)) {
         const adhesiveTasks = Array.from(relevantTaskMap.values()).filter(t => isAction(t.normalizedName, ['untar', 'esparcir']));
         if(adhesiveTasks.length > 0) {
             adhesiveTasks.forEach(at => newPredecessors.add(at.id));
             foundSuggestion = true;
         } else {
+            // If no adhesive, depend on the previous layer or the base
+            const layerTasks = Array.from(relevantTaskMap.values()).filter(t => isIngredientAction(t.normalizedName));
             const baseTasks = Array.from(relevantTaskMap.values()).filter(t => isAction(t.normalizedName, ['tostar']));
-             baseTasks.forEach(bt => newPredecessors.add(bt.id));
-             if (baseTasks.length > 0) foundSuggestion = true;
+            const possiblePredecessors = [...layerTasks, ...baseTasks];
+
+            if (possiblePredecessors.length > 0) {
+              possiblePredecessors.forEach(p => newPredecessors.add(p.id));
+              foundSuggestion = true;
+            }
         }
     }
 
@@ -514,3 +526,5 @@ export default function EditTaskSheet({
     </Sheet>
   );
 }
+
+    
