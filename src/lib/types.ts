@@ -173,3 +173,19 @@ export const ConsolidateTasksOutputSchema = z.object({
     unconsolidatedTaskIds: z.array(z.string()).describe("Los IDs de las tareas que no pudieron ser consolidadas y deben permanecer como están.")
 });
 export type ConsolidateTasksOutput = z.infer<typeof ConsolidateTasksOutputSchema>;
+
+const ExistingTaskSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+
+export const SuggestPredecessorsForTaskInputSchema = z.object({
+  newTaskName: z.string().describe('El nombre de la nueva tarea para la que se necesitan sugerencias de predecesores.'),
+  existingTasks: z.array(ExistingTaskSchema).describe('La lista de todas las demás tareas existentes en el proyecto.'),
+});
+export type SuggestPredecessorsForTaskInput = z.infer<typeof SuggestPredecessorsForTaskInputSchema>;
+
+export const SuggestPredecessorsForTaskOutputSchema = z.object({
+    predecessorIds: z.array(z.string()).describe('Una lista de los IDs de las tareas existentes que se sugieren como predecesoras.'),
+});
+export type SuggestPredecessorsForTaskOutput = z.infer<typeof SuggestPredecessorsForTaskOutputSchema>;

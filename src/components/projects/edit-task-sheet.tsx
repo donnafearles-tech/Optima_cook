@@ -28,6 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { suggestResourceForTask } from '@/ai/flows/suggest-resource-for-task';
+import { suggestPredecessorsForTask } from '@/ai/flows/suggest-predecessors-for-task';
 
 
 interface EditTaskSheetProps {
@@ -114,7 +115,8 @@ export default function EditTaskSheet({
   const [predecessorIds, setPredecessorIds] = useState<string[]>([]);
   const [recipeIds, setRecipeIds] = useState<string[]>([]);
   const [resourceIds, setResourceIds] = useState<string[]>([]);
-  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isSuggestingResources, setIsSuggestingResources] = useState(false);
+  const [isSuggestingPreds, setIsSuggestingPreds] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -177,7 +179,7 @@ export default function EditTaskSheet({
         toast({ title: "No hay recursos", description: "No tienes recursos en tu inventario para sugerir.", variant: "destructive" });
         return;
     }
-    setIsSuggesting(true);
+    setIsSuggestingResources(true);
     try {
         const result = await suggestResourceForTask({ taskName: name, userResources: allResources });
         if (result.resourceIds.length > 0) {
@@ -190,7 +192,37 @@ export default function EditTaskSheet({
         console.error(e);
         toast({ title: 'Error de IA', description: 'No se pudieron obtener sugerencias.', variant: 'destructive' });
     } finally {
-        setIsSuggesting(false);
+        setIsSuggestingResources(false);
+    }
+  }
+
+  const handleSuggestPredecessors = async () => {
+    if (!name) {
+        toast({ title: "Falta el nombre", description: "Escribe un nombre para la tarea antes de pedir sugerencias.", variant: "destructive" });
+        return;
+    };
+    const existingTasks = allTasks.filter(t => t.id !== task?.id);
+    if (existingTasks.length === 0) {
+        toast({ title: "No hay otras tareas", description: "No hay otras tareas en el proyecto para establecer como dependencias.", variant: "destructive" });
+        return;
+    }
+    setIsSuggestingPreds(true);
+    try {
+        const result = await suggestPredecessorsForTask({ 
+            newTaskName: name, 
+            existingTasks: existingTasks.map(t => ({ id: t.id, name: t.name })) 
+        });
+        if (result.predecessorIds.length > 0) {
+            setPredecessorIds(prev => [...new Set([...prev, ...result.predecessorIds])]);
+            toast({ title: 'Dependencias Sugeridas', description: 'La IA ha sugerido nuevas dependencias.' });
+        } else {
+            toast({ title: 'Sin Sugerencias', description: 'La IA no encontró dependencias lógicas para esta tarea.' });
+        }
+    } catch(e) {
+        console.error(e);
+        toast({ title: 'Error de IA', description: 'No se pudieron obtener sugerencias de dependencias.', variant: 'destructive' });
+    } finally {
+        setIsSuggestingPreds(false);
     }
   }
 
@@ -263,8 +295,8 @@ export default function EditTaskSheet({
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <Label>Recursos Requeridos</Label>
-                   <Button type="button" size="sm" variant="ghost" onClick={handleSuggestResources} disabled={isSuggesting || !name}>
-                        {isSuggesting ? <Sparkles className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4" />}
+                   <Button type="button" size="sm" variant="ghost" onClick={handleSuggestResources} disabled={isSuggestingResources || !name}>
+                        {isSuggestingResources ? <Sparkles className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4" />}
                         Sugerencia IA
                     </Button>
                 </div>
@@ -277,7 +309,13 @@ export default function EditTaskSheet({
               </div>
 
               <div>
-                <Label>Dependencias (Predecesores)</Label>
+                <div className="flex justify-between items-center mb-1">
+                    <Label>Dependencias (Predecesores)</Label>
+                    <Button type="button" size="sm" variant="ghost" onClick={handleSuggestPredecessors} disabled={isSuggestingPreds || !name}>
+                        {isSuggestingPreds ? <Sparkles className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4" />}
+                        Sugerencia IA
+                    </Button>
+                </div>
                 <MultiSelectPopover
                     title="predecesores"
                     options={availablePredecessors}

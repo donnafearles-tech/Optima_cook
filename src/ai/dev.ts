@@ -7,4 +7,4 @@ import '@/ai/flows/extract-text-from-file.ts';
 import '@/ai/flows/suggest-resource-for-task.ts';
 import '@/ai/flows/suggest-keyword-for-resource.ts';
 import '@/ai/flows/consolidate-tasks.ts';
-
+import '@/ai/flows/suggest-predecessors-for-task.ts';
