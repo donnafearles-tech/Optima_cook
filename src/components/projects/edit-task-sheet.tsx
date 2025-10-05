@@ -146,13 +146,11 @@ export default function EditTaskSheet({
                 title: "Dependencias limpiadas",
                 description: "Se eliminaron algunas dependencias que apuntaban a tareas borradas.",
             });
-            // Auto-save this cleanup silently in the background
             onSave({ ...task, predecessorIds: validPredecessorIds });
         }
         
         setPredecessorIds(validPredecessorIds);
         
-        // Load other task data
         setName(task.name);
         if (task.duration < 60 || task.duration % 60 !== 0) {
           setTimeUnit('seconds');
@@ -269,7 +267,6 @@ export default function EditTaskSheet({
         return;
     }
     
-    // Filter tasks to only include those from the same recipe(s) as the current task.
     const relevantTasks = allTasks.filter(t => 
         t.id !== task?.id && (t.recipeIds || []).some(rId => (recipeIds || []).includes(rId))
     );
@@ -285,7 +282,6 @@ export default function EditTaskSheet({
     const normalizedNewTaskName = normalize(name);
     let foundSuggestion = false;
 
-    // This is the single source of truth for potential predecessors in this function.
     const relevantTaskMap = new Map(relevantTasks.map(t => [t.id, { ...t, normalizedName: normalize(t.name) }]));
     
     const isAction = (normalized: string, verbs: string[]) => verbs.some(v => normalized.startsWith(v));
@@ -323,14 +319,17 @@ export default function EditTaskSheet({
     
     // Reglas de Ensamblaje
     if (isIngredientAction(normalizedNewTaskName)) {
-        const adhesiveTasks = Array.from(relevantTaskMap.values()).filter(t => isAction(t.normalizedName, ['untar', 'esparcir']));
+        // This task is about adding an ingredient. It should depend on an adhesive or a previous layer.
+        const tasksInRecipe = allTasks.filter(t => (t.recipeIds || []).some(rId => (recipeIds || []).includes(rId)));
+
+        const adhesiveTasks = tasksInRecipe.filter(t => t.id !== task?.id && isAction(normalize(t.name), ['untar', 'esparcir']));
         if(adhesiveTasks.length > 0) {
             adhesiveTasks.forEach(at => newPredecessors.add(at.id));
             foundSuggestion = true;
         } else {
             // If no adhesive, depend on the previous layer or the base
-            const layerTasks = Array.from(relevantTaskMap.values()).filter(t => isIngredientAction(t.normalizedName));
-            const baseTasks = Array.from(relevantTaskMap.values()).filter(t => isAction(t.normalizedName, ['tostar']));
+            const layerTasks = tasksInRecipe.filter(t => t.id !== task?.id && isIngredientAction(normalize(t.name)));
+            const baseTasks = tasksInRecipe.filter(t => t.id !== task?.id && isAction(normalize(t.name), ['tostar']));
             const possiblePredecessors = [...layerTasks, ...baseTasks];
 
             if (possiblePredecessors.length > 0) {
