@@ -11,7 +11,7 @@ import EditTaskSheet from './edit-task-sheet';
 import EditRecipeDialog from './edit-recipe-dialog';
 import RecipeCard from './recipe-card';
 import { useFirebase, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, doc, writeBatch, getDocs } from 'firebase/firestore';
+import { collection, doc, writeBatch, getDocs, addDoc } from 'firebase/firestore';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { notFound, useRouter } from 'next/navigation';
 import {
@@ -32,6 +32,15 @@ interface ProjectClientPageProps {
   onImportRecipe: () => void;
 }
 
+const normalize = (str: string) => {
+    return str
+        .toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[.,¡!¿]/g, '')
+        .replace(/\b(la|el|un|una|de|para|los|las|a|con|en)\b/g, '')
+        .trim().replace(/\s+/g, ' ');
+};
+
 export default function ProjectClientPage({ projectId, userId, onImportRecipe }: ProjectClientPageProps) {
   const [editingTask, setEditingTask] = useState<Task | null | 'new'>(null);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null | 'new'>(null);
@@ -40,6 +49,8 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const [isClearing, setIsClearing] = useState(false);
   const [isGuideStale, setIsGuideStale] = useState(false);
   const [showDependencyWarning, setShowDependencyWarning] = useState(false);
+  const [taskWithUnificationSuggestion, setTaskWithUnificationSuggestion] = useState<string | null>(null);
+
   const { toast } = useToast();
   const { firestore } = useFirebase();
   const router = useRouter();
@@ -126,7 +137,15 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     });
   };
 
-  const handleTaskSave = (taskToSave: Task) => {
+  const checkForSimilarTasks = (newTask: Task, allCurrentTasks: Task[]) => {
+    const normalizedNewName = normalize(newTask.name);
+    return allCurrentTasks.some(existingTask => {
+      if (existingTask.id === newTask.id) return false;
+      return normalize(existingTask.name) === normalizedNewName;
+    });
+  };
+
+  const handleTaskSave = async (taskToSave: Task) => {
     const tasksCollection = collection(projectRef, 'tasks');
     const { id, ...dataToSave } = taskToSave;
 
@@ -147,15 +166,22 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     if (id) {
         updateDocumentNonBlocking(doc(tasksCollection, id), dataToSave);
     } else {
-        addDocumentNonBlocking(tasksCollection, dataToSave);
+        const newDocRef = await addDoc(tasksCollection, dataToSave);
+        const newTaskWithId = { ...taskToSave, id: newDocRef.id };
+        const hasSimilar = checkForSimilarTasks(newTaskWithId, allTasks || []);
+        if (hasSimilar) {
+            setTaskWithUnificationSuggestion(newDocRef.id);
+        }
     }
-
     setEditingTask(null);
   };
 
   const handleTaskDelete = (taskId: string) => {
     const taskDoc = doc(projectRef, 'tasks', taskId);
     deleteDocumentNonBlocking(taskDoc);
+    if(taskWithUnificationSuggestion === taskId) {
+        setTaskWithUnificationSuggestion(null);
+    }
 
     if (project?.cpmResult) {
       updateDocumentNonBlocking(projectRef, { cpmResult: null });
@@ -228,21 +254,12 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     }
   };
 
-  const consolidateTasksNatively = async (): Promise<boolean> => {
+const consolidateTasksNatively = async (): Promise<boolean> => {
     const tasks = (await getDocs(tasksQuery!)).docs.map(d => ({id: d.id, ...d.data()} as Task));
     
     if (tasks.length < 1) {
         return false;
     }
-
-    const normalize = (str: string) => {
-        return str
-            .toLowerCase()
-            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-            .replace(/[.,¡!¿]/g, '')
-            .replace(/\b(la|el|un|una|de|para|los|las|a|con|en)\b/g, '')
-            .trim().replace(/\s+/g, ' ');
-    };
 
     const taskGroups = new Map<string, Task[]>();
     tasks.forEach(task => {
@@ -271,7 +288,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
                 resourceIds: [...new Set(group.flatMap(t => t.resourceIds || []))],
                 isAssemblyStep: group.some(t => t.isAssemblyStep),
                 predecessorIds: [...new Set(group.flatMap(t => t.predecessorIds || []))],
-                isConsolidated: true, // Marcar como consolidada
+                isConsolidated: true, 
             };
             
             batch.update(doc(tasksCollection, masterTask.id), consolidatedData);
@@ -297,7 +314,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
             if (predecessorRedirects.has(predId)) {
                 newPredecessors.delete(predId);
                 const masterId = predecessorRedirects.get(predId)!;
-                newPredecessors.add(masterId);
+                if(masterId !== task.id) newPredecessors.add(masterId);
                 needsUpdate = true;
             }
         });
@@ -321,23 +338,28 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     }
 
     await batch.commit();
-    setIsGuideStale(true);
-    toast({ title: '¡Tareas Unificadas!', description: 'Se han fusionado tareas duplicadas automáticamente.' });
     return true;
 };
+
+  const handleManualConsolidate = async () => {
+    const consolidationHappened = await consolidateTasksNatively();
+    if(consolidationHappened) {
+      setIsGuideStale(true);
+      toast({ title: '¡Tareas Unificadas!', description: 'Se han fusionado tareas duplicadas.' });
+    } else {
+      toast({ title: 'Sin cambios', description: 'No se encontraron tareas para unificar.' });
+    }
+    setTaskWithUnificationSuggestion(null);
+  }
 
   const handleCalculatePath = async (force = false) => {
     setIsCalculatingPath(true);
     
     try {
-        await consolidateTasksNatively();
-
-        const currentTasksSnapshot = await getDocs(tasksQuery!);
-        const currentTasks = currentTasksSnapshot.docs.map(d => d.data() as Task);
-
         if (!force) {
-            const tasksWithoutPredecessors = currentTasks.filter(t => t.predecessorIds.length === 0);
-            if (tasksWithoutPredecessors.length > 1 && currentTasks.length > 1) {
+            const tasks = allTasks || [];
+            const tasksWithoutPredecessors = tasks.filter(t => t.predecessorIds.length === 0);
+            if (tasksWithoutPredecessors.length > 1 && tasks.length > 1) {
                 setShowDependencyWarning(true);
                 setIsCalculatingPath(false);
                 return;
@@ -520,11 +542,13 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
                     allTasks={allTasks || []}
                     allRecipes={allRecipes || []}
                     allResources={allResources || []}
+                    taskWithUnificationSuggestion={taskWithUnificationSuggestion}
                     onEditRecipe={() => setEditingRecipe(recipe)}
                     onDeleteRecipe={() => handleRecipeDelete(recipe.id)}
                     onAddTask={() => handleOpenEditTask('new')}
                     onEditTask={(task) => handleOpenEditTask(task)}
                     onDeleteTask={handleTaskDelete}
+                    onConsolidate={handleManualConsolidate}
                 />
             ))}
              {(allRecipes || []).length === 0 && (
