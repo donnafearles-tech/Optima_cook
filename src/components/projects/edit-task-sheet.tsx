@@ -155,8 +155,10 @@ export default function EditTaskSheet({
                 title: "Dependencias limpiadas",
                 description: "Se eliminaron algunas dependencias que apuntaban a tareas borradas.",
             });
-            // Auto-save this cleanup silently in the background
-            onSave({ ...task, predecessorIds: validPredecessorIds });
+            // Auto-save this cleanup silently in the background if the task already exists
+            if (task.id) {
+              onSave({ ...task, predecessorIds: validPredecessorIds });
+            }
         }
         
         setPredecessorIds(validPredecessorIds);
