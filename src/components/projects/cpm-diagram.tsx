@@ -4,17 +4,12 @@ import type { Task } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
+import mermaid from 'mermaid';
 
-// Lazy-load mermaid
-const mermaid = (() => {
-  let mermaidAPI;
-  return async () => {
-    if (mermaidAPI) return mermaidAPI;
-    const lib = await import('mermaid');
-    lib.default.initialize({
-      startOnLoad: false,
-      theme: 'base',
-      themeVariables: {
+mermaid.initialize({
+    startOnLoad: false,
+    theme: 'base',
+    themeVariables: {
         primaryColor: 'hsl(11 87% 70%)',
         primaryTextColor: '#fff',
         primaryBorderColor: 'hsl(11 87% 60%)',
@@ -30,16 +25,13 @@ const mermaid = (() => {
         'c-node-norm-fill': 'hsl(145, 50%, 40%)', // Verde oscuro
         'cnode-norm-stroke': 'hsl(145, 50%, 30%)',
         'c-node-norm-text': '#fff',
-      },
-      flowchart: {
+    },
+    flowchart: {
         useMaxWidth: true,
         htmlLabels: true,
-      },
-    });
-    mermaidAPI = lib.default;
-    return mermaidAPI;
-  };
-})();
+        curve: 'basis'
+    },
+});
 
 export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -49,8 +41,7 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
       return '';
     }
 
-    let graph = `%%{init: {'flowchart': {'curve': 'basis'}}}%%\n`;
-    graph += 'graph TD;\n';
+    let graph = `graph TD;\n`;
     
     // Define classes for node styling
     graph += 'classDef critical fill:hsl(24, 40%, 30%),stroke:hsl(24, 40%, 20%),color:#fff;\n';
@@ -62,7 +53,7 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
         const taskName = task.name.replace(/"/g, '#quot;');
         
         // Define the node with its text content
-        graph += `${taskId}("${taskName}<br>ES: ${task.es} | EF: ${task.ef}<br>LS: ${task.ls} | LF: ${task.lf}<br>Holgura: ${task.float}");\n`;
+        graph += `${taskId}("<div style='padding: 5px; white-space: normal; break-word: break-all;'>${taskName}<br>ES: ${task.es} | EF: ${task.ef}<br>LS: ${task.ls} | LF: ${task.lf}<br>Holgura: ${task.float}</div>");\n`;
         
         // Apply class based on isCritical
         graph += `class ${taskId} ${task.isCritical ? 'critical' : 'noncritical'};\n`;
@@ -81,13 +72,22 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
 
   useEffect(() => {
     if (mermaidChart && containerRef.current) {
-      mermaid().then(m => {
-        m.render('mermaid-graph', mermaidChart, (svgCode) => {
-          if (containerRef.current) {
-              containerRef.current.innerHTML = svgCode;
-          }
-        });
-      });
+        // Clear previous render
+        if (containerRef.current) {
+            containerRef.current.innerHTML = '';
+        }
+        
+        const renderMermaid = async () => {
+            try {
+                const { svg } = await mermaid.render('mermaid-graph', mermaidChart);
+                if (containerRef.current) {
+                    containerRef.current.innerHTML = svg;
+                }
+            } catch (error) {
+                console.error("Error rendering Mermaid chart:", error);
+            }
+        };
+        renderMermaid();
     }
   }, [mermaidChart]);
 
@@ -118,9 +118,9 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
             <CardDescription>Visualización del flujo de trabajo. Los nodos marrones indican la ruta crítica.</CardDescription>
         </CardHeader>
         <CardContent className="min-h-[400px] overflow-auto">
-            <div ref={containerRef} className="mermaid-container w-full h-full">
+            <div ref={containerRef} className="mermaid-container w-full h-full flex justify-center items-center">
                 {/* Mermaid will render the graph here */}
-                <div id="mermaid-graph"></div>
+                <div id="mermaid-graph-container" className="w-full h-full"></div>
             </div>
         </CardContent>
     </Card>
