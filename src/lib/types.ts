@@ -11,6 +11,7 @@ export interface Task {
   resourceIds: string[];
   status: TaskStatus;
   isAssemblyStep?: boolean;
+  isConsolidated?: boolean;
   // Propiedades CPM
   es?: number; // Early Start
   ef?: number; // Early Finish

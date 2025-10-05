@@ -263,19 +263,20 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
         if (group.length > 1) {
             consolidationHappened = true;
             const masterTask = group.reduce((a, b) => a.name.length <= b.name.length ? a : b);
-            const duplicateTasks = group.filter(t => t.id !== masterTask.id);
-
-            const consolidatedData = {
+            
+            const consolidatedData: Partial<Task> = {
                 name: masterTask.name,
                 duration: Math.max(...group.map(t => t.duration)),
                 recipeIds: [...new Set(group.flatMap(t => t.recipeIds || []))],
                 resourceIds: [...new Set(group.flatMap(t => t.resourceIds || []))],
                 isAssemblyStep: group.some(t => t.isAssemblyStep),
                 predecessorIds: [...new Set(group.flatMap(t => t.predecessorIds || []))],
+                isConsolidated: true, // Marcar como consolidada
             };
             
             batch.update(doc(tasksCollection, masterTask.id), consolidatedData);
-
+            
+            const duplicateTasks = group.filter(t => t.id !== masterTask.id);
             duplicateTasks.forEach(dup => {
                 tasksToDelete.add(dup.id);
                 predecessorRedirects.set(dup.id, masterTask.id);
@@ -593,5 +594,3 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     </>
   );
 }
-
-    

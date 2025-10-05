@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Edit, Trash2, Plus, Hammer } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, Plus, Hammer, Combine } from 'lucide-react';
 import type { Recipe, Task, UserResource } from '@/lib/types';
 import {
   DropdownMenu,
@@ -92,7 +92,15 @@ export default function RecipeCard({
                     return (
                         <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg">
                            <div className="flex-1">
-                                <p className="font-medium">{task.name}</p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-medium">{task.name}</p>
+                                  {task.isConsolidated && (
+                                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                                      <Combine className="mr-1 h-3 w-3" />
+                                      Unificada
+                                    </Badge>
+                                  )}
+                                </div>
                                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-1 text-xs text-muted-foreground">
                                     <span>Duración: {formatDuration(task.duration)}</span>
                                     {recipes.length > 1 && (
