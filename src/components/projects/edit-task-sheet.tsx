@@ -277,14 +277,15 @@ export default function EditTaskSheet({
     const normalizedNewTaskName = normalize(name);
     let foundSuggestion = false;
 
-    const taskMap = new Map(relevantTasks.map(t => [t.id, { ...t, normalizedName: normalize(t.name) }]));
+    // This is the single source of truth for potential predecessors in this function.
+    const relevantTaskMap = new Map(relevantTasks.map(t => [t.id, { ...t, normalizedName: normalize(t.name) }]));
     
     const isAction = (normalized: string, verbs: string[]) => verbs.some(v => normalized.startsWith(v));
 
     // Reglas de Preparación y Cocción
     if (isAction(normalizedNewTaskName, ['picar', 'cortar', 'rebanar'])) {
         const ingredient = normalizedNewTaskName.split(' ').slice(1).join(' ');
-        taskMap.forEach(potentialPred => {
+        relevantTaskMap.forEach(potentialPred => {
             if (potentialPred.normalizedName.endsWith(ingredient) && isAction(potentialPred.normalizedName, ['lavar', 'pelar'])) {
                 newPredecessors.add(potentialPred.id);
                 foundSuggestion = true;
@@ -292,8 +293,8 @@ export default function EditTaskSheet({
         });
     } else if (isAction(normalizedNewTaskName, ['sofreir', 'freir', 'hornear', 'asar', 'hervir'])) {
         const ingredient = normalizedNewTaskName.split(' ').slice(1).join(' ');
-        taskMap.forEach(potentialPred => {
-            if (potentialPred.normalizedName.endsWith(ingredient) && isAction(potentialPred.normalizedName, ['picar', 'cortar', 'sazonar'])) {
+        relevantTaskMap.forEach(potentialPred => {
+            if (potentialPred.normalizedName.endsWith(ingredient) && isAction(potentialPred.normalizedName, ['picar', 'cortar', 'sazonar', 'rebanar'])) {
                 newPredecessors.add(potentialPred.id);
                 foundSuggestion = true;
             }
@@ -303,7 +304,7 @@ export default function EditTaskSheet({
     // Reglas de Equipos
     if (isAction(normalizedNewTaskName, ['hornear', 'freir', 'asar'])) {
       const equipment = isAction(normalizedNewTaskName, ['hornear']) ? 'horno' : 'sarten';
-      taskMap.forEach(potentialPred => {
+      relevantTaskMap.forEach(potentialPred => {
         if (potentialPred.normalizedName === `precalentar ${equipment}`) {
           newPredecessors.add(potentialPred.id);
           foundSuggestion = true;
@@ -314,13 +315,14 @@ export default function EditTaskSheet({
     // Reglas de Ensamblaje
     const isIngredientTask = isAction(normalizedNewTaskName, ['colocar', 'añadir', 'poner', 'agregar']);
     if (isIngredientTask) {
-        const adhesiveTasks = Array.from(taskMap.values()).filter(t => isAction(t.normalizedName, ['untar', 'esparcir']));
+        const adhesiveTasks = Array.from(relevantTaskMap.values()).filter(t => isAction(t.normalizedName, ['untar', 'esparcir']));
         if(adhesiveTasks.length > 0) {
             adhesiveTasks.forEach(at => newPredecessors.add(at.id));
             foundSuggestion = true;
         } else {
-            const baseTasks = Array.from(taskMap.values()).filter(t => isAction(t.normalizedName, ['tostar']));
+            const baseTasks = Array.from(relevantTaskMap.values()).filter(t => isAction(t.normalizedName, ['tostar']));
              baseTasks.forEach(bt => newPredecessors.add(bt.id));
+             if (baseTasks.length > 0) foundSuggestion = true;
         }
     }
 
