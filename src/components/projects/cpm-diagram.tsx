@@ -32,9 +32,10 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
 
     tasks.forEach(task => {
         const taskId = task.id.replace(/[^a-zA-Z0-9_]/g, '_');
+        // Escapamos comillas y envolvemos el texto en un div con estilo para el ajuste de línea
         const taskName = task.name.replace(/"/g, '#quot;');
         
-        const nodeLabel = `"${taskName}<br>ES: ${task.es} | EF: ${task.ef}<br>LS: ${task.ls} | LF: ${task.lf}<br>Holgura: ${task.float}"`;
+        const nodeLabel = `"<div style='padding: 5px; word-wrap: break-word;'>${taskName}<br>ES: ${task.es} | EF: ${task.ef}<br>LS: ${task.ls} | LF: ${task.lf}<br>Holgura: ${task.float}</div>"`;
         
         graph += `    ${taskId}[${nodeLabel}];\n`;
         graph += `    class ${taskId} ${task.isCritical ? 'critical' : 'nonCritical'};\n`;
