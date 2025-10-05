@@ -136,7 +136,7 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
                   )}
                 >
                   <CardContent className="p-3 text-center">
-                    <p className="font-bold text-sm truncate">{node.task.name}</p>
+                    <p className="font-bold text-sm whitespace-normal break-words">{node.task.name}</p>
                     <Separator className={cn("my-2", node.task.isCritical ? "bg-primary-foreground/30" : "bg-border")} />
                     <div className="grid grid-cols-2 text-xs gap-x-2 gap-y-1 text-left">
                         <div className="font-semibold">ES: {node.task.es}</div>
