@@ -36,7 +36,6 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const [editingTask, setEditingTask] = useState<Task | null | 'new'>(null);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null | 'new'>(null);
   const [isSuggesting, setIsSuggesting] = useState(false);
-  const [isConsolidating, setIsConsolidating] = useState(false);
   const [isCalculatingPath, setIsCalculatingPath] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isGuideStale, setIsGuideStale] = useState(false);
@@ -229,153 +228,140 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     }
   };
 
-const handleConsolidateTasks = async () => {
-    setIsConsolidating(true);
-    const tasks = allTasks || [];
+  const consolidateTasksNatively = async (): Promise<boolean> => {
+    const tasks = (await getDocs(tasksQuery!)).docs.map(d => ({id: d.id, ...d.data()} as Task));
+    
     if (tasks.length < 1) {
-        toast({ title: 'No hay tareas', description: 'No hay tareas para unificar.', variant: 'destructive' });
-        setIsConsolidating(false);
-        return;
+        return false;
     }
 
-    try {
-        const normalize = (str: string) => {
-            return str
-                .toLowerCase()
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-                .replace(/[.,¡!¿]/g, '')
-                .replace(/\b(la|el|un|una|de|para|los|las|a|con|en)\b/g, '')
-                .trim().replace(/\s+/g, ' ');
-        };
+    const normalize = (str: string) => {
+        return str
+            .toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[.,¡!¿]/g, '')
+            .replace(/\b(la|el|un|una|de|para|los|las|a|con|en)\b/g, '')
+            .trim().replace(/\s+/g, ' ');
+    };
 
-        const taskGroups = new Map<string, Task[]>();
-        tasks.forEach(task => {
-            const normalizedName = normalize(task.name);
-            if (!taskGroups.has(normalizedName)) {
-                taskGroups.set(normalizedName, []);
-            }
-            taskGroups.get(normalizedName)!.push(task);
-        });
-
-        const batch = writeBatch(firestore);
-        const tasksCollection = collection(projectRef, 'tasks');
-        const tasksToDelete = new Set<string>();
-        const predecessorRedirects = new Map<string, string>();
-        let consolidationHappened = false;
-
-        // First pass: Identify masters, duplicates, and prepare updates
-        for (const group of taskGroups.values()) {
-            if (group.length > 1) {
-                consolidationHappened = true;
-                const masterTask = group.reduce((a, b) => a.name.length <= b.name.length ? a : b);
-                
-                const duplicateTasks = group.filter(t => t.id !== masterTask.id);
-
-                const consolidatedData = {
-                    name: masterTask.name,
-                    duration: group.reduce((total, t) => total + t.duration, 0),
-                    recipeIds: [...new Set(group.flatMap(t => t.recipeIds || []))],
-                    resourceIds: [...new Set(group.flatMap(t => t.resourceIds || []))],
-                    isAssemblyStep: group.some(t => t.isAssemblyStep),
-                    predecessorIds: [...new Set(group.flatMap(t => t.predecessorIds || []))],
-                };
-                
-                batch.update(doc(tasksCollection, masterTask.id), consolidatedData);
-
-                duplicateTasks.forEach(dup => {
-                    tasksToDelete.add(dup.id);
-                    predecessorRedirects.set(dup.id, masterTask.id);
-                });
-            }
+    const taskGroups = new Map<string, Task[]>();
+    tasks.forEach(task => {
+        const normalizedName = normalize(task.name);
+        if (!taskGroups.has(normalizedName)) {
+            taskGroups.set(normalizedName, []);
         }
-        
-        if (!consolidationHappened) {
-            toast({ title: 'Sin Cambios', description: 'No se encontraron tareas duplicadas para unificar.' });
-            setIsConsolidating(false);
-            return;
-        }
+        taskGroups.get(normalizedName)!.push(task);
+    });
 
-        const remainingTasks = tasks.filter(t => !tasksToDelete.has(t.id));
-        remainingTasks.forEach(task => {
-            let needsUpdate = false;
-            const newPredecessors = new Set(task.predecessorIds);
+    const batch = writeBatch(firestore);
+    const tasksCollection = collection(projectRef, 'tasks');
+    const tasksToDelete = new Set<string>();
+    const predecessorRedirects = new Map<string, string>();
+    let consolidationHappened = false;
 
-            task.predecessorIds.forEach(predId => {
-                if (predecessorRedirects.has(predId)) {
-                    newPredecessors.delete(predId);
-                    const masterId = predecessorRedirects.get(predId)!;
-                    newPredecessors.add(masterId);
-                    needsUpdate = true;
-                }
+    for (const group of taskGroups.values()) {
+        if (group.length > 1) {
+            consolidationHappened = true;
+            const masterTask = group.reduce((a, b) => a.name.length <= b.name.length ? a : b);
+            const duplicateTasks = group.filter(t => t.id !== masterTask.id);
+
+            const consolidatedData = {
+                name: masterTask.name,
+                duration: Math.max(...group.map(t => t.duration)),
+                recipeIds: [...new Set(group.flatMap(t => t.recipeIds || []))],
+                resourceIds: [...new Set(group.flatMap(t => t.resourceIds || []))],
+                isAssemblyStep: group.some(t => t.isAssemblyStep),
+                predecessorIds: [...new Set(group.flatMap(t => t.predecessorIds || []))],
+            };
+            
+            batch.update(doc(tasksCollection, masterTask.id), consolidatedData);
+
+            duplicateTasks.forEach(dup => {
+                tasksToDelete.add(dup.id);
+                predecessorRedirects.set(dup.id, masterTask.id);
             });
+        }
+    }
+    
+    if (!consolidationHappened) {
+        return false; // No changes to commit
+    }
 
-            if (newPredecessors.has(task.id)) {
-                newPredecessors.delete(task.id);
+    const remainingTasks = tasks.filter(t => !tasksToDelete.has(t.id));
+    remainingTasks.forEach(task => {
+        let needsUpdate = false;
+        const newPredecessors = new Set(task.predecessorIds);
+
+        task.predecessorIds.forEach(predId => {
+            if (predecessorRedirects.has(predId)) {
+                newPredecessors.delete(predId);
+                const masterId = predecessorRedirects.get(predId)!;
+                newPredecessors.add(masterId);
                 needsUpdate = true;
             }
-
-            if (needsUpdate) {
-                batch.update(doc(tasksCollection, task.id), { predecessorIds: Array.from(newPredecessors) });
-            }
-        });
-        
-        tasksToDelete.forEach(id => {
-            batch.delete(doc(tasksCollection, id));
         });
 
-        if (project?.cpmResult) {
-            batch.update(projectRef, { cpmResult: null });
+        if (newPredecessors.has(task.id)) {
+            newPredecessors.delete(task.id);
+            needsUpdate = true;
         }
 
-        await batch.commit();
-
-        setIsGuideStale(true);
-        toast({ title: '¡Tareas Unificadas!', description: 'Se han fusionado tareas duplicadas. La guía necesita recalcularse.' });
-
-    } catch (error) {
-        console.error("Error en la unificación nativa:", error);
-        if (error instanceof Error) {
-           toast({ title: 'Error de Unificación', description: error.message, variant: 'destructive' });
-        } else {
-           toast({ title: 'Error de Unificación', description: 'No se pudieron unificar las tareas.', variant: 'destructive' });
+        if (needsUpdate) {
+            batch.update(doc(tasksCollection, task.id), { predecessorIds: Array.from(newPredecessors) });
         }
-    } finally {
-        setIsConsolidating(false);
+    });
+    
+    tasksToDelete.forEach(id => {
+        batch.delete(doc(tasksCollection, id));
+    });
+
+    if (project?.cpmResult) {
+        batch.update(projectRef, { cpmResult: null });
     }
+
+    await batch.commit();
+    setIsGuideStale(true);
+    toast({ title: '¡Tareas Unificadas!', description: 'Se han fusionado tareas duplicadas automáticamente.' });
+    return true;
 };
 
   const handleCalculatePath = async (force = false) => {
     setIsCalculatingPath(true);
-    const currentTasks = allTasks || [];
-    if (!force) {
-        const tasksWithoutPredecessors = currentTasks.filter(t => t.predecessorIds.length === 0);
-        if (tasksWithoutPredecessors.length > 1 && currentTasks.length > 1) {
-            setShowDependencyWarning(true);
-            setIsCalculatingPath(false);
-            return;
-        }
-    }
-
+    
     try {
-      await updateDocumentNonBlocking(projectRef, { cpmResult: null });
-      router.push(`/projects/${projectId}/guide`);
+        await consolidateTasksNatively();
 
-      const runCalculation = async () => {
-        try {
-          const freshTasksSnapshot = await getDocs(tasksQuery!);
-          const tasksForCalc = freshTasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
-          
-          if (tasksForCalc.length === 0) return;
+        const currentTasksSnapshot = await getDocs(tasksQuery!);
+        const currentTasks = currentTasksSnapshot.docs.map(d => d.data() as Task);
 
-          const cpmResult = calculateCPM(tasksForCalc);
-          await updateDocumentNonBlocking(projectRef, { cpmResult });
-          setIsGuideStale(false);
-        } catch (calcError) {
-           console.error("Error durante el cálculo de CPM en segundo plano:", calcError);
+        if (!force) {
+            const tasksWithoutPredecessors = currentTasks.filter(t => t.predecessorIds.length === 0);
+            if (tasksWithoutPredecessors.length > 1 && currentTasks.length > 1) {
+                setShowDependencyWarning(true);
+                setIsCalculatingPath(false);
+                return;
+            }
         }
-      };
-  
-      runCalculation();
+
+        await updateDocumentNonBlocking(projectRef, { cpmResult: null });
+        router.push(`/projects/${projectId}/guide`);
+
+        const runCalculation = async () => {
+            try {
+              const freshTasksSnapshot = await getDocs(tasksQuery!);
+              const tasksForCalc = freshTasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
+              
+              if (tasksForCalc.length === 0) return;
+
+              const cpmResult = calculateCPM(tasksForCalc);
+              await updateDocumentNonBlocking(projectRef, { cpmResult });
+              setIsGuideStale(false);
+            } catch (calcError) {
+               console.error("Error durante el cálculo de CPM en segundo plano:", calcError);
+            }
+        };
+    
+        runCalculation();
   
     } catch(error) {
       console.error(error);
@@ -511,14 +497,6 @@ const handleConsolidateTasks = async () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <h2 className="text-2xl font-bold tracking-tight font-headline flex-1">Recetas</h2>
           <div className="flex gap-2">
-             <Button variant="outline" onClick={handleConsolidateTasks} disabled={isConsolidating || (allTasks || []).length < 2}>
-              {isConsolidating ? (
-                <Combine className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Combine className="mr-2 h-4 w-4" />
-              )}
-              Unificar Tareas
-            </Button>
             <Button variant="outline" onClick={handleSuggestDependencies} disabled={isSuggesting || (allTasks || []).length < 2}>
               {isSuggesting ? (
                 <Wand2 className="mr-2 h-4 w-4 animate-spin" />
