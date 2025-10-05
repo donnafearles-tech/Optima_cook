@@ -1,167 +1,128 @@
 'use client';
-import React, { useLayoutEffect, useRef, useState, useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import type { Task } from '@/lib/types';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import { Separator } from '../ui/separator';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { AlertTriangle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 
-interface Node {
-  id: string;
-  level: number;
-  task: Task;
-}
-
-// Function to calculate node levels
-function calculateNodeLevels(tasks: Task[]): Node[] {
-  if (!tasks || tasks.length === 0) return [];
-  
-  const taskMap = new Map<string, Task>(tasks.map(t => [t.id, t]));
-  const adj = new Map<string, string[]>();
-  const inDegree = new Map<string, number>();
-
-  for (const task of tasks) {
-    adj.set(task.id, []);
-    inDegree.set(task.id, 0);
-  }
-
-  for (const task of tasks) {
-    for (const predId of task.predecessorIds) {
-      if (adj.has(predId)) {
-        adj.get(predId)!.push(task.id);
-        inDegree.set(task.id, (inDegree.get(task.id) || 0) + 1);
-      }
-    }
-  }
-
-  const queue: string[] = [];
-  tasks.forEach(task => {
-    if (inDegree.get(task.id) === 0) {
-      queue.push(task.id);
-    }
-  });
-
-  const levels = new Map<string, number>();
-  let level = 0;
-  while (queue.length > 0) {
-    const size = queue.length;
-    for (let i = 0; i < size; i++) {
-      const u = queue.shift()!;
-      levels.set(u, level);
-      for (const v of adj.get(u) || []) {
-        inDegree.set(v, (inDegree.get(v) || 0) - 1);
-        if (inDegree.get(v) === 0) {
-          queue.push(v);
-        }
-      }
-    }
-    level++;
-  }
-
-  return tasks.map(task => ({
-    id: task.id,
-    level: levels.get(task.id) ?? 0,
-    task,
-  })).sort((a,b) => a.level - b.level);
-}
-
+// Lazy-load mermaid
+const mermaid = (() => {
+  let mermaidAPI;
+  return async () => {
+    if (mermaidAPI) return mermaidAPI;
+    const lib = await import('mermaid');
+    lib.default.initialize({
+      startOnLoad: false,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: 'hsl(11 87% 70%)',
+        primaryTextColor: '#fff',
+        primaryBorderColor: 'hsl(11 87% 60%)',
+        lineColor: 'hsl(11 87% 70%)',
+        textColor: '#333',
+        mainBkg: 'hsl(39 33% 97%)',
+        // --- Custom class colors ---
+        // Critical path
+        'c-node-crit-fill': 'hsl(24, 40%, 30%)', // Marrón oscuro
+        'c-node-crit-stroke': 'hsl(24, 40%, 20%)',
+        'c-node-crit-text': '#fff',
+        // Non-critical path
+        'c-node-norm-fill': 'hsl(145, 50%, 40%)', // Verde oscuro
+        'cnode-norm-stroke': 'hsl(145, 50%, 30%)',
+        'c-node-norm-text': '#fff',
+      },
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true,
+      },
+    });
+    mermaidAPI = lib.default;
+    return mermaidAPI;
+  };
+})();
 
 export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
-  const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
-  const nodeRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  const nodes = useMemo(() => calculateNodeLevels(tasks), [tasks]);
 
-  useLayoutEffect(() => {
-    if (Object.values(nodeRefs.current).every(ref => ref)) {
-      const newPositions: Record<string, { x: number; y: number }> = {};
-      Object.keys(nodeRefs.current).forEach(id => {
-        const el = nodeRefs.current[id];
-        if (el) {
-          newPositions[id] = { x: el.offsetLeft + el.offsetWidth / 2, y: el.offsetTop + el.offsetHeight / 2 };
-        }
-      });
-      setPositions(newPositions);
+  const mermaidChart = useMemo(() => {
+    if (!tasks || tasks.length === 0 || tasks.some(t => t.es === undefined)) {
+      return '';
     }
-  }, [nodes]);
 
-  if (!tasks || tasks.length === 0 || tasks.some(t => t.es === undefined || t.ef === undefined)) {
+    let graph = `%%{init: {'flowchart': {'curve': 'basis'}}}%%\n`;
+    graph += 'graph TD;\n';
+    
+    // Define classes for node styling
+    graph += 'classDef critical fill:hsl(24, 40%, 30%),stroke:hsl(24, 40%, 20%),color:#fff;\n';
+    graph += 'classDef noncritical fill:hsl(145, 50%, 40%),stroke:hsl(145, 50%, 30%),color:#fff;\n';
+
+    tasks.forEach(task => {
+        // Sanitize task name for Mermaid ID
+        const taskId = task.id.replace(/[^a-zA-Z0-9_]/g, '_');
+        const taskName = task.name.replace(/"/g, '#quot;');
+        
+        // Define the node with its text content
+        graph += `${taskId}("${taskName}<br>ES: ${task.es} | EF: ${task.ef}<br>LS: ${task.ls} | LF: ${task.lf}<br>Holgura: ${task.float}");\n`;
+        
+        // Apply class based on isCritical
+        graph += `class ${taskId} ${task.isCritical ? 'critical' : 'noncritical'};\n`;
+
+        // Define dependencies (links)
+        if (task.predecessorIds && task.predecessorIds.length > 0) {
+            task.predecessorIds.forEach(predId => {
+                const predecessorTaskId = predId.replace(/[^a-zA-Z0-9_]/g, '_');
+                graph += `${predecessorTaskId} --> ${taskId};\n`;
+            });
+        }
+    });
+    
+    return graph;
+  }, [tasks]);
+
+  useEffect(() => {
+    if (mermaidChart && containerRef.current) {
+      mermaid().then(m => {
+        m.render('mermaid-graph', mermaidChart, (svgCode) => {
+          if (containerRef.current) {
+              containerRef.current.innerHTML = svgCode;
+          }
+        });
+      });
+    }
+  }, [mermaidChart]);
+
+  if (!tasks || tasks.length === 0 || tasks.some(t => t.es === undefined)) {
     return (
-        <div className="text-center p-8 text-muted-foreground">
-            No hay datos de cronograma para mostrar. Por favor, calcula la Ruta Óptima primero.
-        </div>
+        <Card className="mt-4">
+            <CardHeader>
+                <CardTitle className="font-headline">Diagrama de Red (CPM)</CardTitle>
+                <CardDescription>Visualización del flujo de trabajo.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Datos Incompletos</AlertTitle>
+                    <AlertDescription>
+                        No hay datos de cronograma para mostrar. Por favor, calcula la Ruta Óptima primero.
+                    </AlertDescription>
+                </Alert>
+            </CardContent>
+        </Card>
     );
   }
-  
-  const levels = Array.from(new Set(nodes.map(n => n.level)));
 
   return (
-    <div ref={containerRef} className="relative w-full overflow-x-auto p-4 min-h-[500px]">
-      <svg className="absolute top-0 left-0 w-full h-full pointer-events-none z-0">
-        <defs>
-          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" className="fill-primary" />
-          </marker>
-        </defs>
-        {nodes.map(node =>
-          node.task.predecessorIds.map(predId => {
-            const startPos = positions[predId];
-            const endPos = positions[node.id];
-            if (!startPos || !endPos) return null;
-
-            return (
-              <path
-                key={`${predId}-${node.id}`}
-                d={`M ${startPos.x},${startPos.y} C ${startPos.x + 80},${startPos.y} ${endPos.x - 80},${endPos.y} ${endPos.x},${endPos.y}`}
-                className="stroke-primary/80"
-                strokeWidth="2.5"
-                fill="none"
-                markerEnd="url(#arrowhead)"
-              />
-            );
-          })
-        )}
-      </svg>
-      <div className="flex gap-16 items-start relative z-10">
-        {levels.map(level => (
-          <div key={level} className="flex flex-col gap-8 items-center">
-            {nodes.filter(n => n.level === level).map(node => (
-              <div key={node.id} ref={el => (nodeRefs.current[node.id] = el)}>
-                <Card 
-                  className={cn("w-48 shadow-lg", 
-                    node.task.isCritical 
-                    ? "bg-primary text-primary-foreground border-2 border-amber-300"
-                    : "bg-card"
-                  )}
-                >
-                  <CardContent className="p-3 text-center">
-                    <p className="font-bold text-sm whitespace-normal break-words">{node.task.name}</p>
-                    <Separator className={cn("my-2", node.task.isCritical ? "bg-primary-foreground/30" : "bg-border")} />
-                    <div className="grid grid-cols-2 text-xs gap-x-2 gap-y-1 text-left">
-                        <div className="font-semibold">ES: {node.task.es}</div>
-                        <div className="font-semibold">EF: {node.task.ef}</div>
-                        <div className="font-semibold">LS: {node.task.ls}</div>
-                        <div className="font-semibold">LF: {node.task.lf}</div>
-                    </div>
-                     <Separator className={cn("my-2", node.task.isCritical ? "bg-primary-foreground/30" : "bg-border")} />
-                     <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                            <div className="font-semibold tracking-wider">DUR</div>
-                            <div>{node.task.duration}s</div>
-                        </div>
-                        <div>
-                            <div className="font-semibold tracking-wider">HOLGURA</div>
-                            <div>{node.task.float}</div>
-                        </div>
-                     </div>
-                  </CardContent>
-                </Card>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
+    <Card className="mt-4">
+        <CardHeader>
+            <CardTitle className="font-headline">Diagrama de Red (CPM)</CardTitle>
+            <CardDescription>Visualización del flujo de trabajo. Los nodos marrones indican la ruta crítica.</CardDescription>
+        </CardHeader>
+        <CardContent className="min-h-[400px] overflow-auto">
+            <div ref={containerRef} className="mermaid-container w-full h-full">
+                {/* Mermaid will render the graph here */}
+                <div id="mermaid-graph"></div>
+            </div>
+        </CardContent>
+    </Card>
   );
 }
