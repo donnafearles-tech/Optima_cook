@@ -23,36 +23,22 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
     if (!tasks || tasks.length === 0 || tasks.some(t => t.es === undefined)) {
       return '';
     }
+    
+    const criticalFill = '#E63946'; // Red
+    const nonCriticalFill = '#457B9D'; // Blue
+    const textColor = '#FFFFFF';
 
     let graph = `graph TD;\n`;
-    
-    // Define literal colors
-    const criticalFill = '#E63946'; // Primary Red
-    const criticalStroke = '#b02a37';
-    const criticalTextColor = '#FFFFFF';
-    
-    const nonCriticalFill = '#457B9D'; // A different color for contrast
-    const nonCriticalStroke = '#37627d';
-    const nonCriticalTextColor = '#FFFFFF';
 
     tasks.forEach(task => {
-        // Sanitize task name for Mermaid ID
         const taskId = task.id.replace(/[^a-zA-Z0-9_]/g, '_');
         const taskName = task.name.replace(/"/g, '#quot;');
         
-        const nodeColor = task.isCritical ? criticalTextColor : nonCriticalTextColor;
+        const nodeBgColor = task.isCritical ? criticalFill : nonCriticalFill;
 
-        // Define the node with its text content inside an HTML-like label
-        graph += `${taskId}("<div style='color:${nodeColor}; padding: 5px; white-space: normal; word-wrap: break-word; text-align: center;'>${taskName}<br>ES: ${task.es} | EF: ${task.ef}<br>LS: ${task.ls} | LF: ${task.lf}<br>Holgura: ${task.float}</div>");\n`;
+        // Use HTML labels for full control over styling and text wrapping
+        graph += `${taskId}("<div style='background-color:${nodeBgColor}; color:${textColor}; padding: 10px; border-radius: 5px; white-space: normal; word-wrap: break-word; text-align: center;'><strong>${taskName}</strong><br>ES: ${task.es} | EF: ${task.ef}<br>LS: ${task.ls} | LF: ${task.lf}<br>Holgura: ${task.float}</div>");\n`;
         
-        // Apply styles directly to the node
-        if (task.isCritical) {
-            graph += `style ${taskId} fill:${criticalFill},stroke:${criticalStroke};\n`;
-        } else {
-            graph += `style ${taskId} fill:${nonCriticalFill},stroke:${nonCriticalStroke};\n`;
-        }
-
-        // Define dependencies (links)
         if (task.predecessorIds && task.predecessorIds.length > 0) {
             task.predecessorIds.forEach(predId => {
                 const predecessorTaskId = predId.replace(/[^a-zA-Z0-9_]/g, '_');
@@ -66,14 +52,12 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
 
   useEffect(() => {
     if (mermaidChart && containerRef.current) {
-        // Clear previous render
         if (containerRef.current) {
             containerRef.current.innerHTML = '';
         }
         
         const renderMermaid = async () => {
             try {
-                // The container itself will be the element to render into.
                 const { svg } = await mermaid.render('mermaid-graph-svg', mermaidChart);
                 if (containerRef.current) {
                     containerRef.current.innerHTML = svg;
