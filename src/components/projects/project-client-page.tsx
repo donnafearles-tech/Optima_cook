@@ -34,11 +34,17 @@ interface ProjectClientPageProps {
 
 const normalize = (str: string) => {
     if (!str) return '';
+    const stopWords = [
+      'la', 'el', 'un', 'una', 'de', 'para', 'los', 'las', 'a', 'con', 'en',
+      'olla', 'sarten', 'horno', 'bol', 'tabla', 'cuchillo'
+    ];
+    const regex = new RegExp(`\\b(${stopWords.join('|')})\\b`, 'g');
+    
     return str
         .toLowerCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/[.,¡!¿]/g, '')
-        .replace(/\b(la|el|un|una|de|para|los|las|a|con|en)\b/g, '')
+        .replace(regex, '')
         .trim().replace(/\s+/g, ' ');
 };
 
@@ -338,7 +344,6 @@ const handleTaskSave = async (taskToSave: Task) => {
     }
 
     const prepTasks = tasks.filter(t => !t.isAssemblyStep);
-    const assemblyTasks = tasks.filter(t => t.isAssemblyStep);
 
     const taskGroups = new Map<string, Task[]>();
     prepTasks.forEach(task => {
@@ -445,6 +450,7 @@ const handleTaskSave = async (taskToSave: Task) => {
         const tasksForCalc = freshTasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
         
         if (tasksForCalc.length === 0) {
+            updateDocumentNonBlocking(projectRef, { cpmResult: { totalDuration: 0, criticalPath: [], tasks: [] } });
             setIsCalculatingPath(false);
             router.push(`/projects/${projectId}/guide`);
             return;
@@ -693,4 +699,5 @@ const handleTaskSave = async (taskToSave: Task) => {
   );
 }
 
+    
     
