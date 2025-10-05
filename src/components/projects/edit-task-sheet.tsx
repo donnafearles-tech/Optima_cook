@@ -70,8 +70,6 @@ function MultiSelectPopover({ title, options, selected, onSelectedChange }: { ti
     onSelectedChange(newSelected);
   };
   
-  const selectedLabels = selected.map(value => options.find(opt => opt.value === value)?.label).filter(Boolean);
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -82,12 +80,12 @@ function MultiSelectPopover({ title, options, selected, onSelectedChange }: { ti
           className="w-full justify-between"
         >
            <span className="truncate">
-            {selectedLabels.length > 0 ? selectedLabels.join(', ') : `Seleccionar ${title}...`}
+            {`Seleccionar ${title}...`}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command>
           <CommandInput placeholder={`Buscar ${title}...`} />
           <CommandList>
@@ -331,6 +329,21 @@ export default function EditTaskSheet({
   const availableRecipes = useMemo(() => allRecipes.map(r => ({ value: r.id, label: r.name })), [allRecipes]);
   const availableResources = useMemo(() => allResources.map(r => ({ value: r.id, label: r.name })), [allResources]);
 
+  const selectedRecipeLabels = useMemo(() => 
+    recipeIds.map(id => availableRecipes.find(r => r.value === id)?.label).filter(Boolean),
+    [recipeIds, availableRecipes]
+  );
+
+  const selectedResourceLabels = useMemo(() =>
+    resourceIds.map(id => availableResources.find(r => r.value === id)?.label).filter(Boolean),
+    [resourceIds, availableResources]
+  );
+
+  const selectedPredecessorLabels = useMemo(() =>
+    predecessorIds.map(id => availablePredecessors.find(p => p.value === id)?.label).filter(Boolean),
+    [predecessorIds, availablePredecessors]
+  );
+
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -341,17 +354,31 @@ export default function EditTaskSheet({
             Rellena los detalles de tu tarea de cocina.
           </SheetDescription>
         </SheetHeader>
-        <ScrollArea className="flex-grow">
-          <form onSubmit={handleSubmit} className="flex-grow flex flex-col gap-4 px-1 py-4">
+        <ScrollArea className="flex-grow -mx-6 px-6">
+          <form onSubmit={handleSubmit} className="flex-grow flex flex-col gap-4 py-4">
             <div className="space-y-4">
               <div>
                   <Label htmlFor="recipeId">Receta(s)</Label>
-                  <MultiSelectPopover 
+                   <MultiSelectPopover 
                     title="recetas"
                     options={availableRecipes}
                     selected={recipeIds}
                     onSelectedChange={setRecipeIds}
                   />
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {selectedRecipeLabels.map((label, index) => (
+                      <Badge key={`${label}-${index}`} variant="secondary">
+                        {label}
+                        <button
+                          type="button"
+                          className="ml-1 rounded-full p-0.5 hover:bg-destructive/20"
+                          onClick={() => setRecipeIds(prev => prev.filter(id => availableRecipes.find(r=>r.value===id)?.label !== label))}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
               </div>
               <div>
                 <Label htmlFor="name">Nombre de la Tarea</Label>
@@ -401,6 +428,20 @@ export default function EditTaskSheet({
                     selected={resourceIds}
                     onSelectedChange={setResourceIds}
                   />
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {selectedResourceLabels.map((label) => (
+                      <Badge key={label} variant="secondary">
+                        {label}
+                        <button
+                          type="button"
+                          className="ml-1 rounded-full p-0.5 hover:bg-destructive/20"
+                           onClick={() => setResourceIds(prev => prev.filter(id => availableResources.find(r=>r.value===id)?.label !== label))}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
               </div>
 
               <div>
@@ -423,11 +464,25 @@ export default function EditTaskSheet({
                     selected={predecessorIds}
                     onSelectedChange={setPredecessorIds}
                 />
+                 <div className="mt-2 flex flex-wrap gap-1">
+                    {selectedPredecessorLabels.map((label) => (
+                       <Badge key={label} variant="secondary">
+                        {label}
+                        <button
+                          type="button"
+                          className="ml-1 rounded-full p-0.5 hover:bg-destructive/20"
+                           onClick={() => setPredecessorIds(prev => prev.filter(id => availablePredecessors.find(p=>p.value===id)?.label !== label))}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
               </div>
             </div>
           </form>
         </ScrollArea>
-        <SheetFooter>
+        <SheetFooter className='pt-4'>
           <SheetClose asChild>
               <Button type="button" variant="outline">Cancelar</Button>
           </SheetClose>
@@ -437,5 +492,3 @@ export default function EditTaskSheet({
     </Sheet>
   );
 }
-
-    
