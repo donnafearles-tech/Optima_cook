@@ -310,6 +310,9 @@ VALIDAR_CALIDAD(producto):
 1.  **Limpieza Lingüística:** Para cada paso de la receta, normaliza el texto: conviértelo a minúsculas, elimina acentos, puntuación y palabras de relleno ("el", "la", "un", "de", "para"). Simplifica la jerga ("llevar a ebullición" -> "hervir").
 2.  **Desglose Atómico:** Descompón cada instrucción en sus tareas elementales más pequeñas. "Lavar y picar cebolla" se convierte en dos tareas separadas: "lavar cebolla" y "picar cebolla". Estas son tareas de preparación ('isAssemblyStep: false').
 3.  **Sazonado Temprano:** Identifica y crea tareas explícitas para el sazonado de proteínas (carnes, aves) ANTES de su cocción (ej. "sazonar pollo con sal y pimienta" como predecesor de "sellar pollo").
+4.  **REGLA DE NOMENCLATURA (MUY IMPORTANTE):** El nombre de cada tarea DEBE seguir un formato estricto: \`verbo en infinitivo + sustantivo(s)\`. Esto es para optimizarlo para la lógica de dependencias nativa.
+    *   **CORRECTO:** "lavar tomates", "picar cebolla", "untar mayonesa", "colocar jamón".
+    *   **INCORRECTO:** "Ahora lavamos los tomates", "El siguiente paso es picar la cebolla", "Tomates lavados".
 
 **Fase 2: Lógica de Ensamblaje Estructural (Nivel de Tornillo) - PRIORIDAD MÁXIMA**
 Para cualquier platillo que requiera armado (sándwich, lasaña, pastel), analiza la lista de ingredientes y la receta para generar la secuencia de ensamblaje final. Aplica rigurosamente las reglas del MANUAL DEL CHEF.
@@ -322,7 +325,7 @@ Identifica y crea tareas para los ajustes finales que deben ocurrir justo antes 
 **Fase 4: Generación del JSON de Salida**
 Construye el objeto JSON de salida. Responde **ÚNICAMENTE** con el objeto JSON.
 *   El objeto debe contener 'recipeName' y 'tasks'.
-*   Cada objeto 'task' DEBE tener: 'name' (la descripción simplificada), 'duration' (número en segundos, inferido del manual), 'predecessorIds' (array con los **NOMBRES** de las tareas predecesoras) y 'isAssemblyStep' (boolean).
+*   Cada objeto 'task' DEBE tener: 'name' (la descripción simplificada y normalizada según la Fase 1), 'duration' (número en segundos, inferido del manual), 'predecessorIds' (array con los **NOMBRES** de las tareas predecesoras) y 'isAssemblyStep' (boolean).
 *   Las tareas de preparación (mise en place) y sazonado temprano son 'isAssemblyStep: false'.
 *   Las tareas que son parte del armado final del plato (basado en la Fase 2) o cocción final son 'isAssemblyStep: true'.
 *   Si una tarea no tiene dependencias, 'predecessorIds' debe ser \`[]\`.
