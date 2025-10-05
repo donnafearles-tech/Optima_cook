@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine, AlertTriangle, Trash2 } from 'lucide-react';
+import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine, AlertTriangle, Trash2, Undo } from 'lucide-react';
 import type { Project, Task, Recipe, UserResource, CpmResult } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { suggestTaskDependencies } from '@/ai/flows/suggest-task-dependencies';
@@ -32,11 +32,18 @@ interface ProjectClientPageProps {
   onImportRecipe: () => void;
 }
 
+type HistoryState = {
+    tasks: Task[];
+    recipes: Recipe[];
+    description: string;
+}
+
 const normalize = (str: string) => {
     if (!str) return '';
     const stopWords = [
       'la', 'el', 'un', 'una', 'de', 'para', 'los', 'las', 'a', 'con', 'en',
-      'olla', 'sarten', 'horno', 'bol', 'tabla', 'cuchillo'
+      'olla', 'sarten', 'horno', 'bol', 'tabla', 'cuchillo', 'primera', 'segunda', 'tercera',
+      'rebanada', 'loncha', 'pieza'
     ];
     const regex = new RegExp(`\\b(${stopWords.join('|')})\\b`, 'g');
     
@@ -57,6 +64,8 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const [isClearing, setIsClearing] = useState(false);
   const [isGuideStale, setIsGuideStale] = useState(false);
   const [showDependencyWarning, setShowDependencyWarning] = useState(false);
+  const [history, setHistory] = useState<HistoryState[]>([]);
+  const [isUndoing, setIsUndoing] = useState(false);
 
 
   const { toast } = useToast();
@@ -76,6 +85,71 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   
   const resourcesQuery = useMemoFirebase(() => collection(userRef, 'resources'), [userRef]);
   const { data: allResources, isLoading: isLoadingResources } = useCollection<UserResource>(resourcesQuery);
+  
+  const saveToHistory = (description: string) => {
+    const currentSnapshot: HistoryState = {
+      tasks: allTasks || [],
+      recipes: allRecipes || [],
+      description: description
+    };
+    // Keep only the last state
+    setHistory([currentSnapshot]);
+  };
+  
+  const handleUndo = async () => {
+    if (history.length === 0) return;
+
+    setIsUndoing(true);
+    const lastState = history[history.length - 1];
+
+    try {
+        const batch = writeBatch(firestore);
+
+        // Delete all current tasks and recipes
+        const currentTasksSnapshot = await getDocs(tasksQuery!);
+        currentTasksSnapshot.forEach(doc => batch.delete(doc.ref));
+
+        const currentRecipesSnapshot = await getDocs(recipesQuery!);
+        currentRecipesSnapshot.forEach(doc => batch.delete(doc.ref));
+
+        // Restore tasks and recipes from history
+        const taskRefs = new Map(lastState.tasks.map(t => [t.id, doc(projectRef, 'tasks', t.id)]));
+        const recipeRefs = new Map(lastState.recipes.map(r => [r.id, doc(projectRef, 'recipes', r.id)]));
+        
+        lastState.tasks.forEach(task => {
+            const { id, ...taskData } = task;
+            batch.set(taskRefs.get(id)!, taskData);
+        });
+
+        lastState.recipes.forEach(recipe => {
+            const { id, ...recipeData } = recipe;
+            batch.set(recipeRefs.get(id)!, recipeData);
+        });
+
+        // Clear CPM result as it's now invalid
+        batch.update(projectRef, { cpmResult: null });
+
+        await batch.commit();
+
+        toast({
+            title: "Acción deshecha",
+            description: `Se restauró el estado anterior a: "${lastState.description}"`,
+        });
+
+        // Clear history after undoing
+        setHistory([]);
+    } catch (error) {
+        console.error("Error al deshacer:", error);
+        toast({
+            title: "Error al Deshacer",
+            description: "No se pudo restaurar el estado anterior.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsUndoing(false);
+    }
+  };
+
 
   const handleOpenEditTask = (task: Task | 'new') => {
     if (task === 'new') {
@@ -122,6 +196,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const handleRecipeDelete = (recipeId: string) => {
     if (!project || !allTasks) return;
   
+    saveToHistory('Eliminar receta');
     const batch = writeBatch(firestore);
     const recipeRefDoc = doc(projectRef, 'recipes', recipeId);
     batch.delete(recipeRefDoc);
@@ -142,6 +217,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     }).catch((e) => {
       console.error("Error al eliminar la receta y sus tareas:", e);
       toast({ title: 'Error', description: 'No se pudo eliminar la receta.', variant: 'destructive' });
+      setHistory([]); // Clear history on failure
     });
   };
 
@@ -192,6 +268,7 @@ const handleTaskSave = async (taskToSave: Task) => {
       toast({ title: 'No hay suficientes tareas', variant: 'destructive' });
       return;
     }
+    saveToHistory('Sugerir dependencias (Nativo)');
     setIsSuggestingNatively(true);
     try {
       const taskMap = new Map(currentTasks.map(t => [t.id, { ...t, normalizedName: normalize(t.name) }]));
@@ -253,10 +330,12 @@ const handleTaskSave = async (taskToSave: Task) => {
         toast({ title: '¡Dependencias Nativas Sugeridas!', description: 'Se han añadido dependencias basadas en reglas culinarias.' });
       } else {
         toast({ title: 'Sin Sugerencias Nuevas', description: 'No se encontraron nuevas dependencias lógicas para añadir.' });
+        setHistory([]); // No change, so clear history
       }
     } catch (error) {
       console.error(error);
       toast({ title: 'Error en Sugerencia Nativa', variant: 'destructive' });
+      setHistory([]); // Clear history on failure
     } finally {
       setIsSuggestingNatively(false);
     }
@@ -272,6 +351,7 @@ const handleTaskSave = async (taskToSave: Task) => {
       });
       return;
     }
+    saveToHistory('Sugerir dependencias (IA)');
     setIsSuggesting(true);
     try {
       const taskList = currentTasks.map(t => t.name);
@@ -303,6 +383,8 @@ const handleTaskSave = async (taskToSave: Task) => {
 
       if (changed) {
         setIsGuideStale(true);
+      } else {
+        setHistory([]); // No change, so clear history
       }
 
       toast({
@@ -317,6 +399,7 @@ const handleTaskSave = async (taskToSave: Task) => {
         description: 'No se pudieron obtener sugerencias de la IA. Por favor, inténtalo de nuevo.',
         variant: 'destructive',
       });
+      setHistory([]); // Clear history on failure
     } finally {
       setIsSuggesting(false);
     }
@@ -375,6 +458,8 @@ const handleTaskSave = async (taskToSave: Task) => {
         return false; // No changes to commit
     }
 
+    saveToHistory('Unificar tareas duplicadas');
+
     const remainingTasks = tasks.filter(t => !tasksToDelete.has(t.id));
     remainingTasks.forEach(task => {
         let needsUpdate = false;
@@ -407,10 +492,16 @@ const handleTaskSave = async (taskToSave: Task) => {
         batch.update(projectRef, { cpmResult: null });
     }
 
-    await batch.commit();
-    
-    if(consolidationHappened) {
-      toast({ title: '¡Tareas Unificadas!', description: 'Se han fusionado tareas de preparación duplicadas automáticamente.' });
+    try {
+        await batch.commit();
+        if(consolidationHappened) {
+          toast({ title: '¡Tareas Unificadas!', description: 'Se han fusionado tareas de preparación duplicadas automáticamente.' });
+        }
+    } catch(e) {
+        console.error("Error al consolidar tareas:", e);
+        setHistory([]); // Clear history on failure
+        toast({ title: 'Error al Unificar', description: 'No se pudieron unificar las tareas.', variant: 'destructive' });
+        return false;
     }
     
     return consolidationHappened;
@@ -462,6 +553,7 @@ const handleTaskSave = async (taskToSave: Task) => {
 
   const handleClearProject = async () => {
     setIsClearing(true);
+    saveToHistory('Limpiar proyecto completo');
     try {
       const batch = writeBatch(firestore);
   
@@ -488,11 +580,29 @@ const handleTaskSave = async (taskToSave: Task) => {
         description: "No se pudo limpiar el proyecto. Inténtalo de nuevo.",
         variant: "destructive",
       });
+       setHistory([]); // Clear history on failure
     } finally {
       setIsClearing(false);
     }
   };
   
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        const importRecipeDialog = document.querySelector('[role="dialog"]');
+        if (importRecipeDialog) {
+            e.preventDefault();
+            e.returnValue = 'Hay una importación de receta en progreso. ¿Seguro que quieres salir?';
+        }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [onImportRecipe]);
+
+
   useEffect(() => {
     const currentTasks = allTasks || [];
     if (project && !project.cpmResult && currentTasks.length > 0) {
@@ -570,6 +680,10 @@ const handleTaskSave = async (taskToSave: Task) => {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            <Button variant="secondary" onClick={handleUndo} disabled={history.length === 0 || isUndoing}>
+                <Undo className="mr-2 h-4 w-4" />
+                {isUndoing ? 'Deshaciendo...' : 'Deshacer'}
+            </Button>
 
             <Button variant="outline" onClick={onImportRecipe}>
               <FileUp className="mr-2 h-4 w-4" /> Importar Receta

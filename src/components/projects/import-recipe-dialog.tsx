@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -38,6 +38,8 @@ function FileUploader({ onFileChange, isParsing, label, description, fileType }:
     const file = event.target.files?.[0];
     if (file) {
       setFileName(file.name);
+    } else {
+      setFileName('');
     }
     onFileChange(event);
   };
@@ -166,6 +168,22 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
       setIsParsing(false);
     }
   };
+
+  useEffect(() => {
+    // Prevent accidental navigation when parsing
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        if (isParsing) {
+            e.preventDefault();
+            e.returnValue = 'La importación de la receta está en progreso. ¿Estás seguro de que quieres salir?';
+        }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isParsing]);
   
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>, fileType: "recipe" | "manual") => {
     const file = event.target.files?.[0];
