@@ -37,7 +37,7 @@ pathname: '/**',
     ],
   },
   serverActions: {
-    maxDuration: 60,
+    maxDuration: 180,
   },
 };
 
