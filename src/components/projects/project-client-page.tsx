@@ -200,7 +200,7 @@ const handleTaskSave = async (taskToSave: Task) => {
         const ingredient = taskWords.slice(1).join(' ');
 
         // Regla 1: Preparación Básica antes de Corte
-        if (mainAction === 'picar' || mainAction === 'cortar') {
+        if (mainAction === 'picar' || mainAction === 'cortar' || mainAction === 'rebanar') {
           taskMap.forEach(potentialPred => {
             if (potentialPred.id !== task.id && potentialPred.normalizedName.endsWith(ingredient)) {
               if (potentialPred.normalizedName.startsWith('lavar') || potentialPred.normalizedName.startsWith('pelar')) {
@@ -210,23 +210,39 @@ const handleTaskSave = async (taskToSave: Task) => {
           });
         }
         // Regla 2: Procesamiento de Calor
-        else if (mainAction === 'sofreir' || mainAction === 'freir') {
+        else if (mainAction === 'sofreir' || mainAction === 'freir' || mainAction === 'hornear' || mainAction === 'asar' || mainAction === 'hervir') {
            taskMap.forEach(potentialPred => {
             if (potentialPred.id !== task.id && potentialPred.normalizedName.endsWith(ingredient)) {
-              if (potentialPred.normalizedName.startsWith('picar') || potentialPred.normalizedName.startsWith('cortar')) {
+              if (potentialPred.normalizedName.startsWith('picar') || potentialPred.normalizedName.startsWith('cortar') || potentialPred.normalizedName.startsWith('sazonar')) {
                 newPredecessors.add(potentialPred.id);
               }
             }
           });
         }
         // Regla 3: Pre-requisitos de Equipo
-        else if (mainAction === 'hornear') {
+        if (mainAction === 'hornear' || mainAction === 'freir' || mainAction === 'asar') {
+          const equipment = mainAction === 'hornear' ? 'horno' : 'sarten';
           taskMap.forEach(potentialPred => {
-            if (potentialPred.id !== task.id && potentialPred.normalizedName === 'precalentar horno') {
+            if (potentialPred.id !== task.id && potentialPred.normalizedName === `precalentar ${equipment}`) {
               newPredecessors.add(potentialPred.id);
             }
           });
         }
+        // Regla 4: Ensamblaje básico
+        if (mainAction === 'untar') {
+            taskMap.forEach(potentialPred => {
+                if(potentialPred.id !== task.id && potentialPred.normalizedName.startsWith('tostar pan')) {
+                    newPredecessors.add(potentialPred.id);
+                }
+            });
+        } else if (mainAction === 'añadir' || mainAction === 'agregar' || mainAction === 'poner') {
+            taskMap.forEach(potentialPred => {
+                if(potentialPred.id !== task.id && potentialPred.normalizedName.startsWith('untar')) {
+                    newPredecessors.add(potentialPred.id);
+                }
+            })
+        }
+
 
         if (newPredecessors.size > task.predecessorIds.length) {
           batch.update(doc(tasksCollection, task.id), { predecessorIds: Array.from(newPredecessors) });
@@ -674,3 +690,5 @@ const handleTaskSave = async (taskToSave: Task) => {
     </>
   );
 }
+
+    
