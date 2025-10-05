@@ -264,7 +264,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
             consolidationHappened = true;
             const masterTask = group.reduce((a, b) => a.name.length <= b.name.length ? a : b);
             
-            const consolidatedData: Partial<Task> = {
+            const consolidatedData: Partial<Task> & { isConsolidated?: boolean } = {
                 name: masterTask.name,
                 duration: Math.max(...group.map(t => t.duration)),
                 recipeIds: [...new Set(group.flatMap(t => t.recipeIds || []))],
@@ -343,28 +343,24 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
             }
         }
 
+        router.push(`/projects/${projectId}/guide`);
+
         // Unify tasks as a mandatory pre-processing step
         await consolidateTasksNatively();
 
         await updateDocumentNonBlocking(projectRef, { cpmResult: null });
-        router.push(`/projects/${projectId}/guide`);
-
-        const runCalculation = async () => {
-            try {
-              const freshTasksSnapshot = await getDocs(tasksQuery!);
-              const tasksForCalc = freshTasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
-              
-              if (tasksForCalc.length === 0) return;
-
-              const cpmResult = calculateCPM(tasksForCalc);
-              await updateDocumentNonBlocking(projectRef, { cpmResult });
-              setIsGuideStale(false);
-            } catch (calcError) {
-               console.error("Error durante el cálculo de CPM en segundo plano:", calcError);
-            }
+        
+        const freshTasksSnapshot = await getDocs(tasksQuery!);
+        const tasksForCalc = freshTasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
+        
+        if (tasksForCalc.length === 0) {
+            setIsCalculatingPath(false);
+            return;
         };
-    
-        runCalculation();
+
+        const cpmResult = calculateCPM(tasksForCalc);
+        await updateDocumentNonBlocking(projectRef, { cpmResult });
+        setIsGuideStale(false);
   
     } catch(error) {
       console.error(error);
@@ -374,6 +370,7 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
           description: errorMessage,
           variant: "destructive",
       });
+    } finally {
        setIsCalculatingPath(false);
     }
   };
@@ -596,5 +593,3 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     </>
   );
 }
-
-    
