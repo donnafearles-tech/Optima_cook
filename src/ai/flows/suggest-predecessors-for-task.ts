@@ -24,7 +24,7 @@ const suggestPredecessorsPrompt = ai.definePrompt({
 
     Tu objetivo es analizar el nombre de la **nueva tarea** y determinar cuáles de las **tareas existentes** deben completarse antes de que la nueva pueda comenzar. Debes devolver una lista de los IDs de esas tareas predecesoras.
 
-    Considera las siguientes reglas lógicas y culinarias como tu fuente de verdad:
+    Considera las siguientes reglas lógicas y culinarias como tu fuente de verdad absoluta:
     1.  **Secuencia de Preparación Obligatoria:**
         *   La acción de **Lavar** o **Pelar** un ingrediente SIEMPRE precede a la acción de **Cortar** o **Picar** ese mismo ingrediente.
         *   La acción de **Cortar** o **Picar** un ingrediente SIEMPRE precede a la acción de **Cocinarlo** (sofreír, hornear, freír).
@@ -34,7 +34,8 @@ const suggestPredecessorsPrompt = ai.definePrompt({
         *   La **Base** (ej. "Tostar pan") es lo primero.
         *   Luego viene la **Barrera/Adhesivo** (ej. "Untar mayonesa").
         *   Luego los **Ingredientes Sólidos/Húmedos** (ej. "Añadir jamón", "Poner tomate").
-        *   Ejemplo: Si la nueva tarea es "Colocar jamón", busca si existe una tarea como "Untar mayonesa".
+        *   Finalmente los **Ingredientes Ligeros/Sensibles** (ej. "Añadir lechuga").
+        *   Ejemplo: Si la nueva tarea es "Colocar jamón", busca si existe una tarea como "Untar mayonesa" o "Tostar pan".
 
     3.  **Reglas de Equipos:**
         *   La tarea **"Precalentar horno"** o **"Precalentar sartén"** debe ser predecesora de cualquier tarea que use ese equipo (ej. "Hornear pavo", "Freír pollo").
