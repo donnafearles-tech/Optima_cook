@@ -24,11 +24,11 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
       return '';
     }
     
-    const criticalFill = '#b85842'; // Marrón/Rojo
-    const nonCriticalFill = '#5a8a6f'; // Verde
-    const textColor = '#FFFFFF';
+    const criticalFill = '#b85842'; // Rojo/Marrón para la ruta crítica
+    const nonCriticalFill = '#5a8a6f'; // Verde para tareas no críticas
+    const textColor = '#FFFFFF'; // Texto blanco para contraste
 
-    let graph = `graph TD;\n`;
+    let graph = `graph LR;\n`; // Cambiado de TD a LR para orientación horizontal
 
     tasks.forEach(task => {
         const taskId = task.id.replace(/[^a-zA-Z0-9_]/g, '_');
@@ -104,7 +104,7 @@ export default function CpmDiagram({ tasks }: { tasks: Task[] }) {
     <Card className="mt-4 overflow-hidden">
         <CardHeader>
             <CardTitle className="font-headline">Diagrama de Red (CPM)</CardTitle>
-            <CardDescription>Visualización del flujo de trabajo. Las tareas críticas están resaltadas.</CardDescription>
+            <CardDescription>Visualización del flujo de trabajo. Las tareas críticas están resaltadas en rojo/marrón.</CardDescription>
         </CardHeader>
         <CardContent>
             <div ref={containerRef} className="min-h-[400px] w-full flex justify-center items-center">
