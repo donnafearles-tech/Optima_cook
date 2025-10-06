@@ -283,9 +283,9 @@ export default function GuidePage() {
             <Card className="mt-4">
                 <CardHeader>
                     <CardTitle className="font-headline">Diagrama de Red (CPM)</CardTitle>
-                    <CardDescription>Visualización del flujo de trabajo. Las tareas críticas están resaltadas.</CardDescription>
+                    <CardDescription>Visualización del flujo de trabajo. Las tareas críticas están resaltadas en color.</CardDescription>
                 </CardHeader>
-                <CardContent className="min-h-[400px]">
+                <CardContent>
                     <CpmDiagram tasks={tasks} />
                 </CardContent>
             </Card>
