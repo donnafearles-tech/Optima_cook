@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine, AlertTriangle, Trash2, Undo } from 'lucide-react';
+import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine, AlertTriangle, Trash2, Undo, Download } from 'lucide-react';
 import type { Project, Task, Recipe, UserResource, CpmResult } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { suggestTaskDependencies } from '@/ai/flows/suggest-task-dependencies';
@@ -40,10 +40,12 @@ type HistoryState = {
 
 const normalize = (str: string) => {
     if (!str) return '';
+    // Expanded list of stop words based on the provided culinary dictionary
     const stopWords = [
-      'la', 'el', 'un', 'una', 'de', 'para', 'los', 'las', 'a', 'con', 'en',
-      'olla', 'sarten', 'horno', 'bol', 'tabla', 'cuchillo', 'primera', 'segunda', 'tercera',
-      'rebanada', 'loncha', 'pieza'
+      'la', 'el', 'un', 'una', 'de', 'para', 'los', 'las', 'a', 'con', 'en', 'y', 'o',
+      'olla', 'sarten', 'horno', 'bol', 'tabla', 'cuchillo', 'cazuela', 'procesador', 'batidora',
+      'primera', 'segunda', 'tercera', 'cuarta',
+      'rebanada', 'loncha', 'pieza', 'trozo', 'cucharada', 'cucharadita'
     ];
     const regex = new RegExp(`\\b(${stopWords.join('|')})\\b`, 'g');
     
@@ -585,6 +587,43 @@ const handleTaskSave = async (taskToSave: Task) => {
       setIsClearing(false);
     }
   };
+
+  const handleDownloadProject = () => {
+    if (!project || !allRecipes || !allTasks) {
+      toast({
+        title: "Error al Descargar",
+        description: "Los datos del proyecto aún no están completamente cargados.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const projectData = {
+      project: {
+        id: project.id,
+        name: project.name,
+        description: project.description
+      },
+      recipes: allRecipes,
+      tasks: allTasks,
+    };
+
+    const jsonString = JSON.stringify(projectData, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.name.replace(/\s+/g, '_').toLowerCase()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Proyecto Descargado",
+      description: `Se ha iniciado la descarga de ${a.download}.`
+    });
+  };
   
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -684,7 +723,9 @@ const handleTaskSave = async (taskToSave: Task) => {
                 <Undo className="mr-2 h-4 w-4" />
                 {isUndoing ? 'Deshaciendo...' : 'Deshacer'}
             </Button>
-
+            <Button variant="outline" onClick={handleDownloadProject}>
+              <Download className="mr-2 h-4 w-4" /> Descargar Proyecto
+            </Button>
             <Button variant="outline" onClick={onImportRecipe}>
               <FileUp className="mr-2 h-4 w-4" /> Importar Receta
             </Button>
@@ -802,3 +843,4 @@ const handleTaskSave = async (taskToSave: Task) => {
     
     
     
+
