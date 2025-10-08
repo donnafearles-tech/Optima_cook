@@ -27,13 +27,13 @@ const CpmDiagram = ({ tasks }: { tasks: Task[] }) => {
       }
 
       const task = taskMap.get(taskId)!;
-      if (task.predecessorIds.length === 0) {
+      if (!task.predecessorIds || task.predecessorIds.length === 0) {
         levels.set(taskId, 0);
         return 0;
       }
 
       const maxPredLevel = Math.max(
-        ...task.predecessorIds.map(predId => calculateLevel(predId))
+        ...task.predecessorIds.map(predId => taskMap.has(predId) ? calculateLevel(predId) : -1)
       );
       
       const level = maxPredLevel + 1;
@@ -137,16 +137,19 @@ const CpmDiagram = ({ tasks }: { tasks: Task[] }) => {
         </defs>
         
         {/* Render Edges */}
-        {edges.map(edge => (
-          <path
-            key={edge.id}
-            d={`M ${edge.sourceX} ${edge.sourceY} C ${edge.sourceX + HORIZONTAL_SPACING / 2} ${edge.sourceY} ${edge.targetX - HORIZONTAL_SPACING / 2} ${edge.targetY} ${edge.targetX} ${edge.targetY}`}
-            stroke={edge.isCritical ? "#ef4444" : "#9ca3af"}
-            strokeWidth="2"
-            fill="none"
-            markerEnd={edge.isCritical ? "url(#arrow-critical)" : "url(#arrow)"}
-          />
-        ))}
+        {edges.map(edge => {
+          const midX = edge.sourceX + HORIZONTAL_SPACING / 2;
+          return (
+            <path
+              key={edge.id}
+              d={`M ${edge.sourceX} ${edge.sourceY} L ${midX} ${edge.sourceY} L ${midX} ${edge.targetY} L ${edge.targetX} ${edge.targetY}`}
+              stroke={edge.isCritical ? "#ef4444" : "#9ca3af"}
+              strokeWidth="2"
+              fill="none"
+              markerEnd={edge.isCritical ? "url(#arrow-critical)" : "url(#arrow)"}
+            />
+          )
+        })}
 
         {/* Render Nodes */}
         {nodes.map(node => (
