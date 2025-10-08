@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine, AlertTriangle, Trash2, Undo, Download } from 'lucide-react';
+import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine, AlertTriangle, Trash2, Undo, Download, Copy } from 'lucide-react';
 import type { Project, Task, Recipe, UserResource, CpmResult } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { suggestTaskDependencies } from '@/ai/flows/suggest-task-dependencies';
@@ -262,6 +262,71 @@ const handleTaskSave = async (taskToSave: Task) => {
         title: 'Tarea Eliminada',
         description: 'Recuerda recalcular la guía para ver los cambios.',
     });
+  };
+
+  const handleDuplicateRecipe = async (recipeId: string) => {
+    if (!allRecipes || !allTasks) return;
+
+    const recipeToDuplicate = allRecipes.find(r => r.id === recipeId);
+    if (!recipeToDuplicate) return;
+
+    saveToHistory(`Duplicar la receta "${recipeToDuplicate.name}"`);
+
+    const tasksToDuplicate = allTasks.filter(t => (t.recipeIds || []).includes(recipeId));
+
+    try {
+        const batch = writeBatch(firestore);
+
+        // 1. Create the new recipe
+        const newRecipeRef = doc(collection(projectRef, 'recipes'));
+        batch.set(newRecipeRef, { name: `[Copia] ${recipeToDuplicate.name}` });
+
+        // 2. Create new task documents and build a map from old ID to new ID
+        const oldToNewTaskMap = new Map<string, string>();
+        const newTasksRefs: { newTaskRef: DocumentReference, originalTask: Task }[] = [];
+
+        tasksToDuplicate.forEach(originalTask => {
+            const newTaskRef = doc(collection(projectRef, 'tasks'));
+            oldToNewTaskMap.set(originalTask.id, newTaskRef.id);
+            newTasksRefs.push({ newTaskRef, originalTask });
+        });
+
+        // 3. Set the data for the new tasks, mapping predecessor IDs
+        newTasksRefs.forEach(({ newTaskRef, originalTask }) => {
+            const { id, predecessorIds, recipeIds, ...restOfTask } = originalTask;
+
+            const newPredecessorIds = predecessorIds
+                .map(oldPredId => oldToNewTaskMap.get(oldPredId))
+                .filter((newPredId): newPredId is string => !!newPredId);
+
+            const newTaskData = {
+                ...restOfTask,
+                recipeIds: [newRecipeRef.id],
+                predecessorIds: newPredecessorIds,
+            };
+            batch.set(newTaskRef, newTaskData);
+        });
+        
+        if (project?.cpmResult) {
+            batch.update(projectRef, { cpmResult: null });
+        }
+        
+        await batch.commit();
+
+        toast({
+            title: "Receta Duplicada",
+            description: `Se ha creado una copia de "${recipeToDuplicate.name}".`,
+        });
+        setIsGuideStale(true);
+    } catch (error) {
+        console.error("Error al duplicar la receta:", error);
+        toast({
+            title: "Error al Duplicar",
+            description: "No se pudo duplicar la receta.",
+            variant: "destructive",
+        });
+        setHistory([]); // Clear history on failure
+    }
   };
 
   const handleSuggestDependenciesNatively = async () => {
@@ -765,6 +830,7 @@ const handleTaskSave = async (taskToSave: Task) => {
                     allResources={allResources || []}
                     onEditRecipe={() => setEditingRecipe(recipe)}
                     onDeleteRecipe={() => handleRecipeDelete(recipe.id)}
+                    onDuplicateRecipe={handleDuplicateRecipe}
                     onAddTask={() => handleOpenEditTask('new')}
                     onEditTask={(task) => handleOpenEditTask(task)}
                     onDeleteTask={handleTaskDelete}
@@ -843,4 +909,3 @@ const handleTaskSave = async (taskToSave: Task) => {
     
     
     
-

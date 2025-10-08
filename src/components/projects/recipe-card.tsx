@@ -8,13 +8,14 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Edit, Trash2, Plus, Hammer, Combine } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, Plus, Hammer, Combine, Copy } from 'lucide-react';
 import type { Recipe, Task, UserResource } from '@/lib/types';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '../ui/badge';
 
@@ -26,6 +27,7 @@ interface RecipeCardProps {
     allResources: UserResource[];
     onEditRecipe: () => void;
     onDeleteRecipe: () => void;
+    onDuplicateRecipe: (recipeId: string) => void;
     onAddTask: () => void;
     onEditTask: (task: Task) => void;
     onDeleteTask: (taskId: string) => void;
@@ -48,6 +50,7 @@ export default function RecipeCard({
     allResources,
     onEditRecipe,
     onDeleteRecipe,
+    onDuplicateRecipe,
     onAddTask,
     onEditTask,
     onDeleteTask,
@@ -71,6 +74,10 @@ export default function RecipeCard({
                 <DropdownMenuItem onClick={onEditRecipe}>
                     <Edit className="mr-2 h-4 w-4" /> Editar Receta
                 </DropdownMenuItem>
+                 <DropdownMenuItem onClick={() => onDuplicateRecipe(recipe.id)}>
+                    <Copy className="mr-2 h-4 w-4" /> Duplicar Receta
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onDeleteRecipe} className="text-destructive">
                     <Trash2 className="mr-2 h-4 w-4" /> Eliminar Receta
                 </DropdownMenuItem>
