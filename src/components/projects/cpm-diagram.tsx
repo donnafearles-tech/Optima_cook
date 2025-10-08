@@ -11,7 +11,7 @@ const VERTICAL_SPACING = 40;
 
 type PositionedTask = Task & { x: number; y: number; level: number };
 
-const CpmDiagram = ({ tasks }: { tasks: Task[] }) => {
+const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string, string> }) => {
   const { nodes, edges, width, height } = useMemo(() => {
     if (!tasks || tasks.length === 0 || tasks.some(t => t.es === undefined)) {
       return { nodes: [], edges: [], width: 0, height: 0 };
@@ -78,6 +78,8 @@ const CpmDiagram = ({ tasks }: { tasks: Task[] }) => {
       for (const predId of task.predecessorIds) {
         const predecessorNode = positionedNodes.find(n => n.id === predId);
         if (predecessorNode) {
+          const recipeId = predecessorNode.recipeIds?.[0];
+          const recipeName = recipeId ? recipeMap.get(recipeId) : null;
           edges.push({
             id: `${predId}-${task.id}`,
             sourceX: predecessorNode.x + NODE_WIDTH,
@@ -85,7 +87,7 @@ const CpmDiagram = ({ tasks }: { tasks: Task[] }) => {
             targetX: task.x,
             targetY: task.y + NODE_HEIGHT / 2,
             isCritical: task.isCritical && predecessorNode.isCritical,
-            label: predecessorNode.name,
+            label: recipeName,
           });
         }
       }
@@ -95,7 +97,7 @@ const CpmDiagram = ({ tasks }: { tasks: Task[] }) => {
     const diagramHeight = maxTasksInLevel * (NODE_HEIGHT + VERTICAL_SPACING) - VERTICAL_SPACING;
 
     return { nodes: positionedNodes, edges, width: diagramWidth, height: diagramHeight };
-  }, [tasks]);
+  }, [tasks, recipeMap]);
 
   if (!nodes.length) {
     return (
@@ -150,16 +152,16 @@ const CpmDiagram = ({ tasks }: { tasks: Task[] }) => {
                     fill="none"
                     markerEnd={isCritical ? "url(#arrow-critical)" : "url(#arrow)"}
                 />
-                 <text
+                 {edge.label && <text
                     x={edge.sourceX + 10}
                     y={edge.sourceY - 5}
                     fill={isCritical ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
-                    fontSize="10"
+                    fontSize="12"
                     fontWeight="bold"
                     textAnchor="start"
                   >
                     {edge.label}
-                  </text>
+                  </text>}
             </g>
           )
         })}

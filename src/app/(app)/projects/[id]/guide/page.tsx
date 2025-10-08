@@ -286,7 +286,7 @@ export default function GuidePage() {
                     <CardDescription>Visualización del flujo de trabajo. Las tareas críticas están resaltadas en color.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <CpmDiagram tasks={tasks} />
+                    <CpmDiagram tasks={tasks} recipeMap={recipeMap} />
                 </CardContent>
             </Card>
         </TabsContent>
