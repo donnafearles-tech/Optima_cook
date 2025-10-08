@@ -1,7 +1,7 @@
 'use client';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CheckCircle, Clock, List, Network, AlertTriangle, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, List, Network, AlertTriangle, Loader2, Hammer } from 'lucide-react';
 import CpmDiagram from '@/components/projects/cpm-diagram';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -71,6 +71,11 @@ export default function GuidePage() {
     if (!recipes) return new Map();
     return new Map(recipes.map(r => [r.id, r.name]));
   }, [recipes]);
+  
+  const resourceMap = useMemo(() => {
+    if (!allResources) return new Map();
+    return new Map(allResources.map(r => [r.id, r.name]));
+  }, [allResources]);
 
 
   useEffect(() => {
@@ -256,15 +261,28 @@ export default function GuidePage() {
                     </CardHeader>
                     <CardContent className="p-4 space-y-3">
                     {groupTasks.map(task => {
-                        const recipeName = task.recipeIds.length > 0 ? recipeMap.get(task.recipeIds[0]) : null;
+                        const recipeNames = task.recipeIds.map(rId => recipeMap.get(rId)).filter(Boolean) as string[];
+                        const resourceNames = (task.resourceIds || []).map(rId => resourceMap.get(rId)).filter(Boolean) as string[];
                         return (
                             <div key={task.id} className="p-3 border rounded-lg flex justify-between items-start hover:bg-accent/50 cursor-pointer" onClick={() => setEditingTask(task)}>
                                 <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        {recipeName && <Badge variant="secondary" className="bg-green-100 text-green-800">{recipeName}</Badge>}
+                                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                        {recipeNames.map(name => (
+                                          <Badge key={name} variant="secondary" className="bg-green-100 text-green-800">{name}</Badge>
+                                        ))}
                                         <p className="font-semibold">{task.name}</p>
                                     </div>
-                                    <p className="text-sm text-muted-foreground ml-2">Duración: {formatDuration(task.duration)}</p>
+                                    <div className="flex items-center gap-2 flex-wrap ml-2">
+                                        <p className="text-sm text-muted-foreground">Duración: {formatDuration(task.duration)}</p>
+                                        {resourceNames.length > 0 && (
+                                          <div className="flex items-center gap-1">
+                                            <Hammer className="h-3 w-3 text-blue-800" />
+                                            {resourceNames.map(name => (
+                                              <Badge key={name} variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">{name}</Badge>
+                                            ))}
+                                          </div>
+                                        )}
+                                    </div>
                                 </div>
                                 {task.isCritical && <Badge variant="destructive" className="ml-2 flex-shrink-0">Crítica</Badge>}
                             </div>

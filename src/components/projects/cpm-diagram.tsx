@@ -2,10 +2,11 @@
 import React, { useMemo } from 'react';
 import type { Task } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Combine } from 'lucide-react';
+import { Badge } from '../ui/badge';
 
 const NODE_WIDTH = 180;
-const NODE_HEIGHT = 100;
+const NODE_HEIGHT = 120; // Increased height
 const HORIZONTAL_SPACING = 80;
 const VERTICAL_SPACING = 40;
 
@@ -168,7 +169,9 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
         })}
 
         {/* Render Nodes */}
-        {nodes.map(node => (
+        {nodes.map(node => {
+          const recipes = (node.recipeIds || []).map(rId => recipeMap.get(rId)).filter(Boolean) as string[];
+          return (
           <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
             <rect
               width={NODE_WIDTH}
@@ -181,6 +184,15 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
             <foreignObject width={NODE_WIDTH} height={NODE_HEIGHT}>
                  <div className={`p-2 flex flex-col h-full text-xs ${node.isCritical ? 'text-primary-foreground' : 'text-card-foreground'}`}>
                     <div className="font-bold truncate">{node.name}</div>
+                    {node.isConsolidated && (
+                      <div className="flex flex-wrap gap-1 mt-1 text-xs">
+                         <Badge variant={node.isCritical ? 'default' : 'secondary'} className="bg-blue-100 text-blue-800">
+                          <Combine className="mr-1 h-3 w-3"/>
+                          Unificada
+                        </Badge>
+                        {recipes.map(rName => <Badge key={rName} variant={node.isCritical ? 'default' : 'secondary'}>{rName}</Badge>)}
+                      </div>
+                    )}
                     <div className="flex-grow"/>
                     <div className="grid grid-cols-2 gap-x-2">
                         <span>ES: {node.es}</span>
@@ -192,7 +204,7 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
                  </div>
             </foreignObject>
           </g>
-        ))}
+        )})}
       </svg>
     </div>
   );
