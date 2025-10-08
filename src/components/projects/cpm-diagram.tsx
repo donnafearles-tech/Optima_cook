@@ -170,15 +170,15 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
             <foreignObject width={NODE_WIDTH} height={NODE_HEIGHT}>
                  <div className={`p-2 flex flex-col h-full text-xs ${node.isCritical ? 'text-primary-foreground' : 'text-card-foreground'}`}>
                     <div className="font-bold truncate">{node.name}</div>
-                     <div className='flex items-center gap-1 mt-1 flex-wrap'>
+                    <div className='flex items-center gap-1 mt-1 flex-wrap'>
                         {node.isConsolidated && (
                             <Badge variant={node.isCritical ? 'default' : 'secondary'} className="w-fit bg-blue-100 text-blue-800">
                                 <Combine className="mr-1 h-3 w-3" />
                                 Unificada
                             </Badge>
                         )}
-                         {recipeNames.map(name => (
-                            <Badge key={name} variant={node.isCritical ? 'default' : 'secondary'} className="w-fit">{name}</Badge>
+                        {recipeNames.map(name => (
+                           <Badge key={name} variant={node.isCritical ? 'default' : 'secondary'} className="w-fit">{name}</Badge>
                         ))}
                     </div>
                     <div className="flex-grow"/>
