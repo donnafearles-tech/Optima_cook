@@ -276,9 +276,9 @@ export default function GuidePage() {
                                         <p className="text-sm text-muted-foreground">Duración: {formatDuration(task.duration)}</p>
                                         {resourceNames.length > 0 && (
                                           <div className="flex items-center gap-1">
-                                            <Hammer className="h-3 w-3 text-blue-800" />
+                                            <Hammer className="h-3 w-3 text-muted-foreground" />
                                             {resourceNames.map(name => (
-                                              <Badge key={name} variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">{name}</Badge>
+                                              <Badge key={name} variant="secondary">{name}</Badge>
                                             ))}
                                           </div>
                                         )}
