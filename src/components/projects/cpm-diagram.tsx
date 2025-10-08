@@ -4,6 +4,7 @@ import type { Task } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { AlertTriangle, Combine } from 'lucide-react';
 import { Badge } from '../ui/badge';
+import { useToast } from '@/hooks/use-toast';
 
 const NODE_WIDTH = 180;
 const NODE_HEIGHT = 120; // Increased height
@@ -13,6 +14,22 @@ const VERTICAL_SPACING = 40;
 type PositionedTask = Task & { x: number; y: number; level: number };
 
 const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string, string> }) => {
+  const { toast } = useToast();
+
+  const handleConsolidatedClick = (node: PositionedTask, recipeNames: string[]) => {
+    toast({
+      title: `Detalles de: ${node.name}`,
+      description: (
+        <div>
+          <p className="font-semibold">Esta tarea unifica los siguientes pasos de las recetas:</p>
+          <ul className="list-disc list-inside mt-2">
+            {recipeNames.map(name => <li key={name}>{name}</li>)}
+          </ul>
+        </div>
+      ),
+    });
+  };
+
   const { nodes, edges, width, height } = useMemo(() => {
     if (!tasks || tasks.length === 0 || tasks.some(t => t.es === undefined)) {
       return { nodes: [], edges: [], width: 0, height: 0 };
@@ -86,7 +103,6 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
             targetX: task.x,
             targetY: task.y + NODE_HEIGHT / 2,
             isCritical: task.isCritical && predecessorNode.isCritical,
-            label: null,
           });
         }
       }
@@ -109,6 +125,14 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
       </Alert>
     );
   }
+  
+  const splitLabel = (label: string | null) => {
+    if (!label) return [];
+    const words = label.split(' ');
+    if (words.length <= 2) return [label];
+    const mid = Math.floor(words.length / 2);
+    return [words.slice(0, mid).join(' '), words.slice(mid).join(' ')];
+  };
 
   return (
     <div className="overflow-auto border rounded-lg p-4 bg-background">
@@ -171,16 +195,20 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
             <foreignObject width={NODE_WIDTH} height={NODE_HEIGHT}>
                  <div className={`p-2 flex flex-col h-full text-xs ${node.isCritical ? 'text-primary-foreground' : 'text-card-foreground'}`}>
                     <div className="font-bold truncate">{node.name}</div>
-                    <div className='flex items-center gap-1 mt-1 flex-wrap'>
-                        {node.isConsolidated && (
-                            <Badge variant={node.isCritical ? 'default' : 'secondary'} className="w-fit bg-blue-100 text-blue-800">
-                                <Combine className="mr-1 h-3 w-3" />
-                                Unificada
-                            </Badge>
-                        )}
-                        {recipeNames.map(name => (
-                           <Badge key={name} variant={node.isCritical ? 'default' : 'secondary'} className="w-fit">{name}</Badge>
-                        ))}
+                    <div className="flex items-center gap-1 mt-1 flex-wrap">
+                      {node.isConsolidated && (
+                          <Badge 
+                            variant="secondary" 
+                            className="w-fit bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer"
+                            onClick={() => handleConsolidatedClick(node, recipeNames)}
+                          >
+                              <Combine className="mr-1 h-3 w-3" />
+                              Unificada
+                          </Badge>
+                      )}
+                      {recipeNames.map(name => (
+                         <Badge key={name} variant={node.isCritical ? 'default' : 'secondary'} className="w-fit">{name}</Badge>
+                      ))}
                     </div>
                     <div className="flex-grow"/>
                     <div className="grid grid-cols-2 gap-x-2">
