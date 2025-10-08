@@ -79,8 +79,6 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
       for (const predId of task.predecessorIds) {
         const predecessorNode = positionedNodes.find(n => n.id === predId);
         if (predecessorNode) {
-          const recipeId = predecessorNode.recipeIds?.[0];
-          const recipeName = recipeId ? recipeMap.get(recipeId) : null;
           edges.push({
             id: `${predId}-${task.id}`,
             sourceX: predecessorNode.x + NODE_WIDTH,
@@ -88,7 +86,6 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
             targetX: task.x,
             targetY: task.y + NODE_HEIGHT / 2,
             isCritical: task.isCritical && predecessorNode.isCritical,
-            label: recipeName,
           });
         }
       }
@@ -98,7 +95,7 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
     const diagramHeight = maxTasksInLevel * (NODE_HEIGHT + VERTICAL_SPACING) - VERTICAL_SPACING;
 
     return { nodes: positionedNodes, edges, width: diagramWidth, height: diagramHeight };
-  }, [tasks, recipeMap]);
+  }, [tasks]);
 
   if (!nodes.length) {
     return (
@@ -153,23 +150,14 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
                     fill="none"
                     markerEnd={isCritical ? "url(#arrow-critical)" : "url(#arrow)"}
                 />
-                 {edge.label && <text
-                    x={edge.sourceX + 10}
-                    y={edge.sourceY}
-                    dy="-5"
-                    fill={isCritical ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
-                    fontSize="12"
-                    fontWeight="bold"
-                    textAnchor="start"
-                  >
-                    {edge.label}
-                  </text>}
             </g>
           )
         })}
 
         {/* Render Nodes */}
-        {nodes.map(node => (
+        {nodes.map(node => {
+          const recipeNames = (node.recipeIds || []).map(rId => recipeMap.get(rId)).filter(Boolean) as string[];
+          return (
           <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
             <rect
               width={NODE_WIDTH}
@@ -182,7 +170,14 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
             <foreignObject width={NODE_WIDTH} height={NODE_HEIGHT}>
                  <div className={`p-2 flex flex-col h-full text-xs ${node.isCritical ? 'text-primary-foreground' : 'text-card-foreground'}`}>
                     <div className="font-bold truncate">{node.name}</div>
-                    {node.isConsolidated && <Badge variant={node.isCritical ? 'default' : 'secondary'} className="w-fit mt-1">Unificada</Badge>}
+                     {node.isConsolidated && (
+                        <div className='flex items-center gap-1 mt-1 flex-wrap'>
+                            <Badge variant={node.isCritical ? 'default' : 'secondary'} className="w-fit">Unificada</Badge>
+                             {recipeNames.map(name => (
+                                <Badge key={name} variant={node.isCritical ? 'default' : 'secondary'} className="w-fit">{name}</Badge>
+                            ))}
+                        </div>
+                    )}
                     <div className="flex-grow"/>
                     <div className="grid grid-cols-2 gap-x-2">
                         <span>ES: {node.es}</span>
@@ -194,7 +189,7 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
                  </div>
             </foreignObject>
           </g>
-        ))}
+        )})}
       </svg>
     </div>
   );
