@@ -84,7 +84,8 @@ const CpmDiagram = ({ tasks }: { tasks: Task[] }) => {
             sourceY: predecessorNode.y + NODE_HEIGHT / 2,
             targetX: task.x,
             targetY: task.y + NODE_HEIGHT / 2,
-            isCritical: task.isCritical && predecessorNode.isCritical
+            isCritical: task.isCritical && predecessorNode.isCritical,
+            label: predecessorNode.name,
           });
         }
       }
@@ -109,7 +110,7 @@ const CpmDiagram = ({ tasks }: { tasks: Task[] }) => {
   }
 
   return (
-    <div className="overflow-auto border rounded-lg p-4">
+    <div className="overflow-auto border rounded-lg p-4 bg-background">
       <svg width={width} height={height} style={{ minWidth: '100%' }}>
         <defs>
           <marker
@@ -132,22 +133,34 @@ const CpmDiagram = ({ tasks }: { tasks: Task[] }) => {
             markerHeight="6"
             orient="auto-start-reverse"
           >
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="hsl(var(--primary))" />
           </marker>
         </defs>
         
         {/* Render Edges */}
         {edges.map(edge => {
           const midX = edge.sourceX + HORIZONTAL_SPACING / 2;
+          const isCritical = edge.isCritical;
           return (
-            <path
-              key={edge.id}
-              d={`M ${edge.sourceX} ${edge.sourceY} L ${midX} ${edge.sourceY} L ${midX} ${edge.targetY} L ${edge.targetX} ${edge.targetY}`}
-              stroke={edge.isCritical ? "#ef4444" : "#9ca3af"}
-              strokeWidth="2"
-              fill="none"
-              markerEnd={edge.isCritical ? "url(#arrow-critical)" : "url(#arrow)"}
-            />
+             <g key={edge.id}>
+                <path
+                    d={`M ${edge.sourceX} ${edge.sourceY} L ${midX} ${edge.sourceY} L ${midX} ${edge.targetY} L ${edge.targetX} ${edge.targetY}`}
+                    stroke={isCritical ? "hsl(var(--primary))" : "#9ca3af"}
+                    strokeWidth="2"
+                    fill="none"
+                    markerEnd={isCritical ? "url(#arrow-critical)" : "url(#arrow)"}
+                />
+                 <text
+                    x={edge.sourceX + 10}
+                    y={edge.sourceY - 5}
+                    fill={isCritical ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
+                    fontSize="10"
+                    fontWeight="bold"
+                    textAnchor="start"
+                  >
+                    {edge.label}
+                  </text>
+            </g>
           )
         })}
 
