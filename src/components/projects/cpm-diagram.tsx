@@ -18,7 +18,7 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
       return { nodes: [], edges: [], width: 0, height: 0 };
     }
 
-    const taskMap = new Map<string, Task>(tasks.map(t => [t.id, t]));
+    const taskMap = new Map<string, Task>(tasks.map(t => [t.id, { ...t }]));
     const levels = new Map<string, number>();
 
     // Calculate levels (topological sort)
@@ -170,14 +170,14 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
             <foreignObject width={NODE_WIDTH} height={NODE_HEIGHT}>
                  <div className={`p-2 flex flex-col h-full text-xs ${node.isCritical ? 'text-primary-foreground' : 'text-card-foreground'}`}>
                     <div className="font-bold truncate">{node.name}</div>
-                     {node.isConsolidated && (
-                        <div className='flex items-center gap-1 mt-1 flex-wrap'>
+                     <div className='flex items-center gap-1 mt-1 flex-wrap'>
+                        {node.isConsolidated && (
                             <Badge variant={node.isCritical ? 'default' : 'secondary'} className="w-fit">Unificada</Badge>
-                             {recipeNames.map(name => (
-                                <Badge key={name} variant={node.isCritical ? 'default' : 'secondary'} className="w-fit">{name}</Badge>
-                            ))}
-                        </div>
-                    )}
+                        )}
+                         {recipeNames.map(name => (
+                            <Badge key={name} variant={node.isCritical ? 'default' : 'secondary'} className="w-fit">{name}</Badge>
+                        ))}
+                    </div>
                     <div className="flex-grow"/>
                     <div className="grid grid-cols-2 gap-x-2">
                         <span>ES: {node.es}</span>
