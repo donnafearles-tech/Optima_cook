@@ -154,7 +154,8 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
                 />
                  {edge.label && <text
                     x={edge.sourceX + 10}
-                    y={edge.sourceY - 5}
+                    y={edge.sourceY}
+                    dy="-5"
                     fill={isCritical ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
                     fontSize="12"
                     fontWeight="bold"

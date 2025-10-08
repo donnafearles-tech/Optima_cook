@@ -96,7 +96,7 @@ export default function RecipeCard({
                         (rId) => allResources.find((r) => r.id === rId)?.name
                      ).filter(Boolean);
 
-                     const recipes = (task.recipeIds || ((task as any).recipeId ? [(task as any).recipeId] : [])).map(
+                     const recipes = (task.recipeIds || []).map(
                         (rId) => allRecipes.find((r) => r.id === rId)?.name
                      ).filter(Boolean);
 
@@ -111,10 +111,15 @@ export default function RecipeCard({
                                       Unificada
                                     </Badge>
                                   )}
+                                  {task.isConsolidated && recipes.length > 1 && (
+                                     <div className="flex items-center gap-1">
+                                        {recipes.map(rName => <Badge key={rName} variant="outline">{rName}</Badge>)}
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-1 text-xs text-muted-foreground">
                                     <span>Duración: {formatDuration(task.duration)}</span>
-                                    {recipes.length > 1 && (
+                                    {recipes.length > 1 && !task.isConsolidated && (
                                          <div className="flex items-center gap-1">
                                             <span>Recetas:</span>
                                             {recipes.map(rName => <Badge key={rName} variant="outline">{rName}</Badge>)}
