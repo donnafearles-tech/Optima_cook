@@ -86,6 +86,7 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
             targetX: task.x,
             targetY: task.y + NODE_HEIGHT / 2,
             isCritical: task.isCritical && predecessorNode.isCritical,
+            label: task.isConsolidated ? task.name : null, // Add label if target is consolidated
           });
         }
       }
@@ -150,6 +151,18 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
                     fill="none"
                     markerEnd={isCritical ? "url(#arrow-critical)" : "url(#arrow)"}
                 />
+                {edge.label && (
+                   <text
+                    x={midX}
+                    y={edge.targetY - 5} // Position above the line
+                    textAnchor="middle"
+                    fill={isCritical ? "hsl(var(--primary))" : "#6b7280"}
+                    fontSize="10"
+                    fontWeight="bold"
+                    >
+                    {edge.label}
+                    </text>
+                )}
             </g>
           )
         })}
@@ -169,7 +182,7 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
             />
             <foreignObject width={NODE_WIDTH} height={NODE_HEIGHT}>
                  <div className={`p-2 flex flex-col h-full text-xs ${node.isCritical ? 'text-primary-foreground' : 'text-card-foreground'}`}>
-                    <div className="font-bold truncate">{node.name}</div>
+                    <div className="font-bold truncate">{node.isConsolidated ? '' : node.name}</div>
                     <div className='flex items-center gap-1 mt-1 flex-wrap'>
                         {node.isConsolidated && (
                             <Badge variant={node.isCritical ? 'default' : 'secondary'} className="w-fit bg-blue-100 text-blue-800">
