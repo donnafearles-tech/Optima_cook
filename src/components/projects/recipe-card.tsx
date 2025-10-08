@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Edit, Trash2, Plus, Hammer, Combine, Copy } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, Plus, Hammer, Combine, Copy, Move } from 'lucide-react';
 import type { Recipe, Task, UserResource } from '@/lib/types';
 import {
   DropdownMenu,

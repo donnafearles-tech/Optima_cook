@@ -1,8 +1,8 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine, AlertTriangle, Trash2, Undo, Download, Copy } from 'lucide-react';
+import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine, AlertTriangle, Trash2, Undo, Download, Copy, Move } from 'lucide-react';
 import type { Project, Task, Recipe, UserResource, CpmResult } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { suggestTaskDependencies } from '@/ai/flows/suggest-task-dependencies';
@@ -11,7 +11,7 @@ import EditTaskSheet from './edit-task-sheet';
 import EditRecipeDialog from './edit-recipe-dialog';
 import RecipeCard from './recipe-card';
 import { useFirebase, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, doc, writeBatch, getDocs, addDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch, getDocs, addDoc, DocumentReference } from 'firebase/firestore';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { notFound, useRouter } from 'next/navigation';
 import {
@@ -905,7 +905,3 @@ const handleTaskSave = async (taskToSave: Task) => {
     </>
   );
 }
-
-    
-    
-    
