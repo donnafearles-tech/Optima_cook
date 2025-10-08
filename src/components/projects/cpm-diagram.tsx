@@ -12,22 +12,6 @@ const VERTICAL_SPACING = 40;
 
 type PositionedTask = Task & { x: number; y: number; level: number };
 
-// Helper function to wrap text
-function wrapText(text: string | null): string[] {
-    if (!text) return [];
-    const words = text.split(' ');
-    if (words.length <= 3) {
-      return [text];
-    }
-  
-    // Find the best split point
-    const midPoint = Math.floor(words.length / 2);
-    const line1 = words.slice(0, midPoint).join(' ');
-    const line2 = words.slice(midPoint).join(' ');
-  
-    return [line1, line2];
-}
-
 const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string, string> }) => {
   const { nodes, edges, width, height } = useMemo(() => {
     if (!tasks || tasks.length === 0 || tasks.some(t => t.es === undefined)) {
@@ -102,7 +86,7 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
             targetX: task.x,
             targetY: task.y + NODE_HEIGHT / 2,
             isCritical: task.isCritical && predecessorNode.isCritical,
-            label: task.isConsolidated ? task.name : null,
+            label: null, // Ensure no label on edges
           });
         }
       }
@@ -158,8 +142,6 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
         {edges.map(edge => {
           const midX = edge.sourceX + HORIZONTAL_SPACING / 2;
           const isCritical = edge.isCritical;
-          const textLines = wrapText(edge.label);
-          const yOffset = textLines.length > 1 ? -10 : -5;
           return (
              <g key={edge.id}>
                 <path
@@ -169,20 +151,6 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
                     fill="none"
                     markerEnd={isCritical ? "url(#arrow-critical)" : "url(#arrow)"}
                 />
-                {edge.label && (
-                   <text
-                    x={midX}
-                    y={edge.targetY + yOffset}
-                    textAnchor="middle"
-                    fill={isCritical ? "hsl(var(--primary))" : "#6b7280"}
-                    fontSize="10"
-                    fontWeight="bold"
-                    >
-                     {textLines.map((line, index) => (
-                        <tspan key={index} x={midX} dy={index === 0 ? 0 : '1.2em'}>{line}</tspan>
-                     ))}
-                    </text>
-                )}
             </g>
           )
         })}
