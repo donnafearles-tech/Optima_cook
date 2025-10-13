@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/tooltip';
 
 const NODE_WIDTH = 180;
-const NODE_HEIGHT = 120; // Increased height
+const NODE_HEIGHT = 140; // Increased height from 120 to 140
 const HORIZONTAL_SPACING = 80;
 const VERTICAL_SPACING = 40;
 
@@ -212,9 +212,12 @@ const CpmDiagram = ({ tasks, recipeMap, elapsedTime = 0 }: { tasks: Task[], reci
             }
             
             if (node.isCritical) {
-              if(!isTaskActive) {
-                nodeFill = 'hsl(var(--primary) / 0.8)';
-                titleColorClass = 'text-primary-foreground';
+              if (isTaskActive) {
+                  nodeFill = 'hsl(var(--primary) / 0.1)';
+                  titleColorClass = 'text-primary';
+              } else if (!isTaskCompleted) {
+                  nodeFill = 'hsl(var(--primary) / 0.8)';
+                  titleColorClass = 'text-primary-foreground';
               }
               nodeStroke = 'hsl(var(--primary))';
             }
