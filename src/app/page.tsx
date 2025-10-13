@@ -61,7 +61,7 @@ export default function Home() {
             <p className="mt-4 max-w-2xl mx-auto text-lg md:text-xl text-gray-600 dark:text-gray-300">
               Happy Bunny Food agiliza tu cocina convirtiendo recetas complejas en una guía simple y optimizada paso a paso.
             </p>
-            <div className="mt-8 flex justify-center gap-4">
+            <div className="mt-8 flex justify-center gap-4 mx-4">
               <Button size="lg" asChild>
                 <Link href="/login">Comienza tu Primer Proyecto</Link>
               </Button>
