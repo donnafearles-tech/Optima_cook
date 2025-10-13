@@ -200,7 +200,7 @@ const CpmDiagram = ({ tasks, recipeMap, elapsedTime = 0 }: { tasks: Task[], reci
           } else if (isTaskActive) {
             nodeFill = 'hsl(var(--primary) / 0.1)';
             nodeStroke = 'hsl(var(--primary))';
-            textColor = 'text-primary-foreground';
+            textColor = 'text-primary';
           } else if (node.isCritical) {
             nodeFill = 'hsl(var(--primary) / 0.8)';
             nodeStroke = 'hsl(var(--primary))';
@@ -220,8 +220,8 @@ const CpmDiagram = ({ tasks, recipeMap, elapsedTime = 0 }: { tasks: Task[], reci
               strokeWidth="2"
             />
             <foreignObject width={NODE_WIDTH} height={NODE_HEIGHT}>
-                 <div className={`p-2 flex flex-col h-full text-xs ${isTaskActive ? 'text-primary' : isTaskCompleted ? 'text-muted-foreground' : 'text-card-foreground'}`}>
-                    <div className={`font-bold truncate ${isTaskActive || (node.isCritical && !isTaskCompleted) ? 'text-primary' : ''}`}>{node.name}</div>
+                 <div className={`p-2 flex flex-col h-full text-xs ${textColor}`}>
+                    <div className={`font-bold truncate`}>{node.name}</div>
                     
                     <div className="flex items-center gap-1 mt-1 flex-wrap">
                       {node.isConsolidated && (
