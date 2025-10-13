@@ -1,7 +1,7 @@
 'use client';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CheckCircle, Clock, List, Network, AlertTriangle, Loader2, Hammer } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, List, Network, AlertTriangle, Loader2, Hammer, Play, Pause, RefreshCw } from 'lucide-react';
 import CpmDiagram from '@/components/projects/cpm-diagram';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -11,14 +11,14 @@ import type { Project, Recipe, Task, UserResource } from '@/lib/types';
 import { useCollection, useDoc, useFirebase, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { Progress } from '@/components/ui/progress';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import EditTaskSheet from '@/components/projects/edit-task-sheet';
 import { useToast } from '@/hooks/use-toast';
 
 function formatDuration(seconds: number) {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  const remainingSeconds = seconds % 60;
+  const remainingSeconds = Math.floor(seconds % 60);
   
   let result = '';
   if (hours > 0) result += `${hours}h `;
@@ -38,6 +38,11 @@ export default function GuidePage() {
   const [progress, setProgress] = useState(10);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isGuideStale, setIsGuideStale] = useState(false);
+
+  // Timer state
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [isTimerActive, setIsTimerActive] = useState(false);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   
@@ -91,6 +96,23 @@ export default function GuidePage() {
     }
   }, [project]);
 
+  useEffect(() => {
+    if (isTimerActive) {
+      timerIntervalRef.current = setInterval(() => {
+        setElapsedTime(prevTime => prevTime + 1);
+      }, 1000);
+    } else {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    }
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, [isTimerActive]);
+
   const handleTaskSave = async (taskToSave: Task) => {
     if (!user) return;
     const tasksCollection = collection(firestore, 'users', user.uid, 'projects', id, 'tasks');
@@ -119,7 +141,7 @@ export default function GuidePage() {
         updateDocumentNonBlocking(doc(tasksCollection, taskId), dataToSave);
     } 
     setEditingTask(null);
-};
+  };
   
   const goBackButton = (
     <div className="flex items-center gap-4 mb-6">
@@ -182,7 +204,6 @@ export default function GuidePage() {
     )
   }
 
-  // Si el resultado de CPM no está listo, muestra un estado de carga mientras los datos llegan por Firestore.
   if (!project.cpmResult || !project.cpmResult.tasks || project.cpmResult.tasks.some(t => t.es === undefined) || isGuideStale) {
     return (
         <div className="container mx-auto p-4">
@@ -208,7 +229,6 @@ export default function GuidePage() {
   const { totalDuration, tasks } = project.cpmResult;
   const sortedTasks = [...tasks].sort((a, b) => (a.es ?? 0) - (b.es ?? 0));
   
-  // Group tasks by start time for step-by-step view
   const taskGroups = sortedTasks.reduce((acc, task) => {
     const startTime = task.es ?? 0;
     if (!acc[startTime]) {
@@ -233,13 +253,30 @@ export default function GuidePage() {
         </div>
       </div>
 
-      <Card className="mb-6 bg-primary/5 border-primary/20">
+      <Card className="mb-6">
         <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardDescription>Tiempo Total Estimado de Cocina</CardDescription>
-            <CardTitle className="text-4xl font-headline text-primary">{formatDuration(totalDuration)}</CardTitle>
-          </div>
-          <Clock className="h-12 w-12 text-primary/50" />
+            <div className="flex-1">
+                <CardDescription>Tiempo Total Estimado</CardDescription>
+                <CardTitle className="text-4xl font-headline text-primary">{formatDuration(totalDuration)}</CardTitle>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+                <CardDescription>Reloj de Cocina</CardDescription>
+                <div className="text-3xl font-bold font-mono tracking-wider">{formatDuration(elapsedTime)}</div>
+                <div className="flex gap-2">
+                    {isTimerActive ? (
+                        <Button variant="outline" size="sm" onClick={() => setIsTimerActive(false)}>
+                            <Pause className="mr-2 h-4 w-4" /> Pausar
+                        </Button>
+                    ) : (
+                        <Button variant="outline" size="sm" onClick={() => setIsTimerActive(true)}>
+                            <Play className="mr-2 h-4 w-4" /> Iniciar
+                        </Button>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={() => { setIsTimerActive(false); setElapsedTime(0); }}>
+                        <RefreshCw className="mr-2 h-4 w-4" /> Reiniciar
+                    </Button>
+                </div>
+            </div>
         </CardHeader>
       </Card>
       
@@ -263,6 +300,12 @@ export default function GuidePage() {
                     {groupTasks.map(task => {
                         const recipeNames = task.recipeIds.map(rId => recipeMap.get(rId)).filter(Boolean) as string[];
                         const resourceNames = (task.resourceIds || []).map(rId => resourceMap.get(rId)).filter(Boolean) as string[];
+                        
+                        const timeInTask = Math.max(0, elapsedTime - (task.es ?? 0));
+                        const remainingTime = Math.max(0, task.duration - timeInTask);
+                        const isTaskActive = elapsedTime >= (task.es ?? 0) && elapsedTime < (task.ef ?? 0);
+                        const isTaskCompleted = elapsedTime >= (task.ef ?? 0);
+
                         return (
                             <div key={task.id} className="p-3 border rounded-lg flex justify-between items-start hover:bg-accent/50 cursor-pointer" onClick={() => setEditingTask(task)}>
                                 <div className="flex-1">
@@ -272,8 +315,15 @@ export default function GuidePage() {
                                         ))}
                                         <p className="font-semibold">{task.name}</p>
                                     </div>
-                                    <div className="flex items-center gap-2 flex-wrap ml-2">
-                                        <p className="text-sm text-muted-foreground">Duración: {formatDuration(task.duration)}</p>
+                                    <div className="flex items-center gap-4 flex-wrap ml-2">
+                                        <div className={`text-sm font-semibold flex items-center gap-1 ${isTaskActive ? 'text-primary' : 'text-muted-foreground'}`}>
+                                            <Clock className="h-4 w-4"/>
+                                            {isTaskActive ? 
+                                              <span>Restante: {formatDuration(remainingTime)}</span> : 
+                                              <span>Duración: {formatDuration(task.duration)}</span>
+                                            }
+                                        </div>
+                                        {isTaskCompleted && <Badge variant="default" className="bg-green-600">Completada</Badge>}
                                         {resourceNames.length > 0 && (
                                           <div className="flex items-center gap-1">
                                             <Hammer className="h-3 w-3 text-muted-foreground" />
@@ -301,10 +351,10 @@ export default function GuidePage() {
             <Card className="mt-4">
                 <CardHeader>
                     <CardTitle className="font-headline">Diagrama de Red (CPM)</CardTitle>
-                    <CardDescription>Visualización del flujo de trabajo. Las tareas críticas están resaltadas en color.</CardDescription>
+                    <CardDescription>Visualización del flujo de trabajo en tiempo real. Las tareas críticas están resaltadas.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <CpmDiagram tasks={tasks} recipeMap={recipeMap} />
+                    <CpmDiagram tasks={tasks} recipeMap={recipeMap} elapsedTime={elapsedTime}/>
                 </CardContent>
             </Card>
         </TabsContent>

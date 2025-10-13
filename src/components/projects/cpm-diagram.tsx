@@ -13,7 +13,22 @@ const VERTICAL_SPACING = 40;
 
 type PositionedTask = Task & { x: number; y: number; level: number };
 
-const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string, string> }) => {
+function formatDuration(seconds: number) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  
+  let result = '';
+  if (hours > 0) result += `${hours}h `;
+  if (minutes > 0) result += `${minutes}m `;
+  if (remainingSeconds > 0 && hours === 0 && minutes === 0) result += `${remainingSeconds}s`;
+  if (minutes > 0 && remainingSeconds > 0) result += `${remainingSeconds}s`
+
+  return result.trim() || '0s';
+}
+
+
+const CpmDiagram = ({ tasks, recipeMap, elapsedTime = 0 }: { tasks: Task[], recipeMap: Map<string, string>, elapsedTime?: number }) => {
   const { toast } = useToast();
 
   const handleConsolidatedClick = (node: PositionedTask, recipeNames: string[]) => {
@@ -38,7 +53,6 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
     const taskMap = new Map<string, Task>(tasks.map(t => [t.id, { ...t }]));
     const levels = new Map<string, number>();
 
-    // Calculate levels (topological sort)
     const calculateLevel = (taskId: string): number => {
       if (levels.has(taskId)) {
         return levels.get(taskId)!;
@@ -61,7 +75,6 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
 
     tasks.forEach(task => calculateLevel(task.id));
 
-    // Group tasks by level
     const tasksByLevel: { [key: number]: Task[] } = {};
     tasks.forEach(task => {
       const level = levels.get(task.id)!;
@@ -154,7 +167,6 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
           </marker>
         </defs>
         
-        {/* Render Edges */}
         {edges.map(edge => {
           const midX = edge.sourceX + HORIZONTAL_SPACING / 2;
           const isCritical = edge.isCritical;
@@ -171,27 +183,50 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
           )
         })}
 
-        {/* Render Nodes */}
         {nodes.map(node => {
           const recipeNames = (node.recipeIds || []).map(rId => recipeMap.get(rId)).filter(Boolean) as string[];
+          const isTaskActive = elapsedTime >= (node.es ?? 0) && elapsedTime < (node.ef ?? 0);
+          const isTaskCompleted = elapsedTime >= (node.ef ?? 0);
+          const timeInTask = Math.max(0, elapsedTime - (node.es ?? 0));
+          const remainingTime = Math.max(0, node.duration - timeInTask);
+
+          let nodeFill = 'hsl(var(--card))';
+          let nodeStroke = 'hsl(var(--border))';
+          let textColor = 'text-card-foreground';
+
+          if (isTaskCompleted) {
+             nodeFill = 'hsl(var(--secondary))';
+             textColor = 'text-muted-foreground';
+          } else if (isTaskActive) {
+            nodeFill = 'hsl(var(--primary) / 0.1)';
+            nodeStroke = 'hsl(var(--primary))';
+            textColor = 'text-primary-foreground';
+          } else if (node.isCritical) {
+            nodeFill = 'hsl(var(--primary) / 0.8)';
+            nodeStroke = 'hsl(var(--primary))';
+            textColor = 'text-primary-foreground';
+          }
+          if (node.isCritical) nodeStroke = 'hsl(var(--primary))';
+
+
           return (
           <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
             <rect
               width={NODE_WIDTH}
               height={NODE_HEIGHT}
               rx="8"
-              fill={node.isCritical ? 'hsl(var(--primary))' : 'hsl(var(--card))'}
-              stroke={node.isCritical ? 'hsl(var(--primary))' : 'hsl(var(--border))'}
+              fill={nodeFill}
+              stroke={nodeStroke}
               strokeWidth="2"
             />
             <foreignObject width={NODE_WIDTH} height={NODE_HEIGHT}>
-                 <div className={`p-2 flex flex-col h-full text-xs ${node.isCritical ? 'text-primary-foreground' : 'text-card-foreground'}`}>
-                    <div className="font-bold truncate">{node.name}</div>
+                 <div className={`p-2 flex flex-col h-full text-xs ${isTaskActive ? 'text-primary' : isTaskCompleted ? 'text-muted-foreground' : 'text-card-foreground'}`}>
+                    <div className={`font-bold truncate ${isTaskActive || (node.isCritical && !isTaskCompleted) ? 'text-primary' : ''}`}>{node.name}</div>
                     
                     <div className="flex items-center gap-1 mt-1 flex-wrap">
                       {node.isConsolidated && (
                           <Badge 
-                            variant="secondary" 
+                            variant={isTaskActive ? 'default' : 'secondary'} 
                             className="w-fit bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer"
                             onClick={() => handleConsolidatedClick(node, recipeNames)}
                           >
@@ -200,19 +235,28 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
                           </Badge>
                       )}
                       {recipeNames.map(name => (
-                         <Badge key={name} variant={node.isCritical ? 'default' : 'secondary'} className="w-fit">{name}</Badge>
+                         <Badge key={name} variant={isTaskActive ? 'default' : 'secondary'} className="w-fit">{name}</Badge>
                       ))}
                     </div>
 
                     <div className="flex-grow"/>
                     
-                    <div className="grid grid-cols-2 gap-x-2">
-                        <span>ES: {node.es}</span>
-                        <span>EF: {node.ef}</span>
-                        <span>LS: {node.ls}</span>
-                        <span>LF: {node.lf}</span>
-                    </div>
-                    <div>Holgura: {node.float}</div>
+                    {isTaskActive ? (
+                      <div className="text-center">
+                        <div className="text-sm text-muted-foreground">Tiempo Restante</div>
+                        <div className="text-2xl font-bold font-mono text-primary">{formatDuration(remainingTime)}</div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-2 gap-x-2">
+                            <span>ES: {node.es}</span>
+                            <span>EF: {node.ef}</span>
+                            <span>LS: {node.ls}</span>
+                            <span>LF: {node.lf}</span>
+                        </div>
+                        <div>Holgura: {node.float}</div>
+                      </>
+                    )}
                  </div>
             </foreignObject>
           </g>
