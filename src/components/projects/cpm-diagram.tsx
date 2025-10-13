@@ -125,14 +125,6 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
       </Alert>
     );
   }
-  
-  const splitLabel = (label: string | null) => {
-    if (!label) return [];
-    const words = label.split(' ');
-    if (words.length <= 2) return [label];
-    const mid = Math.floor(words.length / 2);
-    return [words.slice(0, mid).join(' '), words.slice(mid).join(' ')];
-  };
 
   return (
     <div className="overflow-auto border rounded-lg p-4 bg-background">
@@ -195,6 +187,7 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
             <foreignObject width={NODE_WIDTH} height={NODE_HEIGHT}>
                  <div className={`p-2 flex flex-col h-full text-xs ${node.isCritical ? 'text-primary-foreground' : 'text-card-foreground'}`}>
                     <div className="font-bold truncate">{node.name}</div>
+                    
                     <div className="flex items-center gap-1 mt-1 flex-wrap">
                       {node.isConsolidated && (
                           <Badge 
@@ -210,7 +203,9 @@ const CpmDiagram = ({ tasks, recipeMap }: { tasks: Task[], recipeMap: Map<string
                          <Badge key={name} variant={node.isCritical ? 'default' : 'secondary'} className="w-fit">{name}</Badge>
                       ))}
                     </div>
+
                     <div className="flex-grow"/>
+                    
                     <div className="grid grid-cols-2 gap-x-2">
                         <span>ES: {node.es}</span>
                         <span>EF: {node.ef}</span>
