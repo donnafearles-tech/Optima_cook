@@ -89,8 +89,8 @@ export default function RecipeCard({
             <div className="space-y-2">
                 {tasks.map(task => {
                      const predecessors = task.predecessorIds.map(
-                        (pId) => allTasks.find((t) => t.id === pId)?.name
-                      ).filter(Boolean);
+                        (pId) => allTasks.find((t) => t.id === pId)
+                      ).filter((t): t is Task => !!t);
                       
                      const resources = (task.resourceIds || []).map(
                         (rId) => allResources.find((r) => r.id === rId)?.name
@@ -128,7 +128,16 @@ export default function RecipeCard({
                                     {predecessors.length > 0 && (
                                         <div className="flex items-center gap-1">
                                             <span>Depende de:</span>
-                                            {predecessors.map(pName => <Badge key={pName} variant="secondary">{pName}</Badge>)}
+                                            {predecessors.map(pTask => (
+                                                <Badge 
+                                                    key={pTask.id} 
+                                                    variant="secondary" 
+                                                    className="cursor-pointer hover:bg-primary/20"
+                                                    onClick={() => onEditTask(pTask)}
+                                                >
+                                                    {pTask.name}
+                                                </Badge>
+                                            ))}
                                         </div>
                                     )}
                                     {resources.length > 0 && (
