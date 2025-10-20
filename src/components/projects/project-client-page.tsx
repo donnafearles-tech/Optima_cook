@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine, AlertTriangle, Trash2, Undo, Download, Copy, Move } from 'lucide-react';
+import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine, AlertTriangle, Trash2, Undo, Download, Copy, Move, Edit, Save, X } from 'lucide-react';
 import type { Project, Task, Recipe, UserResource, CpmResult } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { suggestTaskDependencies } from '@/ai/flows/suggest-task-dependencies';
@@ -25,6 +25,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
 
 interface ProjectClientPageProps {
   projectId: string;
@@ -68,6 +70,9 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const [showDependencyWarning, setShowDependencyWarning] = useState(false);
   const [history, setHistory] = useState<HistoryState[]>([]);
   const [isUndoing, setIsUndoing] = useState(false);
+  const [isEditingProject, setIsEditingProject] = useState(false);
+  const [projectName, setProjectName] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
 
 
   const { toast } = useToast();
@@ -88,6 +93,13 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
   const resourcesQuery = useMemoFirebase(() => collection(userRef, 'resources'), [userRef]);
   const { data: allResources, isLoading: isLoadingResources } = useCollection<UserResource>(resourcesQuery);
   
+  useEffect(() => {
+    if (project) {
+      setProjectName(project.name);
+      setProjectDescription(project.description || '');
+    }
+  }, [project]);
+  
   const saveToHistory = (description: string) => {
     const currentSnapshot: HistoryState = {
       tasks: allTasks || [],
@@ -96,6 +108,27 @@ export default function ProjectClientPage({ projectId, userId, onImportRecipe }:
     };
     // Keep only the last state
     setHistory([currentSnapshot]);
+  };
+
+  const handleSaveProjectDetails = () => {
+    if (!project) return;
+    if (projectName.trim() === '') {
+      toast({ title: 'El nombre no puede estar vacío', variant: 'destructive' });
+      return;
+    }
+    const detailsToUpdate: Partial<Project> = {};
+    if (projectName !== project.name) {
+      detailsToUpdate.name = projectName;
+    }
+    if (projectDescription !== (project.description || '')) {
+      detailsToUpdate.description = projectDescription;
+    }
+
+    if (Object.keys(detailsToUpdate).length > 0) {
+      updateDocumentNonBlocking(projectRef, detailsToUpdate);
+      toast({ title: 'Proyecto actualizado' });
+    }
+    setIsEditingProject(false);
   };
   
   const handleUndo = async () => {
@@ -756,11 +789,50 @@ const handleTaskSave = async (taskToSave: Task) => {
   return (
     <>
       <div>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight font-headline">{project.name}</h1>
-            <p className="text-muted-foreground">{project.description}</p>
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
+          <div className="flex-1">
+             {isEditingProject ? (
+              <div className="space-y-2">
+                <Input
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  className="text-3xl font-bold tracking-tight font-headline h-auto p-0 border-0 shadow-none focus-visible:ring-0"
+                />
+                <Textarea
+                  value={projectDescription}
+                  onChange={(e) => setProjectDescription(e.target.value)}
+                  placeholder="Añade una descripción..."
+                  className="text-muted-foreground"
+                />
+              </div>
+            ) : (
+               <div>
+                  <h1 className="text-3xl font-bold tracking-tight font-headline">{project.name}</h1>
+                  <p className="text-muted-foreground mt-1">{project.description || 'Sin descripción. Haz clic en "Editar" para añadir una.'}</p>
+              </div>
+            )}
           </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {isEditingProject ? (
+              <>
+                <Button size="sm" onClick={handleSaveProjectDetails}><Save className="mr-2 h-4 w-4"/>Guardar</Button>
+                <Button size="sm" variant="ghost" onClick={() => {
+                  setIsEditingProject(false);
+                  setProjectName(project.name);
+                  setProjectDescription(project.description || '');
+                }}>
+                  <X className="mr-2 h-4 w-4"/>Cancelar
+                </Button>
+              </>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => setIsEditingProject(true)}>
+                <Edit className="mr-2 h-4 w-4"/>Editar
+              </Button>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div/>
           <div className="flex gap-2 flex-wrap">
               <AlertDialog>
               <AlertDialogTrigger asChild>
