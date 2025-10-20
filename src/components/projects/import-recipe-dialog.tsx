@@ -12,7 +12,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { parseRecipe } from '@/ai/flows/parse-recipe';
-import type { ParseRecipeInput, ParseRecipeOutput, Task, UserResource } from '@/lib/types';
+import type { ParseRecipeInput, ParseRecipeOutput, Task, UserResource, Recipe, Project } from '@/lib/types';
 import { Sparkles, Upload, FileText } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '../ui/input';
@@ -30,7 +30,7 @@ interface ImportRecipeDialogProps {
   userId: string;
 }
 
-function FileUploader({ onFileChange, isParsing, label, description, fileType }: { onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void, isParsing: boolean, label: string, description: string, fileType: "recipe" | "manual" }) {
+function FileUploader({ onFileChange, onJsonFileContent, isParsing, label, description, fileType }: { onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void, onJsonFileContent: (content: string) => void, isParsing: boolean, label: string, description: string, fileType: "recipe" | "manual" }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState('');
 
@@ -38,10 +38,19 @@ function FileUploader({ onFileChange, isParsing, label, description, fileType }:
     const file = event.target.files?.[0];
     if (file) {
       setFileName(file.name);
+      if (file.type === 'application/json') {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const content = e.target?.result as string;
+          onJsonFileContent(content);
+        };
+        reader.readAsText(file);
+      } else {
+        onFileChange(event);
+      }
     } else {
       setFileName('');
     }
-    onFileChange(event);
   };
   
   return (
@@ -62,7 +71,7 @@ function FileUploader({ onFileChange, isParsing, label, description, fileType }:
           ref={fileInputRef} 
           className="hidden"
           onChange={handleFileSelect}
-          accept=".txt,.pdf,.xlsx,.docx,.png,.jpg,.jpeg"
+          accept=".txt,.pdf,.xlsx,.docx,.png,.jpg,.jpeg,.json"
           disabled={isParsing}
       />
     </div>
@@ -73,6 +82,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
   const [recipeText, setRecipeText] = useState('');
   const [extractedFileText, setExtractedFileText] = useState('');
   const [knowledgeBaseText, setKnowledgeBaseText] = useState('');
+  const [jsonContent, setJsonContent] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [activeTab, setActiveTab] = useState('paste');
   const { toast } = useToast();
@@ -85,7 +95,91 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
   }, [firestore, userId]);
   const { data: userResources } = useCollection<UserResource>(resourcesQuery);
 
+
+  const handleJsonImport = async () => {
+    setIsParsing(true);
+    try {
+      const parsedData = JSON.parse(jsonContent);
+
+      const recipesToImport: Recipe[] = parsedData.recipes || [];
+      const tasksToImport: Task[] = parsedData.tasks || [];
+
+      if (recipesToImport.length === 0 && tasksToImport.length === 0) {
+        toast({ title: 'JSON Vacío', description: 'El archivo JSON no contiene recetas o tareas.', variant: 'destructive'});
+        setIsParsing(false);
+        return;
+      }
+      
+      const batch = writeBatch(firestore);
+      const projectRef = doc(firestore, 'users', userId, 'projects', projectId);
+      
+      const oldToNewRecipeIdMap = new Map<string, string>();
+      const recipesCol = collection(projectRef, 'recipes');
+      recipesToImport.forEach(recipe => {
+        const newRecipeRef = doc(recipesCol);
+        oldToNewRecipeIdMap.set(recipe.id, newRecipeRef.id);
+        batch.set(newRecipeRef, { name: recipe.name });
+      });
+      
+      const oldToNewTaskIdMap = new Map<string, string>();
+      const tasksCol = collection(projectRef, 'tasks');
+      const taskRefs = tasksToImport.map(originalTask => {
+        const taskRef = doc(tasksCol);
+        oldToNewTaskIdMap.set(originalTask.id, taskRef.id);
+        return { originalTask, taskRef };
+      });
+      
+      taskRefs.forEach(({ originalTask, taskRef }) => {
+        const newRecipeIds = (originalTask.recipeIds || [])
+          .map(oldId => oldToNewRecipeIdMap.get(oldId))
+          .filter((id): id is string => !!id);
+        
+        const newPredecessorIds = (originalTask.predecessorIds || [])
+          .map(oldId => oldToNewTaskIdMap.get(oldId))
+          .filter((id): id is string => !!id);
+
+        const { id, ...taskData } = originalTask;
+        const finalTaskData: Omit<Task, 'id'> = {
+          ...taskData,
+          recipeIds: newRecipeIds.length > 0 ? newRecipeIds : (recipesToImport.length > 0 ? [oldToNewRecipeIdMap.values().next().value] : []),
+          predecessorIds: newPredecessorIds,
+        };
+        batch.set(taskRef, finalTaskData);
+      });
+
+      await batch.commit();
+
+      toast({
+        title: '¡Importación JSON Exitosa!',
+        description: `Se importaron ${recipesToImport.length} recetas y ${tasksToImport.length} tareas.`,
+      });
+
+      onOpenChange(false);
+      // Reset all states
+      setRecipeText('');
+      setExtractedFileText('');
+      setKnowledgeBaseText('');
+      setJsonContent('');
+
+    } catch (error) {
+      console.error('Falló la importación del JSON', error);
+      toast({
+        title: 'Falló la Importación',
+        description: 'No se pudo procesar el archivo JSON. Verifica que el formato sea correcto.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsParsing(false);
+    }
+  }
+
+
   const handleParse = async () => {
+    if (jsonContent) {
+      await handleJsonImport();
+      return;
+    }
+
     const textToParse = activeTab === 'upload' ? extractedFileText : recipeText;
      if (!textToParse.trim()) {
       toast({
@@ -156,6 +250,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
       setRecipeText('');
       setExtractedFileText('');
       setKnowledgeBaseText('');
+      setJsonContent('');
 
     } catch (error) {
       console.error('Falló el análisis de la receta', error);
@@ -190,7 +285,10 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
     if (!file) return;
 
     setIsParsing(true);
-    if(fileType === 'recipe') setExtractedFileText('');
+    if(fileType === 'recipe') {
+      setExtractedFileText('');
+      setJsonContent('');
+    }
     if(fileType === 'manual') setKnowledgeBaseText('');
     
     const reader = new FileReader();
@@ -229,15 +327,24 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
     reader.readAsDataURL(file);
   }
 
-  const isImportDisabled = isParsing || (activeTab === 'paste' && !recipeText.trim()) || (activeTab === 'upload' && !extractedFileText.trim());
+  const handleJsonContent = (content: string) => {
+    setJsonContent(content);
+    setExtractedFileText(`Archivo JSON cargado. Contiene ${content.length} caracteres.`);
+    toast({
+      title: "Archivo JSON cargado",
+      description: "Listo para importar."
+    });
+  }
+
+  const isImportDisabled = isParsing || (activeTab === 'paste' && !recipeText.trim()) || (activeTab === 'upload' && !extractedFileText.trim() && !jsonContent);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="font-headline">Importar Receta con IA</DialogTitle>
+          <DialogTitle className="font-headline">Importar Receta con IA o JSON</DialogTitle>
           <DialogDescription>
-            Pega tu receta o sube un archivo. Opcionalmente, añade un manual para darle contexto a la IA y mejorar las sugerencias.
+            Pega tu receta, sube un archivo (texto, PDF, imagen, JSON) o añade un manual para darle contexto a la IA.
           </DialogDescription>
         </DialogHeader>
         <div className="grid md:grid-cols-2 gap-4">
@@ -245,7 +352,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
                 <Tabs defaultValue="paste" value={activeTab} onValueChange={setActiveTab}>
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="paste">Pegar Receta</TabsTrigger>
-                        <TabsTrigger value="upload">Subir Receta</TabsTrigger>
+                        <TabsTrigger value="upload">Subir Archivo</TabsTrigger>
                     </TabsList>
                     <TabsContent value="paste" className="py-4">
                         <Textarea
@@ -259,9 +366,10 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
                     <TabsContent value="upload" className="py-4">
                         <FileUploader 
                             onFileChange={(e) => handleFileChange(e, 'recipe')}
+                            onJsonFileContent={handleJsonContent}
                             isParsing={isParsing}
-                            label="Subir Receta"
-                            description="Sube un archivo de receta (.txt, .pdf, imagen, etc.)"
+                            label="Subir Receta o JSON"
+                            description="Sube un archivo de receta (.txt, .pdf, .json, etc.)"
                             fileType="recipe"
                         />
                         {extractedFileText && (
@@ -276,6 +384,7 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
             <div className="space-y-4">
                  <FileUploader 
                     onFileChange={(e) => handleFileChange(e, 'manual')}
+                    onJsonFileContent={() => {}} // No-op for manual context
                     isParsing={isParsing}
                     label="Manual de Contexto (Opcional)"
                     description="Sube un manual de cocina para mejorar la IA."
@@ -304,3 +413,5 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
     </Dialog>
   );
 }
+
+    
