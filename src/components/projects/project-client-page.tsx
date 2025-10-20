@@ -328,7 +328,7 @@ const handleTaskSave = async (taskToSave: Task) => {
         newTasksRefs.forEach(({ newTaskRef, originalTask }) => {
             const { id, predecessorIds, recipeIds, ...restOfTask } = originalTask;
 
-            const newPredecessorIds = predecessorIds
+            const newPredecessorIds = (predecessorIds || [])
                 .map(oldPredId => oldToNewTaskMap.get(oldPredId))
                 .filter((newPredId): newPredId is string => !!newPredId);
 
@@ -641,11 +641,15 @@ const handleTaskSave = async (taskToSave: Task) => {
     } catch(error) {
       console.error(error);
       const errorMessage = error instanceof Error ? error.message : "Revisa la consola para más detalles.";
-      toast({
-          title: "Error al Iniciar Cálculo",
-          description: errorMessage,
-          variant: "destructive",
-      });
+       if (errorMessage.includes('ciclo de dependencias')) {
+          setShowDependencyWarning(true); // Re-use the warning dialog for cycles
+        } else {
+          toast({
+              title: "Error al Iniciar Cálculo",
+              description: errorMessage,
+              variant: "destructive",
+          });
+        }
     } finally {
        setIsCalculatingPath(false);
     }
@@ -940,19 +944,17 @@ const handleTaskSave = async (taskToSave: Task) => {
        <AlertDialog open={showDependencyWarning} onOpenChange={setShowDependencyWarning}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                <AlertDialogTitle>Dependencias de Tareas Faltantes</AlertDialogTitle>
+                <AlertDialogTitle>¡Atención! Posible Ciclo o Dependencias Faltantes</AlertDialogTitle>
                 <AlertDialogDescription>
-                    La mayoría de las tareas no tienen dependencias. Esto puede llevar a una guía de cocina poco realista. ¿Te gustaría usar una de las herramientas de sugerencia de dependencias ahora?
+                    Se ha detectado un posible ciclo de dependencias o la mayoría de las tareas no están conectadas. Esto puede resultar en una guía de cocina incorrecta. ¿Qué quieres hacer?
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <Button variant="outline" onClick={() => { setShowDependencyWarning(false); handleCalculatePath(true); }}>
-                    Calcular de todos modos
-                </Button>
-                <AlertDialogAction onClick={() => { setShowDependencyWarning(false); handleSuggestDependencies(); }}>
-                    Sugerir con IA
-                </AlertDialogAction>
+                    <AlertDialogCancel>Revisar Manualmente</AlertDialogCancel>
+                    <Button variant="outline" disabled>Reparar con IA (Próximamente)</Button>
+                    <AlertDialogAction onClick={() => { setShowDependencyWarning(false); handleCalculatePath(true); }}>
+                        Calcular de todos modos
+                    </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
        </AlertDialog>

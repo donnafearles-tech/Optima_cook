@@ -406,12 +406,10 @@ export default function ImportRecipeDialog({ open, onOpenChange, projectId, user
                 <Sparkles className="mr-2 h-4 w-4 animate-spin" />
                 Procesando...
               </>
-            ) : 'Importar y Analizar'}
+            ) : jsonContent ? 'Importar desde JSON' : 'Importar y Analizar'}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
-    
