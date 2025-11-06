@@ -1,0 +1,41 @@
+type User @table {
+  email: String!
+  createdAt: Timestamp!
+  displayName: String
+  photoUrl: String
+}
+
+type Project @table {
+  user: User!
+  name: String!
+  createdAt: Timestamp!
+  description: String
+  lastCalculatedOptimalPath: String
+}
+
+type Task @table {
+  project: Project!
+  name: String!
+  durationMinutes: Int!
+  description: String
+  dependencies: [UUID]
+  recipeStepReference: String
+}
+
+type Recipe @table {
+  user: User!
+  title: String!
+  createdAt: Timestamp!
+  description: String
+  fileUrl: String
+  fileType: String
+  ingredients: [String]
+  instructions: String
+}
+
+type RecipeProjectLink @table(key: ["recipe", "project"]) {
+  recipe: Recipe!
+  project: Project!
+  createdAt: Timestamp!
+  notes: String
+}
