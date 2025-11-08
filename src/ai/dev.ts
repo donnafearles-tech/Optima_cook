@@ -3,7 +3,7 @@ config();
 
 import { genkit } from 'genkit';
 import { vertexAI } from '@genkit-ai/vertexai';
-import * as sa from '../sa.json';
+import * as sa from '../../sa.json';
 
 const serviceAccount = {
   client_email: sa.client_email,
