@@ -1,3 +1,5 @@
+'use server';
+
 import {genkit} from 'genkit';
 import {vertexAI} from '@genkit-ai/vertexai';
 import * as sa from '../../sa.json';
@@ -15,5 +17,6 @@ export const ai = genkit({
       serviceAccount,
     }),
   ],
-  model: 'vertexai/gemini-1.5-flash-001',
+  // Explicitly define the model to be used by prompts that don't specify one.
+  model: 'gemini-1.5-flash-001',
 });
