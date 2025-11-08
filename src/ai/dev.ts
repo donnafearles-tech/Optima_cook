@@ -1,6 +1,5 @@
 import { config } from 'dotenv';
-config();
-
+config({ path: '.env.local' });
 import { genkit } from 'genkit';
 import { vertexAI } from '@genkit-ai/vertexai';
 import * as sa from '../../sa.json';
