@@ -3,11 +3,19 @@ config();
 
 import { genkit } from 'genkit';
 import { vertexAI } from '@genkit-ai/vertexai';
+import * as sa from '../sa.json';
+
+const serviceAccount = {
+  client_email: sa.client_email,
+  private_key: sa.private_key,
+};
 
 // Initialize Genkit with Vertex AI for local development
 genkit({
   plugins: [
-    vertexAI(),
+    vertexAI({
+      serviceAccount,
+    }),
   ],
 });
 
