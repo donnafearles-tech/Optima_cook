@@ -1,12 +1,7 @@
-import * as admin from "firebase-admin";
+// ESTO ES LO QUE DEBES USAR EN TUS CLOUD FUNCTIONS O GENKIT
 
-// La ruta "path/to/serviceAccountKey.json" es un marcador de posición.
-// Deberías reemplazar "path/to/serviceAccountKey.json" por la ruta real a tu archivo de credenciales.
-// Por ejemplo, si colocas el archivo en la misma carpeta, la ruta sería "./serviceAccountKey.json".
-// Por seguridad, es recomendable no incluir este archivo directamente en el código fuente.
-import * as serviceAccount from "../../sa.json";
+import * as admin from 'firebase-admin';
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://studio-99491860-5533f-default-rtdb.firebaseio.com"
-});
+// La función detecta automáticamente la Cuenta de Servicio asignada al entorno de Firebase.
+// Es el método más seguro y no requiere subir archivos clave.
+admin.initializeApp();
