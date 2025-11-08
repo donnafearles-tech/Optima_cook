@@ -304,6 +304,24 @@ VALIDAR_CALIDAD(producto):
 - Confirmar estabilidad estructural
 - Aprobar para servicio
 \`\`\`
+
+---
+
+SECCIÓN 7: INFERENCIA PARA RECETAS SIMPLES
+
+7.1 Protocolo de Inferencia de Pasos
+\`\`\`
+PALABRAS CLAVE: inferencia, deducción, receta simple, sin pasos
+
+PROCEDIMIENTO:
+1. SI la receta de entrada contiene principalmente una lista de ingredientes y pocos o ningún paso de preparación explícito.
+2. ENTONCES, identifica el tipo de platillo (ej. "Crepas", "Sándwich", "Ensalada").
+3. Basado en el tipo de platillo, DEDUCE una secuencia de pasos de preparación y ensamblaje lógicos usando el conocimiento general de cocina y las secciones anteriores de este manual.
+4. GENERA las tareas atómicas correspondientes a estos pasos deducidos.
+
+EJEMPLO: Si la entrada es "Crepas con queso crema y mermelada" y solo lista ingredientes.
+- Tareas inferidas: "mezclar harina, leche y huevo", "precalentar sartén", "cocinar crepa", "untar queso crema en crepa", "añadir mermelada", "doblar crepa".
+\`\`\`
 </conocimiento>
 
 **Fase 1: Normalización y Desglose Atómico (Mise en Place)**
@@ -313,6 +331,7 @@ VALIDAR_CALIDAD(producto):
 4.  **REGLA DE NOMENCLATURA (MUY IMPORTANTE):** El nombre de cada tarea DEBE seguir un formato estricto: \`verbo en infinitivo + sustantivo(s)\`. Esto es para optimizarlo para la lógica de dependencias nativa.
     *   **CORRECTO:** "lavar tomates", "picar cebolla", "untar mayonesa", "colocar jamón".
     *   **INCORRECTO:** "Ahora lavamos los tomates", "El siguiente paso es picar la cebolla", "Tomates lavados".
+5.  **Contingencia de Receta Simple:** Si la receta de entrada no contiene pasos de preparación detallados (ver SECCIÓN 7.1), infiere los pasos necesarios basándote en los ingredientes y el nombre de la receta.
 
 **Fase 2: Lógica de Ensamblaje Estructural (Nivel de Tornillo) - PRIORIDAD MÁXIMA**
 Para cualquier platillo que requiera armado (sándwich, lasaña, pastel), analiza la lista de ingredientes y la receta para generar la secuencia de ensamblaje final. Aplica rigurosamente las reglas del MANUAL DEL CHEF.
