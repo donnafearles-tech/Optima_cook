@@ -2,12 +2,12 @@ import { config } from 'dotenv';
 config();
 
 import { genkit } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
+import { vertexAI } from '@genkit-ai/vertexai';
 
-// Initialize Genkit with Google AI (API Key) for local development
+// Initialize Genkit with Vertex AI for local development
 genkit({
   plugins: [
-    googleAI(),
+    vertexAI(),
   ],
 });
 
