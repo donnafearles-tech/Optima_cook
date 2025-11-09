@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -6,7 +7,7 @@
  * - suggestResourceForTask - Una función que sugiere el ID de un recurso basado en el nombre de una tarea y una lista de recursos disponibles.
  */
 
-import {ai} from '@/ai/dev';
+import {ai} from '@/ai/genkit';
 import {
   SuggestResourceForTaskInputSchema,
   SuggestResourceForTaskOutputSchema,
@@ -14,7 +15,7 @@ import {
   type SuggestResourceForTaskOutput,
 } from '@/lib/types';
 
-const suggestResourcePrompt = ai.definePrompt({
+const suggestResourcePrompt = (await ai).definePrompt({
   name: 'suggestResourcePrompt',
   input: {schema: SuggestResourceForTaskInputSchema},
   output: {schema: SuggestResourceForTaskOutputSchema},
@@ -39,14 +40,14 @@ const suggestResourcePrompt = ai.definePrompt({
     `,
 });
 
-const suggestResourceForTaskFlow = ai.defineFlow(
+const suggestResourceForTaskFlow = (await ai).defineFlow(
   {
     name: 'suggestResourceForTaskFlow',
     inputSchema: SuggestResourceForTaskInputSchema,
     outputSchema: SuggestResourceForTaskOutputSchema,
   },
   async input => {
-    const {output} = await suggestResourcePrompt(input);
+    const {output} = await (await suggestResourcePrompt)(input);
     return output!;
   }
 );

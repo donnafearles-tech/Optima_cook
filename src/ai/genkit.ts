@@ -1,3 +1,4 @@
+
 'use server';
 
 import { genkit } from 'genkit';
@@ -56,11 +57,20 @@ const configureAi = async () => {
   } else {
     // For local development, we fall back to the local JSON file.
     // This allows you to run 'genkit:watch' without needing Secret Manager access locally.
-    const sa = await import('./studio-99491860-5533f-7b64c8359930.json');
-    serviceAccount = {
-      client_email: sa.client_email,
-      private_key: sa.private_key,
-    };
+    try {
+        const sa = await import('./studio-99491860-5533f-7b64c8359930.json');
+        serviceAccount = {
+            client_email: sa.client_email,
+            private_key: sa.private_key,
+        };
+    } catch (e) {
+        console.warn(
+          'Could not load local service account file. AI features will not work locally. ' +
+          'This is expected in a deployed environment if the file is not present.'
+        );
+        // Return a dummy configuration to avoid crashing the app
+        return genkit({ plugins: [] });
+    }
   }
 
   // Configure and initialize Genkit with the Vertex AI plugin and the obtained credentials.

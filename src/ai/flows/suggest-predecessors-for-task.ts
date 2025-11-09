@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -6,7 +7,7 @@
  * - suggestPredecessorsForTask - Una función que sugiere los IDs de las tareas predecesoras.
  */
 
-import {ai} from '@/ai/dev';
+import {ai} from '@/ai/genkit';
 import {
   SuggestPredecessorsForTaskInputSchema,
   SuggestPredecessorsForTaskOutputSchema,
@@ -14,7 +15,7 @@ import {
   type SuggestPredecessorsForTaskOutput,
 } from '@/lib/types';
 
-const suggestPredecessorsPrompt = ai.definePrompt({
+const suggestPredecessorsPrompt = (await ai).definePrompt({
   name: 'suggestPredecessorsPrompt',
   input: {schema: SuggestPredecessorsForTaskInputSchema},
   output: {schema: SuggestPredecessorsForTaskOutputSchema},
@@ -52,7 +53,7 @@ const suggestPredecessorsPrompt = ai.definePrompt({
     `,
 });
 
-const suggestPredecessorsForTaskFlow = ai.defineFlow(
+const suggestPredecessorsForTaskFlow = (await ai).defineFlow(
   {
     name: 'suggestPredecessorsForTaskFlow',
     inputSchema: SuggestPredecessorsForTaskInputSchema,
@@ -62,7 +63,7 @@ const suggestPredecessorsForTaskFlow = ai.defineFlow(
     if (input.existingTasks.length === 0) {
       return { predecessorIds: [] };
     }
-    const {output} = await suggestPredecessorsPrompt(input);
+    const {output} = await (await suggestPredecessorsPrompt)(input);
     return output!;
   }
 );

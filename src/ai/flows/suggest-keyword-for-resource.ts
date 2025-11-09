@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -6,7 +7,7 @@
  * - suggestKeywordsForResource - Una función que sugiere palabras clave basadas en el nombre de un recurso.
  */
 
-import {ai} from '@/ai/dev';
+import {ai} from '@/ai/genkit';
 import {
   SuggestKeywordsForResourceInputSchema,
   SuggestKeywordsForResourceOutputSchema,
@@ -15,7 +16,7 @@ import {
 } from '@/lib/types';
 
 
-const suggestKeywordsPrompt = ai.definePrompt({
+const suggestKeywordsPrompt = (await ai).definePrompt({
   name: 'suggestKeywordsPrompt',
   input: {schema: SuggestKeywordsForResourceInputSchema},
   output: {schema: SuggestKeywordsForResourceOutputSchema},
@@ -37,14 +38,14 @@ const suggestKeywordsPrompt = ai.definePrompt({
     `,
 });
 
-const suggestKeywordsForResourceFlow = ai.defineFlow(
+const suggestKeywordsForResourceFlow = (await ai).defineFlow(
   {
     name: 'suggestKeywordsForResourceFlow',
     inputSchema: SuggestKeywordsForResourceInputSchema,
     outputSchema: SuggestKeywordsForResourceOutputSchema,
   },
   async input => {
-    const {output} = await suggestKeywordsPrompt(input);
+    const {output} = await (await suggestKeywordsPrompt)(input);
     return output!;
   }
 );

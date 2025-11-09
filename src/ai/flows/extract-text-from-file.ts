@@ -1,9 +1,10 @@
+
 'use server';
 /**
  * @fileOverview A flow for extracting text from various file types.
  * - extractTextFromFile - A function that handles text extraction from files.
  */
-import { ai } from '@/ai/dev';
+import { ai } from '@/ai/genkit';
 import {
   ExtractTextFromFileInputSchema,
   ExtractTextFromFileOutputSchema,
@@ -38,7 +39,7 @@ async function extractText(
     const { value } = await mammoth.extractRawText({ buffer: fileBuffer });
     return value;
   } else if (mimeType.startsWith('image/')) {
-     const {text} = await ai.generate({
+     const {text} = await (await ai).generate({
         prompt: [{media: {url: `data:${mimeType};base64,${fileBuffer.toString('base64')}`}}, {text: 'Extract the text from this image.'}],
      });
      return text;
@@ -47,7 +48,7 @@ async function extractText(
   }
 }
 
-const extractTextFromFileFlow = ai.defineFlow(
+const extractTextFromFileFlow = (await ai).defineFlow(
   {
     name: 'extractTextFromFileFlow',
     inputSchema: ExtractTextFromFileInputSchema,

@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -6,7 +7,7 @@
  * - parseRecipe - Una función que analiza una receta para generar una estructura de tareas ultra-detallada, incluyendo lógica de ensamblaje físico.
  */
 
-import {ai} from '@/ai/dev';
+import {ai} from '@/ai/genkit';
 import {
   ParseRecipeInputSchema,
   ParseRecipeOutputSchema,
@@ -14,7 +15,7 @@ import {
   type ParseRecipeOutput,
 } from '@/lib/types';
 
-const parseRecipePrompt = ai.definePrompt({
+const parseRecipePrompt = (await ai).definePrompt({
   name: 'parseRecipePrompt',
   input: {schema: ParseRecipeInputSchema},
   output: {schema: ParseRecipeOutputSchema},
@@ -362,14 +363,14 @@ Lista de Ingredientes:
 `,
 });
 
-const parseRecipeFlow = ai.defineFlow(
+const parseRecipeFlow = (await ai).defineFlow(
   {
     name: 'parseRecipeFlow',
     inputSchema: ParseRecipeInputSchema,
     outputSchema: ParseRecipeOutputSchema,
   },
   async input => {
-    const {output} = await parseRecipePrompt(input);
+    const {output} = await (await parseRecipePrompt)(input);
     return output!;
   }
 );

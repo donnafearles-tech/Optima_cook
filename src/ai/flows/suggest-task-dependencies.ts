@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -6,7 +7,7 @@
  * - suggestTaskDependencies - Una función que sugiere dependencias de tareas.
  */
 
-import {ai} from '@/ai/dev';
+import {ai} from '@/ai/genkit';
 import {
   SuggestTaskDependenciesInputSchema,
   SuggestTaskDependenciesOutputSchema,
@@ -14,7 +15,7 @@ import {
   type SuggestTaskDependenciesOutput,
 } from '@/lib/types';
 
-const suggestTaskDependenciesPrompt = ai.definePrompt({
+const suggestTaskDependenciesPrompt = (await ai).definePrompt({
   name: 'suggestTaskDependenciesPrompt',
   input: {schema: SuggestTaskDependenciesInputSchema},
   output: {schema: SuggestTaskDependenciesOutputSchema},
@@ -57,14 +58,14 @@ Aquí está el JSON:
     `,
 });
 
-const suggestTaskDependenciesFlow = ai.defineFlow(
+const suggestTaskDependenciesFlow = (await ai).defineFlow(
   {
     name: 'suggestTaskDependenciesFlow',
     inputSchema: SuggestTaskDependenciesInputSchema,
     outputSchema: SuggestTaskDependenciesOutputSchema,
   },
   async input => {
-    const {output} = await suggestTaskDependenciesPrompt(input);
+    const {output} = await (await suggestTaskDependenciesPrompt)(input);
     return output!;
   }
 );
