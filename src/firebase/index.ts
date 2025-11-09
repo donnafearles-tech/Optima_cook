@@ -1,7 +1,7 @@
 'use client';
 
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { Auth, getAuth } from 'firebase/auth';
+import { Auth, getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
 
 // Moviendo la configuración aquí para centralizarla
@@ -44,6 +44,23 @@ export function initializeFirebase() {
 
 export function getSdks(firebaseApp: FirebaseApp) {
   const auth = getAuth(firebaseApp);
+
+  // Connect to emulators in development
+  if (process.env.NODE_ENV === 'development') {
+    try {
+        connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+        console.log('Firebase Auth connected to emulator.');
+    } catch (error) {
+        // The emulator might already be connected, which throws an error.
+        // We can safely ignore this during hot-reloads.
+        if (error instanceof Error && error.message.includes('already connected')) {
+            // console.log('Auth emulator already connected.');
+        } else {
+            console.error('Error connecting to Firebase Auth emulator:', error);
+        }
+    }
+  }
+
   return {
     firebaseApp,
     auth,
