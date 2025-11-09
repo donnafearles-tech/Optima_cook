@@ -18,7 +18,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Logo from '@/components/logo';
 import { useToast } from '@/hooks/use-toast';
-import { FirebaseError } from 'firebase/auth';
+import { FirebaseError } from 'firebase/app';
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -49,32 +49,46 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const handleAuthError = (error: FirebaseError) => {
+  const handleAuthError = (error: unknown) => {
     let title = 'Error de Autenticación';
     let description = 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.';
 
-    switch (error.code) {
-      case 'auth/invalid-credential':
-      case 'auth/wrong-password':
-      case 'auth/user-not-found':
-        title = 'Credenciales Incorrectas';
-        description = 'El correo o la contraseña no son válidos. Por favor, verifica tus datos.';
-        break;
-      case 'auth/email-already-in-use':
-        title = 'Correo ya Registrado';
-        description = 'Este correo electrónico ya está en uso. Intenta iniciar sesión.';
-        break;
-      case 'auth/weak-password':
-        title = 'Contraseña Débil';
-        description = 'La contraseña debe tener al menos 6 caracteres.';
-        break;
-      case 'auth/network-request-failed':
-        title = 'Error de Red';
-        description = 'No se pudo conectar con los servidores de autenticación. Revisa tu conexión a internet.';
-        break;
-      case 'auth/popup-closed-by-user':
-        // This is not a real error, so we just ignore it.
-        return;
+    if (error instanceof FirebaseError) {
+        switch (error.code) {
+        case 'auth/invalid-credential':
+        case 'auth/wrong-password':
+        case 'auth/user-not-found':
+            title = 'Credenciales Incorrectas';
+            description = 'El correo o la contraseña no son válidos. Por favor, verifica tus datos.';
+            break;
+        case 'auth/email-already-in-use':
+            title = 'Correo ya Registrado';
+            description = 'Este correo electrónico ya está en uso. Intenta iniciar sesión.';
+            break;
+        case 'auth/weak-password':
+            title = 'Contraseña Débil';
+            description = 'La contraseña debe tener al menos 6 caracteres.';
+            break;
+        case 'auth/network-request-failed':
+            title = 'Error de Red';
+            description = 'No se pudo conectar con los servidores. Revisa tu conexión y que el dominio esté autorizado en Firebase.';
+            break;
+        case 'auth/popup-closed-by-user':
+            // Esto no es un error real, el usuario cerró la ventana de Google.
+            return;
+        case 'auth/unauthorized-domain':
+            title: 'Dominio no Autorizado';
+            description = 'Este dominio no está autorizado para operaciones de autenticación. Añádelo en la consola de Firebase.';
+            break;
+        default:
+            // Para otros errores de Firebase, muestra el código
+            title = `Error de Firebase (${error.code})`;
+            description = error.message;
+            break;
+        }
+    } else if (error instanceof Error) {
+        // Para errores genéricos de JavaScript
+        description = error.message;
     }
 
     toast({
@@ -89,9 +103,9 @@ export default function LoginPage() {
     setIsSigningUp(true);
     try {
       await initiateEmailSignUp(auth, email, password);
-      // On success, the onAuthStateChanged listener will handle the redirect.
+      // En caso de éxito, el listener onAuthStateChanged se encargará del redireccionamiento.
     } catch (error) {
-      handleAuthError(error as FirebaseError);
+      handleAuthError(error);
     } finally {
       setIsSigningUp(false);
     }
@@ -102,9 +116,9 @@ export default function LoginPage() {
     setIsSigningIn(true);
     try {
       await initiateEmailSignIn(auth, email, password);
-      // On success, the onAuthStateChanged listener will handle the redirect.
+      // En caso de éxito, el listener onAuthStateChanged se encargará del redireccionamiento.
     } catch (error) {
-      handleAuthError(error as FirebaseError);
+      handleAuthError(error);
     } finally {
       setIsSigningIn(false);
     }
@@ -114,7 +128,7 @@ export default function LoginPage() {
     try {
       await initiateGoogleSignIn(auth);
     } catch (error) {
-       handleAuthError(error as FirebaseError);
+       handleAuthError(error);
     }
   }
 
