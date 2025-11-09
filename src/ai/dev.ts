@@ -1,6 +1,8 @@
+'use server';
+
 import { genkit } from 'genkit';
 import { vertexAI } from '@genkit-ai/vertexai';
-import * as sa from '../../sak.json';
+import * as sa from '../../studio-99491860-5533f-7b64c8359930.json';
 
 const serviceAccount = {
   client_email: sa.client_email,
@@ -11,6 +13,8 @@ const serviceAccount = {
 genkit({
   plugins: [
     vertexAI({
+      projectId: 'studio-99491860-5533f',
+      location: 'us-central1',
       serviceAccount,
     }),
   ],
