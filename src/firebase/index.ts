@@ -6,7 +6,7 @@ import { getFirestore } from 'firebase/firestore'
 
 // Moviendo la configuración aquí para centralizarla
 export const firebaseConfig = {
-  "apiKey": "REPLACE_WITH_YOUR_API_KEY",
+  "apiKey": "AIzaSyBFD6y9l0oUCc41xaMmL3__n3-zYFjHf8w",
   "projectId": "studio-99491860-5533f",
   "appId": "1:941568288177:web:7dcd9a4d3cf17c715b0990",
   "authDomain": "studio-99491860-5533f.firebaseapp.com",
