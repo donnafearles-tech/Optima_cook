@@ -3,7 +3,7 @@
  * @fileOverview A flow for extracting text from various file types.
  * - extractTextFromFile - A function that handles text extraction from files.
  */
-import { ai } from '@/ai/genkit';
+import { ai } from '@/ai/dev';
 import {
   ExtractTextFromFileInputSchema,
   ExtractTextFromFileOutputSchema,

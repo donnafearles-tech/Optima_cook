@@ -2,7 +2,7 @@
 
 import { genkit } from 'genkit';
 import { vertexAI } from '@genkit-ai/vertexai';
-import * as sa from '../../studio-99491860-5533f-7b64c8359930.json';
+import * as sa from './studio-99491860-5533f-7b64c8359930.json';
 
 const serviceAccount = {
   client_email: sa.client_email,

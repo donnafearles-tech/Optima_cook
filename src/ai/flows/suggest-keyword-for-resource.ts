@@ -6,7 +6,7 @@
  * - suggestKeywordsForResource - Una función que sugiere palabras clave basadas en el nombre de un recurso.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '@/ai/dev';
 import {
   SuggestKeywordsForResourceInputSchema,
   SuggestKeywordsForResourceOutputSchema,

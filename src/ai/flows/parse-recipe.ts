@@ -6,7 +6,7 @@
  * - parseRecipe - Una función que analiza una receta para generar una estructura de tareas ultra-detallada, incluyendo lógica de ensamblaje físico.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '@/ai/dev';
 import {
   ParseRecipeInputSchema,
   ParseRecipeOutputSchema,

@@ -6,7 +6,7 @@
  * @fileOverview This AI agent for detecting and consolidating redundant or semantically equivalent cooking tasks is DEPRECATED.
  * The logic has been migrated to a native client-side implementation.
  */
-import { ai } from '@/ai/genkit';
+import { ai } from '@/ai/dev';
 import {
   ConsolidateTasksInputSchema,
   ConsolidateTasksOutputSchema,

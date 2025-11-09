@@ -6,7 +6,7 @@
  * - suggestTaskDependencies - Una función que sugiere dependencias de tareas.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '@/ai/dev';
 import {
   SuggestTaskDependenciesInputSchema,
   SuggestTaskDependenciesOutputSchema,

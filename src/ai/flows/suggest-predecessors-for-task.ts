@@ -6,7 +6,7 @@
  * - suggestPredecessorsForTask - Una función que sugiere los IDs de las tareas predecesoras.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '@/ai/dev';
 import {
   SuggestPredecessorsForTaskInputSchema,
   SuggestPredecessorsForTaskOutputSchema,
