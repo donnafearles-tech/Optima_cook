@@ -25,7 +25,7 @@ env:
   # Grant access to secrets in Cloud Secret Manager.
   # See https://firebase.google.com/docs/app-hosting/configure#secret-parameters
   - variable: VERTEX_SA_KEY
-    secret: VERTEX_SA_KEY
+    secret: studio-99491860-5533f-7b64c8359930.json
     availability:
       - BUILD
       - RUNTIME
