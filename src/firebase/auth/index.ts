@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -8,51 +9,34 @@ import {
   GoogleAuthProvider,
   signOut,
   FirebaseError,
+  UserCredential,
 } from 'firebase/auth';
 import { useFirebase } from '@/firebase/provider';
 
 
-/** Initiate email/password sign-up (non-blocking). */
-export function initiateEmailSignUp(authInstance: Auth, email: string, password: string): void {
-  createUserWithEmailAndPassword(authInstance, email, password).catch(err => {
-      // Errors are handled by the onAuthStateChanged listener's error callback
-      // or by a global error handler if one is set up.
-      console.error("Sign up failed:", err);
-  });
+/** Initiate email/password sign-up. Returns a promise that resolves on success or rejects on error. */
+export async function initiateEmailSignUp(authInstance: Auth, email: string, password: string): Promise<UserCredential> {
+  return await createUserWithEmailAndPassword(authInstance, email, password);
 }
 
-/** Initiate email/password sign-in (non-blocking). */
-export function initiateEmailSignIn(
+/** Initiate email/password sign-in. Returns a promise that resolves on success or rejects on error. */
+export async function initiateEmailSignIn(
   authInstance: Auth, 
   email: string, 
   password: string,
-  onError?: (error: FirebaseError) => void
-): void  {
-  signInWithEmailAndPassword(authInstance, email, password).catch((err: FirebaseError) => {
-    if (onError) {
-      onError(err);
-    } else {
-      console.error("Sign in failed:", err);
-    }
-  });
+): Promise<UserCredential>  {
+  return await signInWithEmailAndPassword(authInstance, email, password);
 }
 
-/** Initiate Google sign-in (non-blocking). */
-export function initiateGoogleSignIn(authInstance: Auth): void {
+/** Initiate Google sign-in. Returns a promise that resolves on success or rejects on error. */
+export async function initiateGoogleSignIn(authInstance: Auth): Promise<UserCredential> {
   const provider = new GoogleAuthProvider();
-  signInWithPopup(authInstance, provider).catch((err: FirebaseError) => {
-    // This is a common scenario and not a true "error" to be logged.
-    if (err.code !== 'auth/popup-closed-by-user') {
-      console.error("Google sign in failed:", err);
-    }
-  });
+  return await signInWithPopup(authInstance, provider);
 }
 
-/** Initiate sign-out (non-blocking). */
-export function initiateSignOut(authInstance: Auth): void {
-  signOut(authInstance).catch(err => {
-      console.error("Sign out failed:", err);
-  });
+/** Initiate sign-out. Returns a promise that resolves on success or rejects on error. */
+export async function initiateSignOut(authInstance: Auth): Promise<void> {
+  return await signOut(authInstance);
 }
 
 

@@ -49,36 +49,73 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
+  const handleAuthError = (error: FirebaseError) => {
+    let title = 'Error de Autenticación';
+    let description = 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.';
+
+    switch (error.code) {
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password':
+      case 'auth/user-not-found':
+        title = 'Credenciales Incorrectas';
+        description = 'El correo o la contraseña no son válidos. Por favor, verifica tus datos.';
+        break;
+      case 'auth/email-already-in-use':
+        title = 'Correo ya Registrado';
+        description = 'Este correo electrónico ya está en uso. Intenta iniciar sesión.';
+        break;
+      case 'auth/weak-password':
+        title = 'Contraseña Débil';
+        description = 'La contraseña debe tener al menos 6 caracteres.';
+        break;
+      case 'auth/network-request-failed':
+        title = 'Error de Red';
+        description = 'No se pudo conectar con los servidores de autenticación. Revisa tu conexión a internet.';
+        break;
+      case 'auth/popup-closed-by-user':
+        // This is not a real error, so we just ignore it.
+        return;
+    }
+
+    toast({
+      title: title,
+      description: description,
+      variant: 'destructive',
+    });
+  }
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSigningUp(true);
-    initiateEmailSignUp(auth, email, password);
-    // Non-blocking, auth state listener will redirect
+    try {
+      await initiateEmailSignUp(auth, email, password);
+      // On success, the onAuthStateChanged listener will handle the redirect.
+    } catch (error) {
+      handleAuthError(error as FirebaseError);
+    } finally {
+      setIsSigningUp(false);
+    }
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSigningIn(true);
-    initiateEmailSignIn(auth, email, password, (error) => {
-        setIsSigningIn(false);
-        if (error.code === 'auth/invalid-credential') {
-            toast({
-                title: 'Error de inicio de sesión',
-                description: 'Credenciales incorrectas. Revisa tu correo y contraseña.',
-                variant: 'destructive'
-            });
-        } else {
-             toast({
-                title: 'Error de inicio de sesión',
-                description: 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.',
-                variant: 'destructive'
-            });
-        }
-    });
+    try {
+      await initiateEmailSignIn(auth, email, password);
+      // On success, the onAuthStateChanged listener will handle the redirect.
+    } catch (error) {
+      handleAuthError(error as FirebaseError);
+    } finally {
+      setIsSigningIn(false);
+    }
   };
   
-  const handleGoogleSignIn = () => {
-    initiateGoogleSignIn(auth);
+  const handleGoogleSignIn = async () => {
+    try {
+      await initiateGoogleSignIn(auth);
+    } catch (error) {
+       handleAuthError(error as FirebaseError);
+    }
   }
 
   if (isUserLoading || user) {
