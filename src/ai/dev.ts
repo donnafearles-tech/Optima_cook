@@ -18,8 +18,6 @@ export const ai = genkit({
       serviceAccount,
     }),
   ],
-  // Explicitly define the model to be used by prompts that don't specify one.
-  model: 'gemini-1.5-flash-001',
 });
 
 
