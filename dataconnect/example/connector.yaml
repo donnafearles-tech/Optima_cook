@@ -6,3 +6,13 @@ generate:
       packageJsonDir: ../..
       react: true
       angular: false
+    - outputDir: ../../functions/src/dataconnect-generated
+      package: "@dataconnect/generated"
+      packageJsonDir: ../../functions
+      react: false
+      angular: false
+    - outputDir: ../../cancel/src/dataconnect-generated
+      package: "@dataconnect/generated"
+      packageJsonDir: ../../cancel
+      react: false
+      angular: false
