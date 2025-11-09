@@ -45,8 +45,8 @@ export function initializeFirebase() {
 export function getSdks(firebaseApp: FirebaseApp) {
   const auth = getAuth(firebaseApp);
 
-  // Connect to emulators in development
-  if (process.env.NODE_ENV === 'development') {
+  // Connect to emulators only in a true local development environment, not on Cloud Workstations.
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
     try {
         connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
         console.log('Firebase Auth connected to emulator.');
