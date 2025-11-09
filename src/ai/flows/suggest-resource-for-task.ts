@@ -34,7 +34,7 @@ const suggestResourcePrompt = ai.definePrompt({
     **Recursos Disponibles (JSON):**
     {{{json userResources}}}
 
-    Responde ÚNICamente con un objeto JSON válido que contenga la clave "resourceIds". No incluyas ninguna explicación u otro texto.
+    Responde ÚNICAMENTE con un objeto JSON válido que contenga la clave "resourceIds". No incluyas ninguna explicación u otro texto.
     Aquí está el JSON:
     `,
 });
