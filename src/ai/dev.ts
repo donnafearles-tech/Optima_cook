@@ -9,8 +9,8 @@ const serviceAccount = {
   private_key: sa.private_key,
 };
 
-// Initialize Genkit with Vertex AI for local development
-genkit({
+// Initialize Genkit and define the main 'ai' object for local development
+export const ai = genkit({
   plugins: [
     vertexAI({
       projectId: 'studio-99491860-5533f',
@@ -18,6 +18,8 @@ genkit({
       serviceAccount,
     }),
   ],
+  // Explicitly define the model to be used by prompts that don't specify one.
+  model: 'gemini-1.5-flash-001',
 });
 
 
