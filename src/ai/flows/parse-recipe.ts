@@ -9,12 +9,14 @@ import {
   ParseRecipeInputSchema,
   ParseRecipeOutputSchema,
 } from '@/lib/types';
+import { vertexAI } from '@genkit-ai/vertexai';
 
 const parseRecipePrompt = (async () => {
     return (await ai).definePrompt({
       name: 'parseRecipePrompt',
       input: {schema: ParseRecipeInputSchema},
       output: {schema: ParseRecipeOutputSchema},
+      model: vertexAI.model('gemini-2.5-flash'),
       prompt: `Actúa como un Chef Ejecutivo experto en optimización de procesos (Mise en Place), un Ingeniero de Procesos Culinarios y un Desarrollador Full Stack con especialización en PLN para cocina. Tu objetivo es generar una Estructura de Desglose del Trabajo (EDT) ultra-detallada y estructuralmente sólida para un platillo multicomponente, lista para ser usada en un cálculo de Ruta Crítica (CPM).
 
 **MANUAL DEL CHEF PROFESIONAL (Fuente de Verdad Absoluta):**
