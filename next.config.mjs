@@ -1,6 +1,5 @@
-import type {NextConfig} from 'next';
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   /* config options here */
   typescript: {
     ignoreBuildErrors: true,
@@ -20,7 +19,7 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'images.unsplash.com',
         port: '',
-pathname: '/**',
+        pathname: '/**',
       },
       {
         protocol: 'https',
@@ -29,15 +28,12 @@ pathname: '/**',
         pathname: '/**',
       },
       {
-        protocol: 'https',
+        protocol: 'https' ,
         hostname: 'storage.googleapis.com',
         port: '',
         pathname: '/**',
       },
     ],
-  },
-  serverActions: {
-    maxDuration: 180,
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
