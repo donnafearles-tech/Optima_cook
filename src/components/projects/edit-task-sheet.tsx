@@ -27,8 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
-import { suggestResourceForTask } from '@/ai/flows/suggest-resource-for-task';
-import { suggestPredecessorsForTask } from '@/ai/flows/suggest-predecessors-for-task';
+import { suggestResourceForTask, suggestPredecessorsForTask } from '@/app/actions/ai-actions';
 
 const normalize = (str: string) => {
     if (!str) return '';

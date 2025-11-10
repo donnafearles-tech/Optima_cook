@@ -1,17 +1,11 @@
-
-'use server';
 /**
  * @fileOverview A flow for extracting text from various file types.
- * - extractTextFromFile - A function that handles text extraction from files.
  */
 import { ai } from '@/ai/genkit';
 import {
   ExtractTextFromFileInputSchema,
   ExtractTextFromFileOutputSchema,
-  type ExtractTextFromFileInput,
-  type ExtractTextFromFileOutput,
 } from '@/lib/types';
-import * as z from 'zod';
 import pdf from 'pdf-parse/lib/pdf-parse.js';
 import * as xlsx from 'xlsx';
 import mammoth from 'mammoth';
@@ -48,7 +42,7 @@ async function extractText(
   }
 }
 
-const extractTextFromFileFlow = (await ai).defineFlow(
+export const extractTextFromFileFlow = (await ai).defineFlow(
   {
     name: 'extractTextFromFileFlow',
     inputSchema: ExtractTextFromFileInputSchema,
@@ -64,9 +58,3 @@ const extractTextFromFileFlow = (await ai).defineFlow(
     return { text };
   }
 );
-
-export async function extractTextFromFile(
-  input: ExtractTextFromFileInput
-): Promise<ExtractTextFromFileOutput> {
-  return await extractTextFromFileFlow(input);
-}

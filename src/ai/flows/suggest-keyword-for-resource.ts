@@ -1,18 +1,11 @@
-
-'use server';
-
 /**
  * @fileOverview Un agente de IA para sugerir palabras clave para un recurso de cocina.
- *
- * - suggestKeywordsForResource - Una función que sugiere palabras clave basadas en el nombre de un recurso.
  */
 
 import {ai} from '@/ai/genkit';
 import {
   SuggestKeywordsForResourceInputSchema,
   SuggestKeywordsForResourceOutputSchema,
-  type SuggestKeywordsForResourceInput,
-  type SuggestKeywordsForResourceOutput,
 } from '@/lib/types';
 
 
@@ -38,7 +31,7 @@ const suggestKeywordsPrompt = (await ai).definePrompt({
     `,
 });
 
-const suggestKeywordsForResourceFlow = (await ai).defineFlow(
+export const suggestKeywordsForResourceFlow = (await ai).defineFlow(
   {
     name: 'suggestKeywordsForResourceFlow',
     inputSchema: SuggestKeywordsForResourceInputSchema,
@@ -49,9 +42,3 @@ const suggestKeywordsForResourceFlow = (await ai).defineFlow(
     return output!;
   }
 );
-
-export async function suggestKeywordsForResource(
-  input: SuggestKeywordsForResourceInput
-): Promise<SuggestKeywordsForResourceOutput> {
-  return await suggestKeywordsForResourceFlow(input);
-}

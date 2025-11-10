@@ -11,16 +11,14 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { parseRecipe } from '@/ai/flows/parse-recipe';
+import { parseRecipe, extractTextFromFile, suggestResourceForTask } from '@/app/actions/ai-actions';
 import type { ParseRecipeInput, ParseRecipeOutput, Task, UserResource, Recipe, Project } from '@/lib/types';
 import { Sparkles, Upload, FileText } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { extractTextFromFile } from '@/ai/flows/extract-text-from-file';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, writeBatch, doc } from 'firebase/firestore';
-import { suggestResourceForTask } from '@/ai/flows/suggest-resource-for-task';
 
 
 interface ImportRecipeDialogProps {

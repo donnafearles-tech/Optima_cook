@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { X, Sparkles } from 'lucide-react';
 import type { UserResource } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { suggestKeywordsForResource } from '@/ai/flows/suggest-keyword-for-resource';
+import { suggestKeywordsForResource } from '@/app/actions/ai-actions';
 
 interface ResourceFormSheetProps {
   open: boolean;

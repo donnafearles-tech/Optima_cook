@@ -1,18 +1,11 @@
-
-'use server';
-
 /**
  * @fileOverview Un agente de IA para sugerir recursos de cocina para una tarea.
- *
- * - suggestResourceForTask - Una función que sugiere el ID de un recurso basado en el nombre de una tarea y una lista de recursos disponibles.
  */
 
 import {ai} from '@/ai/genkit';
 import {
   SuggestResourceForTaskInputSchema,
   SuggestResourceForTaskOutputSchema,
-  type SuggestResourceForTaskInput,
-  type SuggestResourceForTaskOutput,
 } from '@/lib/types';
 
 const suggestResourcePrompt = (await ai).definePrompt({
@@ -40,7 +33,7 @@ const suggestResourcePrompt = (await ai).definePrompt({
     `,
 });
 
-const suggestResourceForTaskFlow = (await ai).defineFlow(
+export const suggestResourceForTaskFlow = (await ai).defineFlow(
   {
     name: 'suggestResourceForTaskFlow',
     inputSchema: SuggestResourceForTaskInputSchema,
@@ -51,9 +44,3 @@ const suggestResourceForTaskFlow = (await ai).defineFlow(
     return output!;
   }
 );
-
-export async function suggestResourceForTask(
-  input: SuggestResourceForTaskInput
-): Promise<SuggestResourceForTaskOutput> {
-  return await suggestResourceForTaskFlow(input);
-}

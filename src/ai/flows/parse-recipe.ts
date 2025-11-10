@@ -1,6 +1,3 @@
-
-'use server';
-
 /**
  * @fileOverview Un agente de IA para analizar recetas, actuando como un Chef Ejecutivo y un Ingeniero de Procesos.
  *
@@ -11,8 +8,6 @@ import {ai} from '@/ai/genkit';
 import {
   ParseRecipeInputSchema,
   ParseRecipeOutputSchema,
-  type ParseRecipeInput,
-  type ParseRecipeOutput,
 } from '@/lib/types';
 
 const parseRecipePrompt = (await ai).definePrompt({
@@ -363,7 +358,7 @@ Lista de Ingredientes:
 `,
 });
 
-const parseRecipeFlow = (await ai).defineFlow(
+export const parseRecipeFlow = (await ai).defineFlow(
   {
     name: 'parseRecipeFlow',
     inputSchema: ParseRecipeInputSchema,
@@ -374,9 +369,3 @@ const parseRecipeFlow = (await ai).defineFlow(
     return output!;
   }
 );
-
-export async function parseRecipe(
-  input: ParseRecipeInput
-): Promise<ParseRecipeOutput> {
-  return await parseRecipeFlow(input);
-}

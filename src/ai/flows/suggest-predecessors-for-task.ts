@@ -1,18 +1,11 @@
-
-'use server';
-
 /**
  * @fileOverview Un agente de IA para sugerir predecesores para una nueva tarea de cocina.
- *
- * - suggestPredecessorsForTask - Una función que sugiere los IDs de las tareas predecesoras.
  */
 
 import {ai} from '@/ai/genkit';
 import {
   SuggestPredecessorsForTaskInputSchema,
   SuggestPredecessorsForTaskOutputSchema,
-  type SuggestPredecessorsForTaskInput,
-  type SuggestPredecessorsForTaskOutput,
 } from '@/lib/types';
 
 const suggestPredecessorsPrompt = (await ai).definePrompt({
@@ -53,7 +46,7 @@ const suggestPredecessorsPrompt = (await ai).definePrompt({
     `,
 });
 
-const suggestPredecessorsForTaskFlow = (await ai).defineFlow(
+export const suggestPredecessorsForTaskFlow = (await ai).defineFlow(
   {
     name: 'suggestPredecessorsForTaskFlow',
     inputSchema: SuggestPredecessorsForTaskInputSchema,
@@ -67,9 +60,3 @@ const suggestPredecessorsForTaskFlow = (await ai).defineFlow(
     return output!;
   }
 );
-
-export async function suggestPredecessorsForTask(
-  input: SuggestPredecessorsForTaskInput
-): Promise<SuggestPredecessorsForTaskOutput> {
-  return await suggestPredecessorsForTaskFlow(input);
-}

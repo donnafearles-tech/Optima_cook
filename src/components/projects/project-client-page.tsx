@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Wand2, FileUp, Plus, Combine, AlertTriangle, Trash2, Undo, Download, Copy, Move, Edit, Save, X } from 'lucide-react';
 import type { Project, Task, Recipe, UserResource, CpmResult } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { suggestTaskDependencies } from '@/ai/flows/suggest-task-dependencies';
+import { suggestTaskDependencies } from '@/app/actions/ai-actions';
 import { calculateCPM } from '@/lib/cpm';
 import EditTaskSheet from './edit-task-sheet';
 import EditRecipeDialog from './edit-recipe-dialog';
