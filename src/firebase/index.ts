@@ -17,38 +17,26 @@ export const firebaseConfig = {
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
-  if (getApps().length) {
-    return getSdks(getApp());
-  }
-  const firebaseApp = initializeApp(firebaseConfig);
-  return getSdks(firebaseApp);
-}
-
-export function getSdks(firebaseApp: FirebaseApp) {
-  const auth = getAuth(firebaseApp);
-
-  // Connect to emulators only in a true local development environment, not on Cloud Workstations.
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    try {
+  const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  
+  if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+     try {
         connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
-        console.log('Firebase Auth connected to emulator.');
-    } catch (error) {
-        // The emulator might already be connected, which throws an error.
-        // We can safely ignore this during hot-reloads.
-        if (error instanceof Error && error.message.includes('already connected')) {
-            // console.log('Auth emulator already connected.');
-        } else {
-            console.error('Error connecting to Firebase Auth emulator:', error);
+     } catch (e) {
+        if (e instanceof Error && !e.message.includes('already connected')) {
+            console.error('Error connecting to Firebase Auth emulator:', e);
         }
-    }
+     }
   }
 
   return {
-    firebaseApp,
-    auth,
-    firestore: getFirestore(firebaseApp)
+    firebaseApp: app,
+    auth: auth,
+    firestore: getFirestore(app)
   };
 }
+
 
 export * from './provider';
 export * from './client-provider';
