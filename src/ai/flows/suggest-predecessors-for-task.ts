@@ -8,11 +8,12 @@ import {
   SuggestPredecessorsForTaskOutputSchema,
 } from '@/lib/types';
 
-const suggestPredecessorsPrompt = (await ai).definePrompt({
-  name: 'suggestPredecessorsPrompt',
-  input: {schema: SuggestPredecessorsForTaskInputSchema},
-  output: {schema: SuggestPredecessorsForTaskOutputSchema},
-  prompt: `Actúas como un asistente de cocina experto en planificación y lógica de dependencias (Mise en Place).
+const suggestPredecessorsPrompt = (async () => {
+    return (await ai).definePrompt({
+      name: 'suggestPredecessorsPrompt',
+      input: {schema: SuggestPredecessorsForTaskInputSchema},
+      output: {schema: SuggestPredecessorsForTaskOutputSchema},
+      prompt: `Actúas como un asistente de cocina experto en planificación y lógica de dependencias (Mise en Place).
 
     Se te proporcionará el nombre de una **nueva tarea** y una lista de **tareas existentes** en un proyecto de cocina. Cada tarea existente tiene un nombre y un ID único.
 
@@ -44,19 +45,23 @@ const suggestPredecessorsPrompt = (await ai).definePrompt({
     Responde ÚNICAMENTE con un objeto JSON válido que contenga la clave "predecessorIds". Si no encuentras ninguna dependencia lógica, devuelve un array vacío. No incluyas ninguna explicación u otro texto.
     Aquí está el JSON:
     `,
-});
+    });
+})();
 
-export const suggestPredecessorsForTaskFlow = (await ai).defineFlow(
-  {
-    name: 'suggestPredecessorsForTaskFlow',
-    inputSchema: SuggestPredecessorsForTaskInputSchema,
-    outputSchema: SuggestPredecessorsForTaskOutputSchema,
-  },
-  async input => {
-    if (input.existingTasks.length === 0) {
-      return { predecessorIds: [] };
-    }
-    const {output} = await (await suggestPredecessorsPrompt)(input);
-    return output!;
-  }
-);
+export const suggestPredecessorsForTaskFlow = (async () => {
+    return (await ai).defineFlow(
+      {
+        name: 'suggestPredecessorsForTaskFlow',
+        inputSchema: SuggestPredecessorsForTaskInputSchema,
+        outputSchema: SuggestPredecessorsForTaskOutputSchema,
+      },
+      async input => {
+        if (input.existingTasks.length === 0) {
+          return { predecessorIds: [] };
+        }
+        const prompt = await suggestPredecessorsPrompt;
+        const {output} = await prompt(input);
+        return output!;
+      }
+    );
+})();

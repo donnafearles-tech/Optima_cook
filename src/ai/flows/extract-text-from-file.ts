@@ -33,7 +33,8 @@ async function extractText(
     const { value } = await mammoth.extractRawText({ buffer: fileBuffer });
     return value;
   } else if (mimeType.startsWith('image/')) {
-     const {text} = await (await ai).generate({
+     const genkitAi = await ai;
+     const {text} = await genkitAi.generate({
         prompt: [{media: {url: `data:${mimeType};base64,${fileBuffer.toString('base64')}`}}, {text: 'Extract the text from this image.'}],
      });
      return text;
@@ -42,19 +43,21 @@ async function extractText(
   }
 }
 
-export const extractTextFromFileFlow = (await ai).defineFlow(
-  {
-    name: 'extractTextFromFileFlow',
-    inputSchema: ExtractTextFromFileInputSchema,
-    outputSchema: ExtractTextFromFileOutputSchema,
-  },
-  async ({ fileDataUri }) => {
-    const [header, base64Data] = fileDataUri.split(',');
-    const mimeType = header.match(/:(.*?);/)?.[1] ?? '';
-    const fileBuffer = Buffer.from(base64Data, 'base64');
+export const extractTextFromFileFlow = (async () => {
+    return (await ai).defineFlow(
+      {
+        name: 'extractTextFromFileFlow',
+        inputSchema: ExtractTextFromFileInputSchema,
+        outputSchema: ExtractTextFromFileOutputSchema,
+      },
+      async ({ fileDataUri }) => {
+        const [header, base64Data] = fileDataUri.split(',');
+        const mimeType = header.match(/:(.*?);/)?.[1] ?? '';
+        const fileBuffer = Buffer.from(base64Data, 'base64');
 
-    const text = await extractText(fileBuffer, mimeType);
+        const text = await extractText(fileBuffer, mimeType);
 
-    return { text };
-  }
-);
+        return { text };
+      }
+    )
+})();

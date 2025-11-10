@@ -9,11 +9,12 @@ import {
 } from '@/lib/types';
 
 
-const suggestKeywordsPrompt = (await ai).definePrompt({
-  name: 'suggestKeywordsPrompt',
-  input: {schema: SuggestKeywordsForResourceInputSchema},
-  output: {schema: SuggestKeywordsForResourceOutputSchema},
-  prompt: `Actúas como un experto en cocina y lingüística. Tu objetivo es generar una lista de palabras clave relevantes para un utensilio de cocina.
+const suggestKeywordsPrompt = (async () => {
+    return (await ai).definePrompt({
+      name: 'suggestKeywordsPrompt',
+      input: {schema: SuggestKeywordsForResourceInputSchema},
+      output: {schema: SuggestKeywordsForResourceOutputSchema},
+      prompt: `Actúas como un experto en cocina y lingüística. Tu objetivo es generar una lista de palabras clave relevantes para un utensilio de cocina.
 
     Se te proporcionará el nombre de un recurso de cocina. Debes devolver una lista de palabras clave que incluyan:
     1.  El nombre del recurso en singular y plural.
@@ -29,16 +30,20 @@ const suggestKeywordsPrompt = (await ai).definePrompt({
 
     Responde ÚNICAMENTE con un objeto JSON válido que contenga la clave "keywords". No incluyas ninguna explicación u otro texto.
     `,
-});
+    });
+})();
 
-export const suggestKeywordsForResourceFlow = (await ai).defineFlow(
-  {
-    name: 'suggestKeywordsForResourceFlow',
-    inputSchema: SuggestKeywordsForResourceInputSchema,
-    outputSchema: SuggestKeywordsForResourceOutputSchema,
-  },
-  async input => {
-    const {output} = await (await suggestKeywordsPrompt)(input);
-    return output!;
-  }
-);
+export const suggestKeywordsForResourceFlow = (async () => {
+    return (await ai).defineFlow(
+      {
+        name: 'suggestKeywordsForResourceFlow',
+        inputSchema: SuggestKeywordsForResourceInputSchema,
+        outputSchema: SuggestKeywordsForResourceOutputSchema,
+      },
+      async input => {
+        const prompt = await suggestKeywordsPrompt;
+        const {output} = await prompt(input);
+        return output!;
+      }
+    );
+})();

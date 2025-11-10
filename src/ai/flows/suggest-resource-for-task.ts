@@ -8,11 +8,12 @@ import {
   SuggestResourceForTaskOutputSchema,
 } from '@/lib/types';
 
-const suggestResourcePrompt = (await ai).definePrompt({
-  name: 'suggestResourcePrompt',
-  input: {schema: SuggestResourceForTaskInputSchema},
-  output: {schema: SuggestResourceForTaskOutputSchema},
-  prompt: `Actúas como un asistente de cocina inteligente. Tu objetivo es vincular una tarea de cocina con los recursos necesarios para realizarla.
+const suggestResourcePrompt = (async () => {
+    return (await ai).definePrompt({
+      name: 'suggestResourcePrompt',
+      input: {schema: SuggestResourceForTaskInputSchema},
+      output: {schema: SuggestResourceForTaskOutputSchema},
+      prompt: `Actúas como un asistente de cocina inteligente. Tu objetivo es vincular una tarea de cocina con los recursos necesarios para realizarla.
 
     Se te proporcionará el nombre de una tarea y una lista de los recursos de cocina disponibles para el usuario. Cada recurso tiene un nombre, una cantidad y una lista de palabras clave.
 
@@ -31,16 +32,20 @@ const suggestResourcePrompt = (await ai).definePrompt({
     Responde ÚNICAMENTE con un objeto JSON válido que contenga la clave "resourceIds". No incluyas ninguna explicación u otro texto.
     Aquí está el JSON:
     `,
-});
+    });
+})();
 
-export const suggestResourceForTaskFlow = (await ai).defineFlow(
-  {
-    name: 'suggestResourceForTaskFlow',
-    inputSchema: SuggestResourceForTaskInputSchema,
-    outputSchema: SuggestResourceForTaskOutputSchema,
-  },
-  async input => {
-    const {output} = await (await suggestResourcePrompt)(input);
-    return output!;
-  }
-);
+export const suggestResourceForTaskFlow = (async () => {
+    return (await ai).defineFlow(
+      {
+        name: 'suggestResourceForTaskFlow',
+        inputSchema: SuggestResourceForTaskInputSchema,
+        outputSchema: SuggestResourceForTaskOutputSchema,
+      },
+      async input => {
+        const prompt = await suggestResourcePrompt;
+        const {output} = await prompt(input);
+        return output!;
+      }
+    );
+})();

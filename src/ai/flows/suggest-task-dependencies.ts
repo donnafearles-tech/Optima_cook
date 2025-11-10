@@ -8,11 +8,12 @@ import {
   SuggestTaskDependenciesOutputSchema,
 } from '@/lib/types';
 
-const suggestTaskDependenciesPrompt = (await ai).definePrompt({
-  name: 'suggestTaskDependenciesPrompt',
-  input: {schema: SuggestTaskDependenciesInputSchema},
-  output: {schema: SuggestTaskDependenciesOutputSchema},
-  prompt: `Actúas como un Chef Ejecutivo experto en optimización de procesos (Mise en Place). Tu objetivo es analizar una lista de tareas de cocina y establecer las dependencias lógicas correctas (predecesores) para cada una.
+const suggestTaskDependenciesPrompt = (async () => {
+    return (await ai).definePrompt({
+      name: 'suggestTaskDependenciesPrompt',
+      input: {schema: SuggestTaskDependenciesInputSchema},
+      output: {schema: SuggestTaskDependenciesOutputSchema},
+      prompt: `Actúas como un Chef Ejecutivo experto en optimización de procesos (Mise en Place). Tu objetivo es analizar una lista de tareas de cocina y establecer las dependencias lógicas correctas (predecesores) para cada una.
 
 **REGLAS FUNDAMENTALES DE SECUENCIA (MANUAL DEL CHEF):**
 Utiliza estas reglas como fuente de verdad absoluta.
@@ -49,16 +50,20 @@ No incluyas la tarea en sus propias dependencias.
 Responde ÚNICAMENTE con JSON válido. No incluyas ninguna explicación u otro texto.
 Aquí está el JSON:
     `,
-});
+    });
+})();
 
-export const suggestTaskDependenciesFlow = (await ai).defineFlow(
-  {
-    name: 'suggestTaskDependenciesFlow',
-    inputSchema: SuggestTaskDependenciesInputSchema,
-    outputSchema: SuggestTaskDependenciesOutputSchema,
-  },
-  async input => {
-    const {output} = await (await suggestTaskDependenciesPrompt)(input);
-    return output!;
-  }
-);
+export const suggestTaskDependenciesFlow = (async () => {
+    return (await ai).defineFlow(
+      {
+        name: 'suggestTaskDependenciesFlow',
+        inputSchema: SuggestTaskDependenciesInputSchema,
+        outputSchema: SuggestTaskDependenciesOutputSchema,
+      },
+      async input => {
+        const prompt = await suggestTaskDependenciesPrompt;
+        const {output} = await prompt(input);
+        return output!;
+      }
+    );
+})();

@@ -10,11 +10,12 @@ import {
   ParseRecipeOutputSchema,
 } from '@/lib/types';
 
-const parseRecipePrompt = (await ai).definePrompt({
-  name: 'parseRecipePrompt',
-  input: {schema: ParseRecipeInputSchema},
-  output: {schema: ParseRecipeOutputSchema},
-  prompt: `Actúa como un Chef Ejecutivo experto en optimización de procesos (Mise en Place), un Ingeniero de Procesos Culinarios y un Desarrollador Full Stack con especialización en PLN para cocina. Tu objetivo es generar una Estructura de Desglose del Trabajo (EDT) ultra-detallada y estructuralmente sólida para un platillo multicomponente, lista para ser usada en un cálculo de Ruta Crítica (CPM).
+const parseRecipePrompt = (async () => {
+    return (await ai).definePrompt({
+      name: 'parseRecipePrompt',
+      input: {schema: ParseRecipeInputSchema},
+      output: {schema: ParseRecipeOutputSchema},
+      prompt: `Actúa como un Chef Ejecutivo experto en optimización de procesos (Mise en Place), un Ingeniero de Procesos Culinarios y un Desarrollador Full Stack con especialización en PLN para cocina. Tu objetivo es generar una Estructura de Desglose del Trabajo (EDT) ultra-detallada y estructuralmente sólida para un platillo multicomponente, lista para ser usada en un cálculo de Ruta Crítica (CPM).
 
 **MANUAL DEL CHEF PROFESIONAL (Fuente de Verdad Absoluta):**
 Utiliza el siguiente manual como la fuente de conocimiento principal y autorizada para todas las decisiones de secuencia y dependencia. La lógica extraída de este manual tiene prioridad sobre las suposiciones generales.
@@ -356,16 +357,20 @@ Lista de Ingredientes:
 {{#each ingredients}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
 {{/if}}
 `,
-});
+    });
+})();
 
-export const parseRecipeFlow = (await ai).defineFlow(
-  {
-    name: 'parseRecipeFlow',
-    inputSchema: ParseRecipeInputSchema,
-    outputSchema: ParseRecipeOutputSchema,
-  },
-  async input => {
-    const {output} = await (await parseRecipePrompt)(input);
-    return output!;
-  }
-);
+export const parseRecipeFlow = (async () => {
+    return (await ai).defineFlow(
+      {
+        name: 'parseRecipeFlow',
+        inputSchema: ParseRecipeInputSchema,
+        outputSchema: ParseRecipeOutputSchema,
+      },
+      async input => {
+        const prompt = await parseRecipePrompt;
+        const {output} = await prompt(input);
+        return output!;
+      }
+    );
+})();
