@@ -76,7 +76,7 @@ const configureAi = async () => {
     plugins: [
       vertexAI({
         projectId: 'studio-99491860-5533f',
-        location: 'us-central1',
+        location: 'global',
         serviceAccount,
       }),
     ],
