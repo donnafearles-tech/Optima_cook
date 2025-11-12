@@ -9,8 +9,7 @@ import {
 } from '@/lib/types';
 import { vertexAI } from '@genkit-ai/vertexai';
 
-const suggestTaskDependenciesPrompt = (async () => {
-    return (await ai).definePrompt({
+const suggestTaskDependenciesPrompt = ai.definePrompt({
       name: 'suggestTaskDependenciesPrompt',
       input: {schema: SuggestTaskDependenciesInputSchema},
       output: {schema: SuggestTaskDependenciesOutputSchema},
@@ -53,19 +52,15 @@ Responde ÚNICAMENTE con JSON válido. No incluyas ninguna explicación u otro t
 Aquí está el JSON:
     `,
     });
-})();
 
-export const suggestTaskDependenciesFlow = (async () => {
-    return (await ai).defineFlow(
+export const suggestTaskDependenciesFlow = ai.defineFlow(
       {
         name: 'suggestTaskDependenciesFlow',
         inputSchema: SuggestTaskDependenciesInputSchema,
         outputSchema: SuggestTaskDependenciesOutputSchema,
       },
       async input => {
-        const prompt = await suggestTaskDependenciesPrompt;
-        const {output} = await prompt(input);
+        const {output} = await suggestTaskDependenciesPrompt(input);
         return output!;
       }
     );
-})();

@@ -9,8 +9,7 @@ import {
 } from '@/lib/types';
 import { vertexAI } from '@genkit-ai/vertexai';
 
-const suggestPredecessorsPrompt = (async () => {
-    return (await ai).definePrompt({
+const suggestPredecessorsPrompt = ai.definePrompt({
       name: 'suggestPredecessorsPrompt',
       input: {schema: SuggestPredecessorsForTaskInputSchema},
       output: {schema: SuggestPredecessorsForTaskOutputSchema},
@@ -48,10 +47,8 @@ const suggestPredecessorsPrompt = (async () => {
     Aquí está el JSON:
     `,
     });
-})();
 
-export const suggestPredecessorsForTaskFlow = (async () => {
-    return (await ai).defineFlow(
+export const suggestPredecessorsForTaskFlow = ai.defineFlow(
       {
         name: 'suggestPredecessorsForTaskFlow',
         inputSchema: SuggestPredecessorsForTaskInputSchema,
@@ -61,9 +58,7 @@ export const suggestPredecessorsForTaskFlow = (async () => {
         if (input.existingTasks.length === 0) {
           return { predecessorIds: [] };
         }
-        const prompt = await suggestPredecessorsPrompt;
-        const {output} = await prompt(input);
+        const {output} = await suggestPredecessorsPrompt(input);
         return output!;
       }
     );
-})();

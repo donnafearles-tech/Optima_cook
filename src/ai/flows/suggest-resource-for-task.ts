@@ -9,8 +9,7 @@ import {
 } from '@/lib/types';
 import { vertexAI } from '@genkit-ai/vertexai';
 
-const suggestResourcePrompt = (async () => {
-    return (await ai).definePrompt({
+const suggestResourcePrompt = ai.definePrompt({
       name: 'suggestResourcePrompt',
       input: {schema: SuggestResourceForTaskInputSchema},
       output: {schema: SuggestResourceForTaskOutputSchema},
@@ -35,19 +34,15 @@ const suggestResourcePrompt = (async () => {
     Aquí está el JSON:
     `,
     });
-})();
 
-export const suggestResourceForTaskFlow = (async () => {
-    return (await ai).defineFlow(
+export const suggestResourceForTaskFlow = ai.defineFlow(
       {
         name: 'suggestResourceForTaskFlow',
         inputSchema: SuggestResourceForTaskInputSchema,
         outputSchema: SuggestResourceForTaskOutputSchema,
       },
       async input => {
-        const prompt = await suggestResourcePrompt;
-        const {output} = await prompt(input);
+        const {output} = await suggestResourcePrompt(input);
         return output!;
       }
     );
-})();

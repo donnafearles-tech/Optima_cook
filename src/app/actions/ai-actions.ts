@@ -24,31 +24,25 @@ import { suggestPredecessorsForTaskFlow } from '@/ai/flows/suggest-predecessors-
 
 
 export async function parseRecipe(input: ParseRecipeInput): Promise<ParseRecipeOutput> {
-  const flow = await parseRecipeFlow;
-  return await flow(input);
+  return await parseRecipeFlow(input);
 }
 
 export async function suggestTaskDependencies(input: SuggestTaskDependenciesInput): Promise<SuggestTaskDependenciesOutput> {
-  const flow = await suggestTaskDependenciesFlow;
-  return await flow(input);
+  return await suggestTaskDependenciesFlow(input);
 }
 
 export async function extractTextFromFile(input: ExtractTextFromFileInput): Promise<ExtractTextFromFileOutput> {
-  const flow = await extractTextFromFileFlow;
-  return await flow(input);
+  return await extractTextFromFileFlow(input);
 }
 
 export async function suggestResourceForTask(input: SuggestResourceForTaskInput): Promise<SuggestResourceForTaskOutput> {
-  const flow = await suggestResourceForTaskFlow;
-  return await flow(input);
+    return await suggestResourceForTaskFlow(input);
 }
 
 export async function suggestKeywordsForResource(input: SuggestKeywordsForResourceInput): Promise<SuggestKeywordsForResourceOutput> {
-  const flow = await suggestKeywordsForResourceFlow;
-  return await flow(input);
+    return await suggestKeywordsForResourceFlow(input);
 }
 
 export async function suggestPredecessorsForTask(input: SuggestPredecessorsForTaskInput): Promise<SuggestPredecessorsForTaskOutput> {
-  const flow = await suggestPredecessorsForTaskFlow;
-  return await flow(input);
+    return await suggestPredecessorsForTaskFlow(input);
 }

@@ -10,8 +10,7 @@ import {
 import { vertexAI } from '@genkit-ai/vertexai';
 
 
-const suggestKeywordsPrompt = (async () => {
-    return (await ai).definePrompt({
+const suggestKeywordsPrompt = ai.definePrompt({
       name: 'suggestKeywordsPrompt',
       input: {schema: SuggestKeywordsForResourceInputSchema},
       output: {schema: SuggestKeywordsForResourceOutputSchema},
@@ -33,19 +32,15 @@ const suggestKeywordsPrompt = (async () => {
     Responde ÚNICAMENTE con un objeto JSON válido que contenga la clave "keywords". No incluyas ninguna explicación u otro texto.
     `,
     });
-})();
 
-export const suggestKeywordsForResourceFlow = (async () => {
-    return (await ai).defineFlow(
+export const suggestKeywordsForResourceFlow = ai.defineFlow(
       {
         name: 'suggestKeywordsForResourceFlow',
         inputSchema: SuggestKeywordsForResourceInputSchema,
         outputSchema: SuggestKeywordsForResourceOutputSchema,
       },
       async input => {
-        const prompt = await suggestKeywordsPrompt;
-        const {output} = await prompt(input);
+        const {output} = await suggestKeywordsPrompt(input);
         return output!;
       }
     );
-})();

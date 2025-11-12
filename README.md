@@ -1,3 +1,4 @@
+gcloud auth application-default login
 rn 
 # Firebase Studio
 

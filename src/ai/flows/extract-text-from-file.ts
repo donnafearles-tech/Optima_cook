@@ -33,7 +33,7 @@ async function extractText(
     const { value } = await mammoth.extractRawText({ buffer: fileBuffer });
     return value;
   } else if (mimeType.startsWith('image/')) {
-     const genkitAi = await ai;
+     const genkitAi = ai;
      const {text} = await genkitAi.generate({
         prompt: [{media: {url: `data:${mimeType};base64,${fileBuffer.toString('base64')}`}}, {text: 'Extract the text from this image.'}],
      });
@@ -43,8 +43,7 @@ async function extractText(
   }
 }
 
-export const extractTextFromFileFlow = (async () => {
-    return (await ai).defineFlow(
+export const extractTextFromFileFlow = ai.defineFlow(
       {
         name: 'extractTextFromFileFlow',
         inputSchema: ExtractTextFromFileInputSchema,
@@ -59,5 +58,4 @@ export const extractTextFromFileFlow = (async () => {
 
         return { text };
       }
-    )
-})();
+    );
