@@ -16,7 +16,7 @@ const parseRecipePrompt = (async () => {
       name: 'parseRecipePrompt',
       input: {schema: ParseRecipeInputSchema},
       output: {schema: ParseRecipeOutputSchema},
-      model: vertexAI.model('gemini-2.5-flash'),
+      model: vertexAI.model('gemini-2.5-pro'),
       prompt: `Actúas como un chef experto en optimización de procesos. Tu objetivo es convertir una receta en una lista de tareas estructuradas en formato JSON.
 
 **Fase 1: Análisis y Desglose de Tareas**
