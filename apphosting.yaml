@@ -1,31 +1,31 @@
 # Settings for Backend (on Cloud Run).
 # See https://firebase.google.com/docs/app-hosting/configure#cloud-run
 runConfig:
-  [span_0](start_span)minInstances: 0[span_0](end_span)
-    # maxInstances: 100
-      # concurrency: 80
-        # cpu: 1
-          # memoryMiB: 512
+  minInstances: 0
+  # maxInstances: 100
+  # concurrency: 80
+  # cpu: 1
+  # memoryMiB: 512
 
-          # Environment variables and secrets.
-          env:
-            # Configure environment variables.
-              # See https://firebase.google.com/docs/app-hosting/configure#user-defined-environment
-                - variable: FIREBASE_AUTH_EMULATOR_HOST
-                    [span_1](start_span)value: 127.0.0.1:9099[span_1](end_span)
-                        availability:
-                              - BUILD
-                                    - RUNTIME
-                                      - variable: GCLOUD_PROJECT
-                                          [span_2](start_span)value: studio-99491860-5533f[span_2](end_span)
-                                              availability:
-                                                    - BUILD
-                                                          - RUNTIME
+  # Environment variables and secrets.
+  env:
+    # Configure environment variables.
+    # See https://firebase.google.com/docs/app-hosting/configure#user-defined-environment
+    - variable: FIREBASE_AUTH_EMULATOR_HOST
+      value: "127.0.0.1:9099"
+      availability:
+        - BUILD
+        - RUNTIME
+    - variable: GCLOUD_PROJECT
+      value: "studio-99491860-5533f"
+      availability:
+        - BUILD
+        - RUNTIME
 
-                                                          # Define los secretos de Secret Manager que se usarán
-                                                          secretEnv:
-                                                            - variable: GOOGLE_APPLICATION_CREDENTIALS  # La variable de entorno que tu app necesita
-                                                                secret: cocinaoptimavertex               # El nombre del secreto que creaste en Secret Manager
-                                                                    availability:
-                                                                          - BUILD                               # <-- Esto es lo que soluciona tu error de compilación
-                                                                          
+  # Define los secretos de Secret Manager que se usarán
+  secretEnv:
+    - variable: GOOGLE_APPLICATION_CREDENTIALS  # La variable de entorno que tu app necesita
+      secret: cocinaoptimavertex               # El nombre del secreto que creaste en Secret Manager
+      availability:
+        - BUILD
+        - RUNTIME
