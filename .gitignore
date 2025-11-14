@@ -41,3 +41,6 @@ tsconfig.tsbuildinfo
 
 # turbo
 .turbo
+
+# Secretos y variables de entorno
+.env.local
