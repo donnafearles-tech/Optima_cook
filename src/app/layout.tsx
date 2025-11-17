@@ -8,6 +8,7 @@ import { FirebaseClientProvider } from '@/firebase';
 export const metadata: Metadata = {
   title: 'Happy Bunny Food',
   description: 'Planifica tu cocina como un profesional con Happy Bunny Food.',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({

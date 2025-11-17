@@ -1,0 +1,21 @@
+{
+  "name": "Happy Bunny Food",
+  "short_name": "Bunny Food",
+  "description": "Planifica tu cocina como un profesional con Happy Bunny Food.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF8F6",
+  "theme_color": "#F9A882",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
