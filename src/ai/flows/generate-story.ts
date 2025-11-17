@@ -1,3 +1,4 @@
+'use server';
 /**
  * @fileOverview Un agente de IA para generar una historia corta.
  *

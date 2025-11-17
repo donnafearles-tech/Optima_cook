@@ -1,3 +1,4 @@
+'use server';
 /**
  * @fileOverview Un agente de IA para sugerir dependencias de tareas.
  */
@@ -13,7 +14,10 @@ const suggestTaskDependenciesPrompt = ai.definePrompt({
       name: 'suggestTaskDependenciesPrompt',
       input: {schema: SuggestTaskDependenciesInputSchema},
       output: {schema: SuggestTaskDependenciesOutputSchema},
-      model: vertexAI.model('gemini-1.5-flash'),
+      model: vertexAI.model('gemini-1.5-flash', {
+        projectId: 'studio-99491860-5533f',
+        location: 'us-central1'
+      }),
       prompt: `Actúas como un Chef Ejecutivo experto en optimización de procesos (Mise en Place). Tu objetivo es analizar una lista de tareas de cocina y establecer las dependencias lógicas correctas (predecesores) para cada una.
 
 **REGLAS FUNDAMENTALES DE SECUENCIA (MANUAL DEL CHEF):**

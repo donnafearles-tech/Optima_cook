@@ -1,3 +1,4 @@
+'use server';
 /**
  * @fileOverview Un agente de IA para sugerir predecesores para una nueva tarea de cocina.
  */
@@ -13,7 +14,10 @@ const suggestPredecessorsPrompt = ai.definePrompt({
       name: 'suggestPredecessorsPrompt',
       input: {schema: SuggestPredecessorsForTaskInputSchema},
       output: {schema: SuggestPredecessorsForTaskOutputSchema},
-      model: vertexAI.model('gemini-1.5-flash'),
+      model: vertexAI.model('gemini-1.5-flash', {
+        projectId: 'studio-99491860-5533f',
+        location: 'us-central1'
+      }),
       prompt: `Actúas como un asistente de cocina experto en planificación y lógica de dependencias (Mise en Place).
 
     Se te proporcionará el nombre de una **nueva tarea** y una lista de **tareas existentes** en un proyecto de cocina. Cada tarea existente tiene un nombre y un ID único.

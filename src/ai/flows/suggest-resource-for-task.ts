@@ -1,3 +1,4 @@
+'use server';
 /**
  * @fileOverview Un agente de IA para sugerir recursos de cocina para una tarea.
  */
@@ -13,7 +14,10 @@ const suggestResourcePrompt = ai.definePrompt({
       name: 'suggestResourcePrompt',
       input: {schema: SuggestResourceForTaskInputSchema},
       output: {schema: SuggestResourceForTaskOutputSchema},
-      model: vertexAI.model('gemini-1.5-flash'),
+      model: vertexAI.model('gemini-1.5-flash', {
+        projectId: 'studio-99491860-5533f',
+        location: 'us-central1'
+      }),
       prompt: `Actúas como un asistente de cocina inteligente. Tu objetivo es vincular una tarea de cocina con los recursos necesarios para realizarla.
 
     Se te proporcionará el nombre de una tarea y una lista de los recursos de cocina disponibles para el usuario. Cada recurso tiene un nombre, una cantidad y una lista de palabras clave.

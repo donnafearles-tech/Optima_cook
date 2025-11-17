@@ -1,3 +1,4 @@
+'use server';
 /**
  * @fileOverview Un agente de IA para analizar recetas, actuando como un Chef Ejecutivo y un Ingeniero de Procesos.
  *
@@ -17,7 +18,10 @@ const parseRecipePrompt = ai.definePrompt({
       name: 'parseRecipePrompt',
       input: {schema: ParseRecipeInputSchema},
       output: {schema: ParseRecipeOutputSchema},
-      model: vertexAI.model('gemini-1.5-pro'),
+      model: vertexAI.model('gemini-1.5-pro', {
+        projectId: 'studio-99491860-5533f',
+        location: 'us-central1'
+      }),
       prompt: `Actúas como un chef experto en optimización de procesos. Tu objetivo es convertir una receta en una lista de tareas estructuradas en formato JSON.
 
 **Fase 1: Análisis y Desglose de Tareas**

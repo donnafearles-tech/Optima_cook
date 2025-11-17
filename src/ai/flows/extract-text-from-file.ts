@@ -1,3 +1,4 @@
+'use server';
 /**
  * @fileOverview A flow for extracting text from various file types.
  */

@@ -1,3 +1,4 @@
+'use server';
 /**
  * @fileOverview Un agente de IA para sugerir palabras clave para un recurso de cocina.
  */
@@ -14,7 +15,10 @@ const suggestKeywordsPrompt = ai.definePrompt({
       name: 'suggestKeywordsPrompt',
       input: {schema: SuggestKeywordsForResourceInputSchema},
       output: {schema: SuggestKeywordsForResourceOutputSchema},
-      model: vertexAI.model('gemini-1.5-flash'),
+      model: vertexAI.model('gemini-1.5-flash', {
+        projectId: 'studio-99491860-5533f',
+        location: 'us-central1'
+      }),
       prompt: `Actúas como un experto en cocina y lingüística. Tu objetivo es generar una lista de palabras clave relevantes para un utensilio de cocina.
 
     Se te proporcionará el nombre de un recurso de cocina. Debes devolver una lista de palabras clave que incluyan:
