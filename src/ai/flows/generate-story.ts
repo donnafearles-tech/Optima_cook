@@ -22,28 +22,23 @@ export const GenerateStoryOutputSchema = z.object({
 export type GenerateStoryOutput = z.infer<typeof GenerateStoryOutputSchema>;
 
 // Define el prompt de Genkit
-const storyPrompt = (async () => {
-  return (await ai).definePrompt({
+const storyPrompt = ai.definePrompt({
     name: 'storyPrompt',
     input: {schema: GenerateStoryInputSchema},
     output: {schema: GenerateStoryOutputSchema},
-    model: vertexAI.model('gemini-2.5-flash'),
+    model: vertexAI.model('gemini-1.5-flash'),
     prompt: `Escribe una historia corta y creativa sobre: {{{prompt}}}`,
   });
-})();
 
 // Define el flujo de Genkit que utiliza el prompt.
-export const generateStoryFlow = (async () => {
-  return (await ai).defineFlow(
+export const generateStoryFlow = ai.defineFlow(
     {
       name: 'generateStoryFlow',
       inputSchema: GenerateStoryInputSchema,
       outputSchema: GenerateStoryOutputSchema,
     },
     async input => {
-      const prompt = await storyPrompt;
-      const {output} = await prompt(input);
+      const {output} = await storyPrompt(input);
       return {story: output?.story || 'No se pudo generar una historia.'};
     }
   );
-})();
