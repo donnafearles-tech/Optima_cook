@@ -52,6 +52,7 @@ export default function Home() {
                 fill
                 className="object-cover opacity-10"
                 data-ai-hint={heroImage.imageHint}
+                priority
               />}
           </div>
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">

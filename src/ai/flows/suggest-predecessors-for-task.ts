@@ -1,9 +1,8 @@
-'use server';
 /**
  * @fileOverview Un agente de IA para sugerir predecesores para una nueva tarea de cocina.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from '@/ai/genkit';
 import {
   SuggestPredecessorsForTaskInputSchema,
   SuggestPredecessorsForTaskOutputSchema,
@@ -11,14 +10,11 @@ import {
 import { vertexAI } from '@genkit-ai/vertexai';
 
 const suggestPredecessorsPrompt = ai.definePrompt({
-      name: 'suggestPredecessorsPrompt',
-      input: {schema: SuggestPredecessorsForTaskInputSchema},
-      output: {schema: SuggestPredecessorsForTaskOutputSchema},
-      model: vertexAI.model('gemini-1.5-flash', {
-        projectId: 'studio-99491860-5533f',
-        location: 'us-central1'
-      }),
-      prompt: `Actúas como un asistente de cocina experto en planificación y lógica de dependencias (Mise en Place).
+  name: 'suggestPredecessorsPrompt',
+  input: { schema: SuggestPredecessorsForTaskInputSchema },
+  output: { schema: SuggestPredecessorsForTaskOutputSchema },
+  model: vertexAI.model('gemini-2.5-flash'),
+  prompt: `Actúas como un asistente de cocina experto en planificación y lógica de dependencias (Mise en Place).
 
     Se te proporcionará el nombre de una **nueva tarea** y una lista de **tareas existentes** en un proyecto de cocina. Cada tarea existente tiene un nombre y un ID único.
 
@@ -50,19 +46,19 @@ const suggestPredecessorsPrompt = ai.definePrompt({
     Responde ÚNICAMENTE con un objeto JSON válido que contenga la clave "predecessorIds". Si no encuentras ninguna dependencia lógica, devuelve un array vacío. No incluyas ninguna explicación u otro texto.
     Aquí está el JSON:
     `,
-    });
+});
 
 export const suggestPredecessorsForTaskFlow = ai.defineFlow(
-      {
-        name: 'suggestPredecessorsForTaskFlow',
-        inputSchema: SuggestPredecessorsForTaskInputSchema,
-        outputSchema: SuggestPredecessorsForTaskOutputSchema,
-      },
-      async input => {
-        if (input.existingTasks.length === 0) {
-          return { predecessorIds: [] };
-        }
-        const {output} = await suggestPredecessorsPrompt(input);
-        return output!;
-      }
-    );
+  {
+    name: 'suggestPredecessorsForTaskFlow',
+    inputSchema: SuggestPredecessorsForTaskInputSchema,
+    outputSchema: SuggestPredecessorsForTaskOutputSchema,
+  },
+  async (input) => {
+    if (input.existingTasks.length === 0) {
+      return { predecessorIds: [] };
+    }
+    const { output } = await suggestPredecessorsPrompt(input);
+    return output!;
+  }
+);

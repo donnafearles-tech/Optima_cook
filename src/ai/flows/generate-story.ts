@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview Un agente de IA para generar una historia corta.
  *
@@ -27,7 +26,7 @@ const storyPrompt = ai.definePrompt({
     name: 'storyPrompt',
     input: {schema: GenerateStoryInputSchema},
     output: {schema: GenerateStoryOutputSchema},
-    model: vertexAI.model('gemini-1.5-flash'),
+    model: vertexAI.model('gemini-2.5-flash'),
     prompt: `Escribe una historia corta y creativa sobre: {{{prompt}}}`,
   });
 

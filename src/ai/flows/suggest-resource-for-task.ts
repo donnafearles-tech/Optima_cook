@@ -1,9 +1,8 @@
-'use server';
 /**
  * @fileOverview Un agente de IA para sugerir recursos de cocina para una tarea.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from '@/ai/genkit';
 import {
   SuggestResourceForTaskInputSchema,
   SuggestResourceForTaskOutputSchema,
@@ -11,14 +10,11 @@ import {
 import { vertexAI } from '@genkit-ai/vertexai';
 
 const suggestResourcePrompt = ai.definePrompt({
-      name: 'suggestResourcePrompt',
-      input: {schema: SuggestResourceForTaskInputSchema},
-      output: {schema: SuggestResourceForTaskOutputSchema},
-      model: vertexAI.model('gemini-1.5-flash', {
-        projectId: 'studio-99491860-5533f',
-        location: 'us-central1'
-      }),
-      prompt: `Actúas como un asistente de cocina inteligente. Tu objetivo es vincular una tarea de cocina con los recursos necesarios para realizarla.
+  name: 'suggestResourcePrompt',
+  input: { schema: SuggestResourceForTaskInputSchema },
+  output: { schema: SuggestResourceForTaskOutputSchema },
+  model: vertexAI.model('gemini-2.5-flash'),
+  prompt: `Actúas como un asistente de cocina inteligente. Tu objetivo es vincular una tarea de cocina con los recursos necesarios para realizarla.
 
     Se te proporcionará el nombre de una tarea y una lista de los recursos de cocina disponibles para el usuario. Cada recurso tiene un nombre, una cantidad y una lista de palabras clave.
 
@@ -37,16 +33,16 @@ const suggestResourcePrompt = ai.definePrompt({
     Responde ÚNICAMENTE con un objeto JSON válido que contenga la clave "resourceIds". No incluyas ninguna explicación u otro texto.
     Aquí está el JSON:
     `,
-    });
+});
 
 export const suggestResourceForTaskFlow = ai.defineFlow(
-      {
-        name: 'suggestResourceForTaskFlow',
-        inputSchema: SuggestResourceForTaskInputSchema,
-        outputSchema: SuggestResourceForTaskOutputSchema,
-      },
-      async input => {
-        const {output} = await suggestResourcePrompt(input);
-        return output!;
-      }
-    );
+  {
+    name: 'suggestResourceForTaskFlow',
+    inputSchema: SuggestResourceForTaskInputSchema,
+    outputSchema: SuggestResourceForTaskOutputSchema,
+  },
+  async (input) => {
+    const { output } = await suggestResourcePrompt(input);
+    return output!;
+  }
+);

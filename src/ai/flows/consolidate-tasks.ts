@@ -1,4 +1,3 @@
-'use server';
 // This file is no longer used for task consolidation as the logic has been
 // moved to a native, client-side implementation in project-client-page.tsx.
 // It is kept for archival purposes but can be safely deleted.

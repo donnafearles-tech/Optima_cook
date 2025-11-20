@@ -1,21 +1,26 @@
-import { genkit, configureGenkit } from 'genkit';
+// src/ai/genkit.ts
+import 'server-only';
+import { genkit } from 'genkit';
 import { vertexAI } from '@genkit-ai/vertexai';
 
-// Este es el único lugar donde se inicializa Genkit.
-// NO es necesario agregar lógica de producción/desarrollo aquí.
+// 1. Leemos la variable del entorno
+const projectId = process.env.GCLOUD_PROJECT;
 
-configureGenkit({
+// 2. Validación de Seguridad (Para que no compile si falta la variable)
+if (!projectId) {
+  throw new Error(
+    "❌ ERROR CRÍTICO: No se encontró la variable GCLOUD_PROJECT. " +
+    "Asegúrate de tenerla en tu archivo .env.local o en la configuración de tu servidor."
+  );
+}
+
+export const ai = genkit({
   plugins: [
     vertexAI({
-      projectId: 'studio-99491860-5533f',
-      location: 'us-central1',
+      // Ahora usamos la variable limpia, sin comillas manuales
+      projectId: projectId, 
+      location: 'us-central1', 
     }),
   ],
-  // Habilita el logging para un mejor debugging.
-  // Esto puede ser útil para rastrear el flujo de datos.
-  logLevel: 'debug',
-  // La telemetría se gestionará automáticamente en producción.
-  enableTracingAndMetrics: true,
+  enableTracingAndMetrics: true, 
 });
-
-export { genkit as ai };

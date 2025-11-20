@@ -1,48 +1,116 @@
 'use server';
 
+import { ai } from '@/ai/genkit';
 import {
-  type ParseRecipeInput,
-  type ParseRecipeOutput,
   type SuggestTaskDependenciesInput,
-  type SuggestTaskDependenciesOutput,
-  type ExtractTextFromFileInput,
-  type ExtractTextFromFileOutput,
   type SuggestResourceForTaskInput,
-  type SuggestResourceForTaskOutput,
-  type SuggestKeywordsForResourceInput,
-  type SuggestKeywordsForResourceOutput,
   type SuggestPredecessorsForTaskInput,
-  type SuggestPredecessorsForTaskOutput
+  type SuggestKeywordsForResourceInput,
+  type GenerateRecipeInput,
+  type ParseRecipeInput,
 } from '@/lib/types';
 
-import { parseRecipeFlow } from '@/ai/flows/parse-recipe';
 import { suggestTaskDependenciesFlow } from '@/ai/flows/suggest-task-dependencies';
-import { extractTextFromFileFlow } from '@/ai/flows/extract-text-from-file';
 import { suggestResourceForTaskFlow } from '@/ai/flows/suggest-resource-for-task';
-import { suggestKeywordsForResourceFlow } from '@/ai/flows/suggest-keyword-for-resource';
 import { suggestPredecessorsForTaskFlow } from '@/ai/flows/suggest-predecessors-for-task';
+import { suggestKeywordsForResourceFlow } from '@/ai/flows/suggest-keyword-for-resource';
+import { generateRecipeFlow } from '@/ai/flows/generate-recipe';
+import { extractTextFromFileFlow } from '@/ai/flows/extract-text-from-file';
+import { parseRecipeFlow } from '@/ai/flows/parse-recipe';
 
 
-export async function parseRecipe(input: ParseRecipeInput): Promise<ParseRecipeOutput> {
-  return await parseRecipeFlow(input);
+export async function parseRecipe(input: ParseRecipeInput) {
+  try {
+    const result = await parseRecipeFlow(input);
+    return result;
+  } catch (error: any) {
+    // IMPRIMIR EL ERROR REAL EN LA TERMINAL
+    console.error("🔥 ERROR REAL DE VERTEX:", error); 
+    console.error("Detalles:", JSON.stringify(error, null, 2));
+
+    // Lanzar el error original para verlo en la pantalla de error de Next.js
+    throw error; 
+  }
 }
 
-export async function suggestTaskDependencies(input: SuggestTaskDependenciesInput): Promise<SuggestTaskDependenciesOutput> {
-  return await suggestTaskDependenciesFlow(input);
+export async function extractTextFromFile(input: { fileDataUri: string }) {
+  try {
+    const result = await extractTextFromFileFlow(input);
+    return result;
+  } catch (error: any) {
+    // IMPRIMIR EL ERROR REAL EN LA TERMINAL
+    console.error("🔥 ERROR REAL DE VERTEX:", error); 
+    console.error("Detalles:", JSON.stringify(error, null, 2));
+
+    // Lanzar el error original para verlo en la pantalla de error de Next.js
+    throw error; 
+  }
 }
 
-export async function extractTextFromFile(input: ExtractTextFromFileInput): Promise<ExtractTextFromFileOutput> {
-  return await extractTextFromFileFlow(input);
+export async function suggestTaskDependencies(input: SuggestTaskDependenciesInput) {
+  try {
+    const result = await suggestTaskDependenciesFlow(input);
+    return result;
+  } catch (error: any) {
+    // IMPRIMIR EL ERROR REAL EN LA TERMINAL
+    console.error("🔥 ERROR REAL DE VERTEX:", error); 
+    console.error("Detalles:", JSON.stringify(error, null, 2));
+
+    // Lanzar el error original para verlo en la pantalla de error de Next.js
+    throw error; 
+  }
 }
 
-export async function suggestResourceForTask(input: SuggestResourceForTaskInput): Promise<SuggestResourceForTaskOutput> {
-    return await suggestResourceForTaskFlow(input);
+export async function suggestResourceForTask(input: SuggestResourceForTaskInput) {
+  try {
+    const result = await suggestResourceForTaskFlow(input);
+    return result;
+  } catch (error: any) {
+    // IMPRIMIR EL ERROR REAL EN LA TERMINAL
+    console.error("🔥 ERROR REAL DE VERTEX:", error); 
+    console.error("Detalles:", JSON.stringify(error, null, 2));
+
+    // Lanzar el error original para verlo en la pantalla de error de Next.js
+    throw error; 
+  }
 }
 
-export async function suggestKeywordsForResource(input: SuggestKeywordsForResourceInput): Promise<SuggestKeywordsForResourceOutput> {
-    return await suggestKeywordsForResourceFlow(input);
+export async function suggestPredecessorsForTask(input: SuggestPredecessorsForTaskInput) {
+  try {
+    const result = await suggestPredecessorsForTaskFlow(input);
+    return result;
+  } catch (error: any) {
+    // IMPRIMIR EL ERROR REAL EN LA TERMINAL
+    console.error("🔥 ERROR REAL DE VERTEX:", error); 
+    console.error("Detalles:", JSON.stringify(error, null, 2));
+
+    // Lanzar el error original para verlo en la pantalla de error de Next.js
+    throw error; 
+  }
 }
 
-export async function suggestPredecessorsForTask(input: SuggestPredecessorsForTaskInput): Promise<SuggestPredecessorsForTaskOutput> {
-    return await suggestPredecessorsForTaskFlow(input);
+export async function suggestKeywordsForResource(input: SuggestKeywordsForResourceInput) {
+    try {
+        return await suggestKeywordsForResourceFlow(input);
+    } catch (error: any) {
+        // IMPRIMIR EL ERROR REAL EN LA TERMINAL
+        console.error("🔥 ERROR REAL DE VERTEX:", error); 
+        console.error("Detalles:", JSON.stringify(error, null, 2));
+
+        // Lanzar el error original para verlo en la pantalla de error de Next.js
+        throw error; 
+    }
+}
+
+export async function generateRecipe(input: GenerateRecipeInput) {
+    try {
+        return await generateRecipeFlow(input);
+    } catch (error: any) {
+        // IMPRIMIR EL ERROR REAL EN LA TERMINAL
+        console.error("🔥 ERROR REAL DE VERTEX:", error); 
+        console.error("Detalles:", JSON.stringify(error, null, 2));
+
+        // Lanzar el error original para verlo en la pantalla de error de Next.js
+        throw error; 
+    }
 }

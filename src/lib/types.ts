@@ -189,3 +189,15 @@ export const SuggestPredecessorsForTaskOutputSchema = z.object({
     predecessorIds: z.array(z.string()).describe('Una lista de los IDs de las tareas existentes que se sugieren como predecesoras.'),
 });
 export type SuggestPredecessorsForTaskOutput = z.infer<typeof SuggestPredecessorsForTaskOutputSchema>;
+
+export const GenerateRecipeInputSchema = z.object({
+  ingredients: z.string().describe('Una lista de ingredientes como una sola cadena de texto.'),
+});
+export type GenerateRecipeInput = z.infer<typeof GenerateRecipeInputSchema>;
+
+export const GenerateRecipeOutputSchema = z.object({
+  title: z.string().describe('El título de la receta generada.'),
+  ingredients: z.array(z.string()).describe('La lista de ingredientes formateada para la receta.'),
+  steps: z.array(z.string()).describe('Los pasos para preparar la receta.'),
+});
+export type GenerateRecipeOutput = z.infer<typeof GenerateRecipeOutputSchema>;
