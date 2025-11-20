@@ -1,5 +1,4 @@
 # Settings for Backend (on Cloud Run).
-# See https://firebase.google.com/docs/app-hosting/configure#cloud-run
 runConfig:
   minInstances: 0
   # maxInstances: 100
@@ -9,21 +8,12 @@ runConfig:
 
 # Environment variables and secrets.
 env:
-  # 1. Variable: Host del emulador
-  - variable: FIREBASE_AUTH_EMULATOR_HOST
-    value: "127.0.0.1:9099"
-    availability:
-      - BUILD
-      - RUNTIME
-
-  # 2. Variable: ID del Proyecto
   - variable: GCLOUD_PROJECT
     value: "studio-99491860-5533f"
     availability:
       - BUILD
       - RUNTIME
 
-  # 3. Secreto: Credenciales (¡Esto arregla el Error 51!)
   - variable: GOOGLE_APPLICATION_CREDENTIALS
     secret: cocinaoptimavertex
     availability:
