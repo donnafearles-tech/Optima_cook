@@ -7,25 +7,25 @@ runConfig:
   # cpu: 1
   # memoryMiB: 512
 
-  # Environment variables and secrets.
-  env:
-    # Configure environment variables.
-    # See https://firebase.google.com/docs/app-hosting/configure#user-defined-environment
-    - variable: FIREBASE_AUTH_EMULATOR_HOST
-      value: "127.0.0.1:9099"
-      availability:
-        - BUILD
-        - RUNTIME
-    - variable: GCLOUD_PROJECT
-      value: "studio-99491860-5533f"
-      availability:
-        - BUILD
-        - RUNTIME
+# Environment variables and secrets.
+env:
+  # 1. Variable: Host del emulador
+  - variable: FIREBASE_AUTH_EMULATOR_HOST
+    value: "127.0.0.1:9099"
+    availability:
+      - BUILD
+      - RUNTIME
 
-  # Define los secretos de Secret Manager que se usarán
-  secretEnv:
-    - variable: GOOGLE_APPLICATION_CREDENTIALS  # La variable de entorno que tu app necesita
-      secret: cocinaoptimavertex               # El nombre del secreto que creaste en Secret Manager
-      availability:
-        - BUILD
-        - RUNTIME
+  # 2. Variable: ID del Proyecto
+  - variable: GCLOUD_PROJECT
+    value: "studio-99491860-5533f"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # 3. Secreto: Credenciales (¡Esto arregla el Error 51!)
+  - variable: GOOGLE_APPLICATION_CREDENTIALS
+    secret: cocinaoptimavertex
+    availability:
+      - BUILD
+      - RUNTIME
