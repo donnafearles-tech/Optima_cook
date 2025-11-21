@@ -18,7 +18,7 @@ export const ai = genkit({
   plugins: [
     vertexAI({
       // Ahora usamos la variable limpia, sin comillas manuales
-      projectId: projectId, 
+      projectId: process.env.GCLOUD_PROJECT, // Debe leer la variable, 
       location: 'us-central1', 
     }),
   ],
