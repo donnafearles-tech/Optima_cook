@@ -25,7 +25,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
-import { useFirebase, useUser as useFirebaseAuth, auth } from '@/firebase';
+import { useFirebase, useUser as useFirebaseAuth } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,

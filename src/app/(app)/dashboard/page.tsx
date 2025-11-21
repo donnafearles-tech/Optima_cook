@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ProjectList from '@/components/dashboard/project-list';
-import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { useFirebase, useMemoFirebase } from '@/firebase';
+import { useCollection } from '@/firebase/firestore';
 import { collection, query, where } from 'firebase/firestore';
 import type { Project } from '@/lib/types';
 

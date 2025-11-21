@@ -17,7 +17,8 @@ import { Sparkles, Upload, FileText } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebase, useMemoFirebase } from '@/firebase';
+import { useCollection } from '@/firebase/firestore';
 import { collection, writeBatch, doc } from 'firebase/firestore';
 
 
