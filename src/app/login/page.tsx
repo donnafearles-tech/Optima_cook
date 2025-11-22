@@ -13,7 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useFirebase, initiateEmailSignUp, initiateEmailSignIn, initiateGoogleSignIn, useUser } from '@/firebase/auth';
+import { useFirebase, initiateEmailSignUp, initiateEmailSignIn, initiateGoogleSignIn, useUser, handleRedirectResult } from '@/firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Logo from '@/components/logo';
@@ -37,6 +37,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false);
+  const [isProcessingRedirect, setIsProcessingRedirect] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -49,6 +50,12 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
+  useEffect(() => {
+    handleRedirectResult(auth)
+      .catch(handleAuthError)
+      .finally(() => setIsProcessingRedirect(false));
+  }, [auth]);
+
   const handleAuthError = (error: unknown) => {
     let title = 'Error de Autenticación';
     let description = 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.';
@@ -56,6 +63,7 @@ export default function LoginPage() {
     if (error instanceof FirebaseError) {
         switch (error.code) {
         case 'auth/popup-blocked-by-browser':
+        case 'auth/cancelled-popup-request':
             title = 'Ventana Emergente Bloqueada';
             description = 'Tu navegador bloqueó la ventana de inicio de sesión. Por favor, permite las ventanas emergentes para este sitio e inténtalo de nuevo.';
             break;
@@ -136,7 +144,7 @@ export default function LoginPage() {
     }
   }
 
-  if (isUserLoading || user) {
+  if (isUserLoading || user || isProcessingRedirect) {
     return (
         <div className="flex h-screen items-center justify-center">
             <div>Cargando...</div>

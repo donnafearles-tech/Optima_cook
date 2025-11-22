@@ -5,7 +5,8 @@ import {
   Auth,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut,
   UserCredential,
@@ -27,10 +28,15 @@ export async function initiateEmailSignIn(
   return await signInWithEmailAndPassword(authInstance, email, password);
 }
 
-/** Initiate Google sign-in. Returns a promise that resolves on success or rejects on error. */
-export async function initiateGoogleSignIn(authInstance: Auth): Promise<UserCredential> {
+/** Initiate Google sign-in redirect. Returns a promise that resolves on success or rejects on error. */
+export async function initiateGoogleSignIn(authInstance: Auth): Promise<void> {
   const provider = new GoogleAuthProvider();
-  return await signInWithPopup(authInstance, provider);
+  return await signInWithRedirect(authInstance, provider);
+}
+
+/** Handles the result from a Google sign-in redirect. Returns a promise that resolves on success or rejects on error. */
+export async function handleRedirectResult(authInstance: Auth): Promise<UserCredential | null> {
+    return await getRedirectResult(authInstance);
 }
 
 
