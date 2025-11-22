@@ -13,7 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useFirebase, initiateEmailSignUp, initiateEmailSignIn, initiateGoogleSignIn, useUser, handleRedirectResult } from '@/firebase/auth';
+import { useFirebase, initiateEmailSignUp, initiateEmailSignIn, initiateGoogleSignIn, useUser } from '@/firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Logo from '@/components/logo';
@@ -48,11 +48,6 @@ export default function LoginPage() {
       router.push('/dashboard');
     }
   }, [user, isUserLoading, router]);
-  
-  useEffect(() => {
-    // Check for redirect result when the component mounts
-    handleRedirectResult(auth).catch(handleAuthError);
-  }, [auth]);
 
   const handleAuthError = (error: unknown) => {
     let title = 'Error de Autenticación';

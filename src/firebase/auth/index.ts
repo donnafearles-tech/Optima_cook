@@ -5,8 +5,7 @@ import {
   Auth,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   GoogleAuthProvider,
   signOut,
   UserCredential,
@@ -28,18 +27,10 @@ export async function initiateEmailSignIn(
   return await signInWithEmailAndPassword(authInstance, email, password);
 }
 
-/** Initiate Google sign-in via redirect. This will navigate the user away from the app. */
-export async function initiateGoogleSignIn(authInstance: Auth): Promise<void> {
+/** Initiate Google sign-in. Returns a promise that resolves on success or rejects on error. */
+export async function initiateGoogleSignIn(authInstance: Auth): Promise<UserCredential> {
   const provider = new GoogleAuthProvider();
-  return await signInWithRedirect(authInstance, provider);
-}
-
-/**
- * Checks for a redirect result from Google Sign-In.
- * This should be called when the app loads to complete the sign-in process.
- */
-export async function handleRedirectResult(authInstance: Auth): Promise<UserCredential | null> {
-    return await getRedirectResult(authInstance);
+  return await signInWithPopup(authInstance, provider);
 }
 
 
