@@ -18,7 +18,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ### Local Development Authentication
 
-To use the AI features that rely on Vertex AI during local development, you need to provide application default credentials. Run the following command in your terminal:
+To use the AI features that rely on Vertex AI during local development, you need to provide application default credenorigin tials. Run the following command in your terminal:
 
 ```bash
 gcloud auth application-default login

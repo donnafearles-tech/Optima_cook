@@ -13,7 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useFirebase, initiateEmailSignUp, initiateEmailSignIn, initiateGoogleSignIn, useUser } from '@/firebase/auth';
+import { useFirebase, initiateEmailSignUp, initiateEmailSignIn, initiateGoogleSignIn, useUser, handleRedirectResult } from '@/firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Logo from '@/components/logo';
@@ -48,6 +48,11 @@ export default function LoginPage() {
       router.push('/dashboard');
     }
   }, [user, isUserLoading, router]);
+  
+  useEffect(() => {
+    // Check for redirect result when the component mounts
+    handleRedirectResult(auth).catch(handleAuthError);
+  }, [auth]);
 
   const handleAuthError = (error: unknown) => {
     let title = 'Error de Autenticación';
@@ -58,6 +63,10 @@ export default function LoginPage() {
         case 'auth/popup-blocked-by-browser':
             title = 'Ventana Emergente Bloqueada';
             description = 'Tu navegador bloqueó la ventana de inicio de sesión. Por favor, permite las ventanas emergentes para este sitio e inténtalo de nuevo.';
+            break;
+        case 'auth/unauthorized-domain':
+            title = 'Dominio no Autorizado';
+            description = 'Este dominio no está autorizado para la autenticación. Añade "localhost" a los dominios permitidos en la configuración de autenticación de tu consola de Firebase.';
             break;
         case 'auth/invalid-credential':
         case 'auth/wrong-password':
@@ -78,16 +87,16 @@ export default function LoginPage() {
             description = 'No se pudo conectar con los servidores de autenticación. Revisa tu conexión a internet.';
             break;
         case 'auth/popup-closed-by-user':
-            // Esto no es un error real, el usuario cerró la ventana de Google.
+            // This is not an error real, the user closed the Google window.
             return;
         default:
-            // Para otros errores de Firebase, muestra el código
+            // For other Firebase errors, show the code
             title = `Error de Firebase (${error.code})`;
             description = error.message;
             break;
         }
     } else if (error instanceof Error) {
-        // Para errores genéricos de JavaScript
+        // For generic JavaScript errors
         description = error.message;
     }
 
@@ -103,7 +112,7 @@ export default function LoginPage() {
     setIsSigningUp(true);
     try {
       await initiateEmailSignUp(auth, email, password);
-      // En caso de éxito, el listener onAuthStateChanged se encargará del redireccionamiento.
+      // On success, the onAuthStateChanged listener will handle the redirect.
     } catch (error) {
       handleAuthError(error);
     } finally {
@@ -116,7 +125,7 @@ export default function LoginPage() {
     setIsSigningIn(true);
     try {
       await initiateEmailSignIn(auth, email, password);
-      // En caso de éxito, el listener onAuthStateChanged se encargará del redireccionamiento.
+      // On success, the onAuthStateChanged listener will handle the redirect.
     } catch (error) {
       handleAuthError(error);
     } finally {
