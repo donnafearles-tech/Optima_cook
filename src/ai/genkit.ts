@@ -14,11 +14,22 @@ if (!projectId) {
   );
 }
 
+// 3. Validación de Autenticación en Desarrollo
+if (process.env.NODE_ENV === 'development' && !process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.GCLOUD_AUTH_IMPERSONATED_SERVICE_ACCOUNT) {
+    const isRunningInGoogleCloud = !!process.env.K_SERVICE;
+    if (!isRunningInGoogleCloud) {
+        throw new Error(
+          '❌ ERROR DE AUTENTICACIÓN LOCAL: Las credenciales no se encontraron. ' +
+          'Ejecuta `gcloud auth application-default login` en tu terminal para autenticarte y poder usar la IA en desarrollo.'
+        );
+    }
+}
+
+
 export const ai = genkit({
   plugins: [
     vertexAI({
-      // Ahora usamos la variable limpia, sin comillas manuales
-      projectId: process.env.GCLOUD_PROJECT, // Debe leer la variable, 
+      projectId: process.env.GCLOUD_PROJECT,
       location: 'us-central1', 
     }),
   ],
