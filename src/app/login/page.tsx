@@ -55,13 +55,9 @@ export default function LoginPage() {
 
     if (error instanceof FirebaseError) {
         switch (error.code) {
-        case 'auth/popup-blocked':
+        case 'auth/popup-blocked-by-browser':
             title = 'Ventana Emergente Bloqueada';
             description = 'Tu navegador bloqueó la ventana de inicio de sesión. Por favor, permite las ventanas emergentes para este sitio e inténtalo de nuevo.';
-            break;
-        case 'auth/unauthorized-domain':
-            title = 'Dominio no Autorizado';
-            description = 'Este dominio (localhost) no está autorizado. Ve a la Consola de Firebase -> Authentication -> Settings -> Authorized Domains y añade "localhost".';
             break;
         case 'auth/invalid-credential':
         case 'auth/wrong-password':
