@@ -55,6 +55,10 @@ export default function LoginPage() {
 
     if (error instanceof FirebaseError) {
         switch (error.code) {
+        case 'auth/popup-blocked-by-browser':
+            title = 'Ventana Emergente Bloqueada';
+            description = 'Tu navegador bloqueó la ventana de inicio de sesión. Por favor, permite las ventanas emergentes para este sitio e inténtalo de nuevo.';
+            break;
         case 'auth/invalid-credential':
         case 'auth/wrong-password':
         case 'auth/user-not-found':
