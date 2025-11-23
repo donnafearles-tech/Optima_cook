@@ -3,33 +3,37 @@ import 'server-only';
 import { genkit } from 'genkit';
 import { vertexAI } from '@genkit-ai/vertexai';
 
-// 1. Leemos la variable del entorno
 const projectId = process.env.GCLOUD_PROJECT;
 
-// 2. Validación de Seguridad (Para que no compile si falta la variable)
 if (!projectId) {
   throw new Error(
-    "❌ ERROR CRÍTICO: No se encontró la variable GCLOUD_PROJECT. " +
-    "Asegúrate de tenerla en tu archivo .env.local o en la configuración de tu servidor."
+    "❌ ERROR CRÍTICO: No se encontró la variable de entorno GCLOUD_PROJECT. " +
+    "Asegúrate de que esté definida en tu configuración."
   );
 }
 
-// 3. Validación de Autenticación en Desarrollo
-if (process.env.NODE_ENV === 'development' && !process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.GCLOUD_AUTH_IMPERSONATED_SERVICE_ACCOUNT) {
-    const isRunningInGoogleCloud = !!process.env.K_SERVICE;
-    if (!isRunningInGoogleCloud) {
-        throw new Error(
-          '❌ ERROR DE AUTENTICACIÓN LOCAL: Las credenciales no se encontraron. ' +
-          'Ejecuta `gcloud auth application-default login` en tu terminal para autenticarte y poder usar la IA en desarrollo.'
-        );
-    }
-}
+// Verifica si la aplicación se está ejecutando dentro de un entorno de Google Cloud.
+const isRunningInGoogleCloud = !!process.env.K_SERVICE || !!process.env.GAE_SERVICE;
 
+// Solo realiza la verificación de credenciales si NO estamos en un entorno de Google Cloud.
+if (!isRunningInGoogleCloud) {
+  // En desarrollo, las credenciales se buscan en el entorno local.
+  // GOOGLE_APPLICATION_CREDENTIALS se usa para service accounts.
+  // GCLOUD_AUTH_IMPERSONATED_SERVICE_ACCOUNT se usa para personificación.
+  // Si ninguna de estas está definida, la aplicación depende de "Application Default Credentials".
+  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.GCLOUD_AUTH_IMPERSONATED_SERVICE_ACCOUNT) {
+      console.warn(
+        '🟡 ADVERTENCIA DE DESARROLLO LOCAL: No se encontraron credenciales de cuenta de servicio. ' +
+        'La aplicación intentará usar las Credenciales de Aplicación por Defecto (ADC). ' +
+        'Si la autenticación falla, ejecuta `gcloud auth application-default login` en tu terminal.'
+      );
+  }
+}
 
 export const ai = genkit({
   plugins: [
     vertexAI({
-      projectId: process.env.GCLOUD_PROJECT,
+      projectId: projectId, // Usamos la variable ya validada
       location: 'us-central1', 
     }),
   ],
