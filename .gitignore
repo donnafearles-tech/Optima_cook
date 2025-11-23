@@ -1,5 +1,46 @@
-public/
-node_modules
-.next
+# Dependencias
+/node_modules
+
+# Build de Next.js
+/.next/
+/out/
+
+# Archivos de entorno local
 .env.local
-.env
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Archivos de credenciales y sensibles
+*.json
+!/src/lib/placeholder-images.json
+!/components.json
+!/package.json
+!/package-lock.json
+!/tsconfig.json
+!/src/firebase/firestore/firestore.indexes.json
+!/.functions/package.json
+!/.functions/tsconfig.json
+!/.functions/tsconfig.dev.json
+!/.functions2/package.json
+!/.functions2/tsconfig.json
+!/.functions2/tsconfig.dev.json
+!/cancel/package.json
+!/cancel/tsconfig.json
+!/cancel/tsconfig.dev.json
+!/dataconnect/dataconnect.schema.json
+!/docs/backend.json
+!/firestore.indexes.json
+!/functions/package.json
+!/functions/tsconfig.json
+!/functions/tsconfig.dev.json
+
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Misc
+.DS_Store
+*.pem
