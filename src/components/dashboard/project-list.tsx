@@ -14,9 +14,10 @@ const projectImages = PlaceHolderImages.filter(p => p.id.startsWith('project-'))
 
 interface ProjectListProps {
   projects: Project[];
+  isLoading: boolean;
 }
 
-export default function ProjectList({ projects }: ProjectListProps) {
+export default function ProjectList({ projects, isLoading }: ProjectListProps) {
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
 
   return (
@@ -42,8 +43,9 @@ export default function ProjectList({ projects }: ProjectListProps) {
                 <CardDescription>{project.description || 'Sin descripción.'}</CardDescription>
               </CardHeader>
               <CardContent className="flex-grow">
-                {/* This count might not be immediately accurate with Firestore subcollections without extra queries */}
-                <p className="text-sm text-muted-foreground">{project.tasks?.length || 0} tareas</p>
+                 <p className="text-sm text-muted-foreground">
+                    {isLoading ? 'Cargando tareas...' : `${project.tasks?.length || 0} tareas`}
+                </p>
               </CardContent>
               <CardFooter>
                 <Button asChild className="w-full">
