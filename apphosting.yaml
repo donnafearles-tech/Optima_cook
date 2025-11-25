@@ -14,7 +14,7 @@ env:
       - BUILD
       - RUNTIME
 
-  - variable: GOOGLE_APPLICATION_CREDENTIALS
+  #- variable: GOOGLE_APPLICATION_CREDENTIALS
     secret: cocinaoptimavertex
     availability:
       - BUILD
