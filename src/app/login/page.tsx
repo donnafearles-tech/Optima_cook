@@ -1,6 +1,6 @@
 
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -13,9 +13,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useFirebase, initiateEmailSignUp, initiateEmailSignIn, initiateGoogleSignIn, useUser, handleRedirectResult } from '@/firebase/auth';
+import { useFirebase, initiateEmailSignUp, initiateEmailSignIn, initiateGoogleSignIn, handleRedirectResult } from '@/firebase/auth';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 import Logo from '@/components/logo';
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseError } from 'firebase/app';
@@ -37,24 +36,33 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false);
-  const [isProcessingRedirect, setIsProcessingRedirect] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Start in loading state
   const router = useRouter();
   const { toast } = useToast();
 
-  const { auth } = useFirebase();
-  const { user, isUserLoading } = useUser();
+  const { auth, isUserLoading } = useFirebase();
 
   useEffect(() => {
-    if (!isUserLoading && user) {
-      router.push('/dashboard');
-    }
-  }, [user, isUserLoading, router]);
+    // onAuthStateChanged is the robust way to track auth state
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      if (user) {
+        // User is signed in, redirect to dashboard.
+        // This will catch the user after a redirect, or if they have a valid session.
+        router.push('/dashboard');
+      } else {
+        // No user, stop loading and show the login page.
+        setIsLoading(false);
+      }
+    });
 
-  useEffect(() => {
+    // Also handle any errors from the redirect.
     handleRedirectResult(auth)
-      .catch(handleAuthError)
-      .finally(() => setIsProcessingRedirect(false));
-  }, [auth]);
+      .catch(handleAuthError);
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [auth, router]);
+
 
   const handleAuthError = (error: unknown) => {
     let title = 'Error de Autenticación';
@@ -69,7 +77,7 @@ export default function LoginPage() {
             break;
         case 'auth/unauthorized-domain':
             title = 'Dominio no Autorizado';
-            description = 'Este dominio no está autorizado para la autenticación. Añade "localhost" a los dominios permitidos en la configuración de autenticación de tu consola de Firebase.';
+            description = 'Este dominio no está autorizado para la autenticación. Añade tu dominio a los dominios permitidos en la configuración de autenticación de tu consola de Firebase.';
             break;
         case 'auth/invalid-credential':
         case 'auth/wrong-password':
@@ -90,7 +98,7 @@ export default function LoginPage() {
             description = 'No se pudo conectar con los servidores de autenticación. Revisa tu conexión a internet.';
             break;
         case 'auth/popup-closed-by-user':
-            // This is not an error real, the user closed the Google window.
+            // This is not a real error, the user closed the Google window.
             return;
         default:
             // For other Firebase errors, show the code
@@ -108,6 +116,7 @@ export default function LoginPage() {
       description: description,
       variant: 'destructive',
     });
+    setIsLoading(false); // Stop loading on error
   }
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -115,7 +124,7 @@ export default function LoginPage() {
     setIsSigningUp(true);
     try {
       await initiateEmailSignUp(auth, email, password);
-      // On success, the onAuthStateChanged listener will handle the redirect.
+      // onAuthStateChanged will handle the redirect on success.
     } catch (error) {
       handleAuthError(error);
     } finally {
@@ -128,7 +137,7 @@ export default function LoginPage() {
     setIsSigningIn(true);
     try {
       await initiateEmailSignIn(auth, email, password);
-      // On success, the onAuthStateChanged listener will handle the redirect.
+      // onAuthStateChanged will handle the redirect on success.
     } catch (error) {
       handleAuthError(error);
     } finally {
@@ -137,17 +146,22 @@ export default function LoginPage() {
   };
   
   const handleGoogleSignIn = async () => {
+    setIsLoading(true); // Show loading state immediately
     try {
       await initiateGoogleSignIn(auth);
+      // onAuthStateChanged will handle the redirect result.
     } catch (error) {
        handleAuthError(error);
     }
   }
 
-  if (isUserLoading || user || isProcessingRedirect) {
+  if (isLoading) {
     return (
         <div className="flex h-screen items-center justify-center">
-            <div>Cargando...</div>
+             <div className="text-center space-y-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                <p className="text-muted-foreground">Verificando sesión...</p>
+            </div>
         </div>
     )
   }
