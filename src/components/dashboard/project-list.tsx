@@ -64,6 +64,7 @@ export default function ProjectList({ projects, isLoading, onNewProject, onEditP
                         src={image.imageUrl}
                         alt={project.name}
                         fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="rounded-lg object-cover"
                         data-ai-hint={image.imageHint}
                       />
