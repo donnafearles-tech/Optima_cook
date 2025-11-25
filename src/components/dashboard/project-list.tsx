@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Upload, Loader2 } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import {
@@ -24,6 +24,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { useFirebase, uploadFileAndGetURL, updateDocumentNonBlocking } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 const projectImages = PlaceHolderImages.filter(p => p.id.startsWith('project-'));
 
@@ -37,6 +40,10 @@ interface ProjectListProps {
 
 export default function ProjectList({ projects, isLoading, onNewProject, onEditProject, onDeleteProject }: ProjectListProps) {
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [uploadingImageId, setUploadingImageId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user, firestore, storage } = useFirebase();
+  const { toast } = useToast();
 
   const handleDeleteClick = (project: Project) => {
     setProjectToDelete(project);
@@ -48,28 +55,89 @@ export default function ProjectList({ projects, isLoading, onNewProject, onEditP
       setProjectToDelete(null);
     }
   }
+
+  const handleImageClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    if (fileInputRef.current) {
+        // Asignamos el projectId al data-attribute antes de abrir el selector
+        fileInputRef.current.setAttribute('data-project-id', e.currentTarget.id);
+        fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const projectId = e.currentTarget.getAttribute('data-project-id');
+
+    if (!file || !projectId || !user) {
+        return;
+    }
+
+    setUploadingImageId(projectId);
+
+    try {
+        const filePath = `users/${user.uid}/projects/${projectId}/${file.name}`;
+        const downloadURL = await uploadFileAndGetURL(storage, filePath, file);
+        
+        const projectDocRef = doc(firestore, 'users', user.uid, 'projects', projectId);
+        await updateDocumentNonBlocking(projectDocRef, { imageUrl: downloadURL });
+
+        toast({
+            title: "Imagen actualizada",
+            description: "La nueva imagen del proyecto se ha guardado correctamente.",
+        });
+
+    } catch (error) {
+        console.error("Error al subir la imagen:", error);
+        toast({
+            title: "Error al subir la imagen",
+            description: "No se pudo guardar la nueva imagen. Inténtalo de nuevo.",
+            variant: "destructive",
+        });
+    } finally {
+        setUploadingImageId(null);
+         // Limpiamos el valor para que el evento onChange se dispare si se selecciona el mismo archivo de nuevo
+        if(e.target) e.target.value = '';
+    }
+  };
   
   return (
     <>
+      <input 
+        type="file" 
+        ref={fileInputRef}
+        className="hidden" 
+        accept="image/png, image/jpeg, image/gif"
+        onChange={handleFileChange}
+      />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {projects.map((project, index) => {
-          const image = projectImages[index % projectImages.length];
+          const fallbackImage = projectImages[index % projectImages.length];
+          const imageUrl = project.imageUrl || fallbackImage.imageUrl;
+
           return (
             <Card key={project.id} className="flex flex-col">
               <CardHeader className="flex-row justify-between items-start">
                 <div className="flex-1">
-                  {image && (
-                    <div className="aspect-[4/3] relative mb-4">
+                    <div id={project.id} className="aspect-[4/3] relative mb-4 rounded-lg overflow-hidden group cursor-pointer" onClick={handleImageClick}>
                       <Image
-                        src={image.imageUrl}
+                        src={imageUrl}
                         alt={project.name}
                         fill
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        className="rounded-lg object-cover"
-                        data-ai-hint={image.imageHint}
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        data-ai-hint={fallbackImage.imageHint}
                       />
+                      <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        {uploadingImageId === project.id ? (
+                            <Loader2 className="h-8 w-8 text-white animate-spin" />
+                        ) : (
+                            <>
+                                <Upload className="h-8 w-8 text-white" />
+                                <span className="text-white text-sm font-semibold mt-1">Cambiar Imagen</span>
+                            </>
+                        )}
+                      </div>
                     </div>
-                  )}
                   <CardTitle className="font-headline">{project.name}</CardTitle>
                   <CardDescription>{project.description || 'Sin descripción.'}</CardDescription>
                 </div>

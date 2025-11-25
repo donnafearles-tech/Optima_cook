@@ -37,7 +37,7 @@ export interface Project {
   id: string;
   name: string;
   description?: string;
-  recipes: Recipe[];
+  imageUrl?: string;
   tasks: Task[];
   cpmResult?: CpmResult;
 }
