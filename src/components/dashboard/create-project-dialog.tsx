@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -14,22 +14,36 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { Project } from '@/lib/types';
-import { useFirebase, addDocumentNonBlocking } from '@/firebase';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { useFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { collection, serverTimestamp, doc } from 'firebase/firestore';
 
 interface CreateProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  project: Project | null;
 }
 
 export default function CreateProjectDialog({
   open,
   onOpenChange,
+  project,
 }: CreateProjectDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const { firestore, user } = useFirebase();
+
+  useEffect(() => {
+    if (open) {
+      if (project) {
+        setName(project.name);
+        setDescription(project.description || '');
+      } else {
+        setName('');
+        setDescription('');
+      }
+    }
+  }, [project, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,21 +51,24 @@ export default function CreateProjectDialog({
 
     setIsSaving(true);
     
-    // Get a reference to the user's projects subcollection
     const projectsCol = collection(firestore, 'users', user.uid, 'projects');
     
-    const newProjectData = {
-      name,
-      description,
-      creationDate: serverTimestamp(),
-      estimatedTotalDuration: 0,
-    };
-
-    addDocumentNonBlocking(projectsCol, newProjectData);
+    if (project) {
+      // Editing existing project
+      const projectDoc = doc(projectsCol, project.id);
+      updateDocumentNonBlocking(projectDoc, { name, description });
+    } else {
+      // Creating new project
+      const newProjectData = {
+        name,
+        description,
+        creationDate: serverTimestamp(),
+        estimatedTotalDuration: 0,
+      };
+      addDocumentNonBlocking(projectsCol, newProjectData);
+    }
     
     setIsSaving(false);
-    setName('');
-    setDescription('');
     onOpenChange(false);
   };
 
@@ -60,9 +77,9 @@ export default function CreateProjectDialog({
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle className="font-headline">Crear Nuevo Proyecto</DialogTitle>
+            <DialogTitle className="font-headline">{project ? 'Editar Proyecto' : 'Crear Nuevo Proyecto'}</DialogTitle>
             <DialogDescription>
-              Dale un nombre y una descripción opcional a tu nuevo proyecto de cocina.
+             {project ? 'Actualiza los detalles de tu proyecto.' : 'Dale un nombre y una descripción a tu nuevo proyecto de cocina.'}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -92,7 +109,7 @@ export default function CreateProjectDialog({
           </div>
           <DialogFooter>
             <Button type="submit" disabled={isSaving || !name}>
-              {isSaving ? 'Guardando...' : 'Crear Proyecto'}
+              {isSaving ? 'Guardando...' : (project ? 'Guardar Cambios' : 'Crear Proyecto')}
             </Button>
           </DialogFooter>
         </form>

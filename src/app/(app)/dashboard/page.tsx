@@ -3,16 +3,18 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ProjectList from '@/components/dashboard/project-list';
-import { useFirebase, useMemoFirebase } from '@/firebase';
+import { useFirebase, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { useCollection } from '@/firebase/firestore';
-import { collection, query, getDocs, DocumentData } from 'firebase/firestore';
+import { collection, query, getDocs, DocumentData, doc, writeBatch } from 'firebase/firestore';
 import type { Project } from '@/lib/types';
+import CreateProjectDialog from '@/components/dashboard/create-project-dialog';
 
 export default function DashboardPage() {
   const { firestore, user, isUserLoading } = useFirebase();
   const router = useRouter();
   const [projectsWithTasks, setProjectsWithTasks] = useState<Project[]>([]);
   const [isLoadingAllData, setIsLoadingAllData] = useState(true);
+  const [editingProject, setEditingProject] = useState<Project | null | 'new'>(null);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -30,6 +32,26 @@ export default function DashboardPage() {
     isLoading: isLoadingProjects,
     error,
   } = useCollection<Omit<Project, 'tasks'>>(projectsQuery);
+
+  const handleDeleteProject = async (projectId: string) => {
+    if (!user) return;
+    const projectDocRef = doc(firestore, 'users', user.uid, 'projects', projectId);
+    
+    // Also delete subcollections
+    const batch = writeBatch(firestore);
+    
+    const tasksCollectionRef = collection(projectDocRef, 'tasks');
+    const tasksSnapshot = await getDocs(tasksCollectionRef);
+    tasksSnapshot.forEach(doc => batch.delete(doc.ref));
+
+    const recipesCollectionRef = collection(projectDocRef, 'recipes');
+    const recipesSnapshot = await getDocs(recipesCollectionRef);
+    recipesSnapshot.forEach(doc => batch.delete(doc.ref));
+
+    batch.delete(projectDocRef);
+    
+    await batch.commit();
+  };
 
   useEffect(() => {
     if (projects && user) {
@@ -63,11 +85,24 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="container mx-auto">
-      <h1 className="text-3xl font-bold tracking-tight font-headline mb-6">
-        Tus Proyectos de Cocina
-      </h1>
-      <ProjectList projects={projectsWithTasks} isLoading={isLoadingAllData} />
-    </div>
+    <>
+      <div className="container mx-auto">
+        <h1 className="text-3xl font-bold tracking-tight font-headline mb-6">
+          Tus Proyectos de Cocina
+        </h1>
+        <ProjectList 
+          projects={projectsWithTasks} 
+          isLoading={isLoadingAllData}
+          onNewProject={() => setEditingProject('new')}
+          onEditProject={(project) => setEditingProject(project)}
+          onDeleteProject={handleDeleteProject}
+        />
+      </div>
+      <CreateProjectDialog
+        open={editingProject !== null}
+        onOpenChange={(isOpen) => !isOpen && setEditingProject(null)}
+        project={editingProject === 'new' ? null : editingProject}
+      />
+    </>
   );
 }
