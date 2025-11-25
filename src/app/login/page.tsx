@@ -40,26 +40,27 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const { auth, isUserLoading } = useFirebase();
+  const { auth } = useFirebase();
 
   useEffect(() => {
-    // onAuthStateChanged is the robust way to track auth state
+    // onAuthStateChanged is the robust way to track auth state.
+    // It listens for when Firebase has determined the user's state.
     const unsubscribe = auth.onAuthStateChanged(user => {
       if (user) {
-        // User is signed in, redirect to dashboard.
-        // This will catch the user after a redirect, or if they have a valid session.
+        // User is signed in (either from a redirect or a previous session).
+        // Redirect them to the dashboard.
         router.push('/dashboard');
       } else {
-        // No user, stop loading and show the login page.
+        // No user is signed in, stop the loading state and show the login UI.
         setIsLoading(false);
       }
     });
 
-    // Also handle any errors from the redirect.
+    // Also handle any errors that might have occurred during the redirect.
     handleRedirectResult(auth)
       .catch(handleAuthError);
 
-    // Cleanup subscription on unmount
+    // Cleanup subscription on unmount to prevent memory leaks.
     return () => unsubscribe();
   }, [auth, router]);
 
@@ -99,6 +100,7 @@ export default function LoginPage() {
             break;
         case 'auth/popup-closed-by-user':
             // This is not a real error, the user closed the Google window.
+            setIsLoading(false); // We need to stop loading if the user just closes the window.
             return;
         default:
             // For other Firebase errors, show the code
@@ -146,10 +148,12 @@ export default function LoginPage() {
   };
   
   const handleGoogleSignIn = async () => {
-    setIsLoading(true); // Show loading state immediately
+    setIsLoading(true); // Show loading state immediately before redirecting.
     try {
       await initiateGoogleSignIn(auth);
-      // onAuthStateChanged will handle the redirect result.
+      // The page will redirect to Google. After the user signs in,
+      // they will be redirected back, and the `onAuthStateChanged`
+      // listener will handle the successful authentication.
     } catch (error) {
        handleAuthError(error);
     }
