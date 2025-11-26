@@ -1,20 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  reactStrictMode: true,
+  typescript: { ignoreBuildErrors: true },
+  eslint: { ignoreDuringBuilds: true },
+  
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
-      },
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
@@ -23,27 +14,49 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'picsum.photos',
+        hostname: 'lh3.googleusercontent.com',
         port: '',
         pathname: '/**',
       },
       {
-        protocol: 'https' ,
+        protocol: 'https',
+        hostname: '*.cloudworkstations.dev',
+      },
+      {
+        protocol: 'https',
+        hostname: 'placehold.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+      },
+      {
+        protocol: 'https',
         hostname: 'storage.googleapis.com',
-        port: '',
-        pathname: '/**',
       },
     ],
   },
+  
+  // --- NUEVA SECCIÓN: HEADERS PARA PERMITIR POPUPS ---
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
+          },
+        ],
+      },
+    ];
+  },
+  // ---------------------------------------------------
+  
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      // Don't resolve 'async_hooks' on the client-side
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        async_hooks: false,
-      };
+      config.resolve.fallback = { ...config.resolve.fallback, async_hooks: false };
     }
-
     return config;
   },
 };

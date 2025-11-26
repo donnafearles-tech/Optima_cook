@@ -1,12 +1,10 @@
-
 'use client';
 
 import {
   Auth,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup, // <--- CAMBIO IMPORTANTE: Importamos Popup
   GoogleAuthProvider,
   signOut,
   UserCredential,
@@ -14,12 +12,12 @@ import {
 import { useFirebase } from '@/firebase/provider';
 
 
-/** Initiate email/password sign-up. Returns a promise that resolves on success or rejects on error. */
+/** Iniciar registro con Email/Password */
 export async function initiateEmailSignUp(authInstance: Auth, email: string, password: string): Promise<UserCredential> {
   return await createUserWithEmailAndPassword(authInstance, email, password);
 }
 
-/** Initiate email/password sign-in. Returns a promise that resolves on success or rejects on error. */
+/** Iniciar sesión con Email/Password */
 export async function initiateEmailSignIn(
   authInstance: Auth, 
   email: string, 
@@ -28,23 +26,20 @@ export async function initiateEmailSignIn(
   return await signInWithEmailAndPassword(authInstance, email, password);
 }
 
-/** Initiate Google sign-in redirect. Returns a promise that resolves on success or rejects on error. */
-export async function initiateGoogleSignIn(authInstance: Auth): Promise<void> {
+/** * CAMBIO CRÍTICO: Iniciar sesión con Google usando POPUP.
+ * Esto evita el bucle de redirección en Cloud Workstations.
+ * Retorna directamente el resultado del usuario.
+ */
+export async function initiateGoogleSignIn(authInstance: Auth): Promise<UserCredential> {
   const provider = new GoogleAuthProvider();
-  return await signInWithRedirect(authInstance, provider);
+  // Usamos signInWithPopup en lugar de signInWithRedirect
+  return await signInWithPopup(authInstance, provider);
 }
 
-/** Handles the result from a Google sign-in redirect. Returns a promise that resolves on success or rejects on error. */
-export async function handleRedirectResult(authInstance: Auth): Promise<UserCredential | null> {
-    return await getRedirectResult(authInstance);
-}
-
-
-/** Initiate sign-out. Returns a promise that resolves on success or rejects on error. */
+/** Cerrar sesión */
 export async function initiateSignOut(authInstance: Auth): Promise<void> {
   return await signOut(authInstance);
 }
-
 
 export * from './use-user';
 export { useFirebase };
