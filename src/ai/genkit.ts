@@ -1,6 +1,7 @@
 import 'server-only';
 import { genkit } from 'genkit';
 import { vertexAI } from '@genkit-ai/vertexai';
+import { googleAI } from '@genkit-ai/google-genai';
 
 const projectId = process.env.GCLOUD_PROJECT;
 
@@ -47,6 +48,7 @@ if (!isRunningInGoogleCloud) {
 // ---------------------------------------------------------------------------------
 export const ai = genkit({
   plugins: [
+    googleAI(),
     vertexAI({
       projectId: projectId,
       location: 'us-central1', 
