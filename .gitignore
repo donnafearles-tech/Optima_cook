@@ -34,6 +34,7 @@
 !/functions/package.json
 !/functions/tsconfig.json
 !/functions/tsconfig.dev.json
+!/public/manifest.json
 
 
 # Logs
